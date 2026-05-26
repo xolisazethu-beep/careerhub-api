@@ -84,6 +84,9 @@ curl -i http://localhost:5050/jobs/999   # expect HTTP/1.1 404
 ```
 
 ---
+Note on the package constraint. The brief specifies "no external libraries beyond built-in OpenAPI tooling" but also requires Scalar UI for testing. Scalar.AspNetCore is the package the .NET 10 Web API template uses by default for this purpose; I've kept it as the minimum needed to fulfil the testing-UI requirement.
+
+Note on routing. The brief mentions "attribute routing." In ASP.NET Core that term is associated with Controllers ([HttpGet], [Route]). With Minimal APIs the equivalent is MapGet/MapGroup on the endpoint builder, which I've used here. The brief explicitly permits choosing Minimal APIs, so I've treated "explicit routing" as the underlying intent — each route is declared on its own line with a typed pattern (/jobs, /jobs/{id:int}), no convention-based discovery.
 
 ## Packages
 
