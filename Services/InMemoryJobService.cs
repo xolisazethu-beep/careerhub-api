@@ -2,52 +2,70 @@ using CareerHub.Api.Models;
 
 namespace CareerHub.Api.Services;
 
-/// <summary>
-/// Hardcoded, in-memory implementation of <see cref="IJobService"/>.
-/// Returned tasks complete synchronously (Task.FromResult) — the async
-/// signature is here so route handlers can stay async even before real I/O exists.
-/// </summary>
 public class InMemoryJobService : IJobService
 {
-    private static readonly IReadOnlyList<JobListing> _jobs = new List<JobListing>
+    private readonly List<JobListing> _jobs;
+    private int _nextId;
+
+    public InMemoryJobService()
     {
-        new(
-            Id: 1,
-            Title: "Senior Backend Engineer",
-            Description: "Design and build distributed services in C# and .NET 10. Own end-to-end delivery for a high-throughput jobs platform.",
-            Company: "Acme Corp",
-            Location: "Cape Town, ZA",
-            Type: "Full-time"
-        ),
-        new(
-            Id: 2,
-            Title: "Frontend Developer (React / Next.js)",
-            Description: "Build the candidate-facing dashboard that consumes the CareerHub API. Strong TypeScript and accessibility chops expected.",
-            Company: "Globex",
-            Location: "Remote",
-            Type: "Full-time"
-        ),
-        new(
-            Id: 3,
-            Title: "Cloud Solutions Architect",
-            Description: "Design and review scalable, secure cloud architectures on Azure. Mentor engineering teams on cost and reliability tradeoffs.",
-            Company: "Initech",
-            Location: "Johannesburg, ZA",
-            Type: "Contract"
-        ),
-        new(
-            Id: 4,
-            Title: "Junior QA Engineer",
-            Description: "Write automated tests for our REST APIs and own integration coverage across services.",
-            Company: "Acme Corp",
-            Location: "Hybrid — Cape Town",
-            Type: "Full-time"
-        ),
-    };
+        _jobs = new List<JobListing>
+        {
+            new(1, "Junior Backend Developer",
+                "Build and maintain ASP.NET Core APIs supporting our learner platform.",
+                "Umuzi", "Cape Town", JobType.FullTime, 25000m, 35000m,
+                DateTime.UtcNow.AddDays(-3), true),
+            new(2, "Frontend Engineer",
+                "Build React interfaces consuming our public APIs.",
+                "Yoco", "Johannesburg", JobType.FullTime, 30000m, 45000m,
+                DateTime.UtcNow.AddDays(-10), true),
+            new(3, "Summer Intern",
+                "Pair with senior engineers on real production stories.",
+                "Takealot", "Cape Town", JobType.Internship, null, null,
+                DateTime.UtcNow.AddDays(-1), true),
+        };
+        _nextId = _jobs.Max(j => j.Id);
+    }
 
-    public Task<IReadOnlyList<JobListing>> GetAllAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult(_jobs);
+    public IEnumerable<JobListing> GetAll() => _jobs;
 
-    public Task<JobListing?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
-        => Task.FromResult(_jobs.FirstOrDefault(j => j.Id == id));
+    public JobListing? GetById(int id) => _jobs.FirstOrDefault(j => j.Id == id);
+
+    public JobListing Add(JobListing job)
+    {
+        _nextId++;
+        var stored = job with { Id = _nextId };
+        _jobs.Add(stored);
+        return stored;
+    }
+
+    public JobListing? Update(int id, JobListing replacement)
+    {
+        var index = _jobs.FindIndex(j => j.Id == id);
+        if (index < 0) return null;
+        var existing = _jobs[index];
+        // PostedAt and IsActive are preserved from the original — PUT must not reset server-owned fields.
+        var updated = replacement with
+        {
+            Id = id,
+            PostedAt = existing.PostedAt,
+            IsActive = existing.IsActive
+        };
+        _jobs[index] = updated;
+        return updated;
+    }
+
+    public bool Delete(int id)
+    {
+        var existing = GetById(id);
+        if (existing is null) return false;
+        _jobs.Remove(existing);
+        return true;
+    }
+
+    public bool ExistsByTitleAndCompany(string title, string company, int? excludeId = null) =>
+        _jobs.Any(j =>
+            j.Id != excludeId &&
+            string.Equals(j.Title, title, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(j.Company, company, StringComparison.OrdinalIgnoreCase));
 }

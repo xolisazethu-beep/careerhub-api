@@ -2,14 +2,12 @@ using CareerHub.Api.Models;
 
 namespace CareerHub.Api.Services;
 
-/// <summary>
-/// Read contract over job listings. Defined as an async surface from day one
-/// so the endpoint layer never has to change when a real data store
-/// (EF Core / PostgreSQL) replaces the in-memory implementation.
-/// </summary>
 public interface IJobService
 {
-    Task<IReadOnlyList<JobListing>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    Task<JobListing?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    IEnumerable<JobListing> GetAll();
+    JobListing? GetById(int id);
+    JobListing Add(JobListing job);
+    JobListing? Update(int id, JobListing replacement);
+    bool Delete(int id);
+    bool ExistsByTitleAndCompany(string title, string company, int? excludeId = null);
 }
