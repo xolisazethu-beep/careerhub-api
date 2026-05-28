@@ -1,14 +1,17 @@
-namespace CareerHub.Api.Models;
+using CareerHub.Api.Models;
 
-public record JobListing(
+namespace CareerHub.Api.DTOs;
+
+public record JobResponse(
     int Id,
     string Title,
-    string Description,
     string Company,
     string Location,
+    string Description,
     JobType Type,
     decimal? SalaryMin,
     decimal? SalaryMax,
+    string SalaryDisplay,
     DateTime PostedAt,
     bool IsActive
 );
