@@ -1,5 +1,32 @@
 # CareerHub API – Assignment 1.2
-
+## CareerHub.Api/
+│
+├── DTOs/                              ← Data Transfer Objects (request/response shapes)
+│   ├── CreateJobRequest.cs            ← Shape for POST /jobs (no ID, server assigns it)
+│   ├── UpdateJobRequest.cs            ← Shape for PUT /jobs/{id}
+│   └── JobResponse.cs                 ← Shape for sending jobs back to the client
+│
+├── Endpoints/                         ← Minimal API endpoint definitions
+│   └── JobsEndpoints.cs               ← GET, POST, PUT, DELETE for /jobs
+│
+├── Models/                            ← Domain models (the "real" job shape)
+│   └── Job.cs                         ← Includes salary fields + JobType enum
+│
+├── Properties/                        ← .NET project settings
+│   └── launchSettings.json            ← Local run profiles, ports, environment
+│
+├── Screenshots scalar/                ← Proof-of-work screenshots from Scalar UI
+│   └── (your test screenshots)
+│
+├── Services/                          ← Business logic + in-memory storage
+│   └── JobService.cs                  ← Handles duplicate guard, CRUD operations
+│
+├── .gitignore                         ← Files Git should ignore (bin, obj, etc.)
+├── CareerHub.Api.csproj               ← Project definition + NuGet packages
+├── Program.cs                         ← Composition root — wires everything up
+├── README.md                          ← Project documentation
+├── appsettings.json                   ← App configuration
+└── appsettings.Development.json       ← Dev-only configuration overrides
 ## Overview
 
 This assignment extends the CareerHub API from Assignment 1.1 by adding full CRUD functionality, DTO separation, validation, enum constraints, and global error handling using Problem Details.
