@@ -3,6 +3,7 @@ using API.Models;
 using API.Data;
 using API.DTOs;
 using API.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers;
 
@@ -57,6 +58,7 @@ public class BookingsController : ControllerBase
     }
 
     // POST: /api/bookings
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<BookingResponse>> CreateBookingAsync(
         [FromBody] CreateBookingRequest request)
@@ -104,7 +106,9 @@ public class BookingsController : ControllerBase
     // PUT: /api/bookings/{id}
     // Replaces all fields of an existing booking.
     // Body shape: same as POST — the client sends the full updated booking.
+    [Authorize]
     [HttpPut("{id:guid}")]
+    
     public async Task<ActionResult<BookingResponse>> UpdateBookingAsync(
         Guid id,
         [FromBody] CreateBookingRequest request)
@@ -143,7 +147,9 @@ public class BookingsController : ControllerBase
     }
 
     // DELETE: /api/bookings/{id}
+     [Authorize(Roles = "Admin")]
     [HttpDelete("{id:guid}")]
+   
     public async Task<ActionResult> DeleteBookingAsync(Guid id)
     {
         await Task.Delay(50);
