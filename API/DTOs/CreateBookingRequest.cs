@@ -1,19 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-using API.Models; 
-
 namespace API.DTOs;
 
-//Request Dto - What the client sends to the backend to create a booking
+// Shape of the body sent to POST /api/bookings
+// Validation attributes keep bad data from ever reaching the store
+using System.ComponentModel.DataAnnotations;
 
 public record CreateBookingRequest(
-
-    [Required(ErrorMessage = "Title is required")]
-    [MaxLength(100, ErrorMessage = "Title cannot exceed 100 characters")]
-    string Title,
-
-    string Speaker,
-    [Required(ErrorMessage ="Room is required to secure a booking")]
-    string Room, 
-    [Required(ErrorMessage = "Start time is required")]
-    DateTime? StartTime //deafult value == Datetime.MinValue
-); 
+    [Required] string ConferenceName,
+    [Required][EmailAddress] string AttendeeEmail,
+    [Range(1, 20)] int SeatsReserved
+);

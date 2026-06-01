@@ -1,15 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-using API.Models;
-
 namespace API.DTOs;
 
-//this mirrors our Booking Domain but doesnt give firect access to the domain entity
-
-public record BookingResponse
-(
-    Guid id,
-    string Title,
-    string Speaker, 
-    string Room, 
-    DateTime startTime
-); 
+// Shape of the data we return to the caller for a booking
+// We never expose the raw model directly - always map to a DTO
+public record BookingResponse(
+    int Id,
+    string ConferenceName,
+    string AttendeeEmail,
+    DateTime BookingDate,
+    int SeatsReserved
+);

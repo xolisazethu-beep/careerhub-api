@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Skye\\Desktop\\ConferenceBookingAPI\\API\\API.csproj": {}
+    "C:\\Users\\Xolisa\\Downloads\\Asignment 1.4\\ConferenceBookingAPI\\API\\API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Skye\\Desktop\\ConferenceBookingAPI\\API\\API.csproj": {
+    "C:\\Users\\Xolisa\\Downloads\\Asignment 1.4\\ConferenceBookingAPI\\API\\API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Skye\\Desktop\\ConferenceBookingAPI\\API\\API.csproj",
+        "projectUniqueName": "C:\\Users\\Xolisa\\Downloads\\Asignment 1.4\\ConferenceBookingAPI\\API\\API.csproj",
         "projectName": "API",
-        "projectPath": "C:\\Users\\Skye\\Desktop\\ConferenceBookingAPI\\API\\API.csproj",
-        "packagesPath": "C:\\Users\\Skye\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Skye\\Desktop\\ConferenceBookingAPI\\API\\obj\\",
+        "projectPath": "C:\\Users\\Xolisa\\Downloads\\Asignment 1.4\\ConferenceBookingAPI\\API\\API.csproj",
+        "packagesPath": "C:\\Users\\Xolisa\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Xolisa\\Downloads\\Asignment 1.4\\ConferenceBookingAPI\\API\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Skye\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\Xolisa\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"

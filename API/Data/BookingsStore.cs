@@ -1,25 +1,40 @@
-using API.Models;
+using API.DTOs;
 
 namespace API.Data;
 
-// Static in-memory store — stands in for a database today only.
-// The GUIDs are generated once when the class first loads.
-// Week 2: this entire file disappears and is replaced by EF Core + PostgreSQL.
-public static class BookingStore
+// In-memory store - simulates a database for Week 1
+// Week 2 will replace this with an EF Core DbContext + real SQL table
+public class BookingsStore
 {
-    public static readonly List<Booking> Bookings =
-    [
-        new Booking(
-            Guid.NewGuid(),
-            ".NET 10 Performance Deep Dive",
-            "Jane Doe",
-            "Room A",
-            DateTime.UtcNow.AddDays(5)),
-        new Booking(
-            Guid.NewGuid(),
-            "Async/Await: Handling code in parallel",
-            "John Smith",
-            "Room B",
-            DateTime.UtcNow.AddDays(5).AddHours(2))
-    ];
+    // Static list so data persists for the lifetime of the running process
+    private static readonly List<BookingResponse> _bookings = new();
+    private static int _nextId = 1;
+
+    public List<BookingResponse> GetAll() => _bookings;
+
+    public BookingResponse? GetById(int id) =>
+        _bookings.FirstOrDefault(b => b.Id == id);
+
+    public BookingResponse Create(CreateBookingRequest request)
+    {
+        var booking = new BookingResponse(
+            Id:             _nextId++,
+            ConferenceName: request.ConferenceName,
+            AttendeeEmail:  request.AttendeeEmail,
+            BookingDate:    DateTime.UtcNow,
+            SeatsReserved:  request.SeatsReserved
+        );
+
+        _bookings.Add(booking);
+        return booking;
+    }
+
+    public bool Delete(int id)
+    {
+        var booking = GetById(id);
+        if (booking is null) return false;
+
+        _bookings.Remove(booking);
+        return true;
+    }
 }
