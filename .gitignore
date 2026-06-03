@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+
+# User-specific / IDE
+.vs/
+.vscode/
+*.user
+
+# Local secrets (keep the template appsettings.json, ignore real secrets)
+appsettings.*.local.json
+
+# OS
+.DS_Store
+Thumbs.db
