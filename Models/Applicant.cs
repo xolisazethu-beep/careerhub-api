@@ -1,5 +1,7 @@
 namespace CareerHub.Api.Models;
 
+using CareerHub.Api.Controllers;
+
 // An Applicant registers for the platform once and can apply to many JobListings.
 // Like the demo's Attendee, the link to listings goes through the join entity
 // (Application), because that link carries its own data.

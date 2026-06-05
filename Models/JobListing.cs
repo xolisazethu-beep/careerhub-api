@@ -1,5 +1,7 @@
 namespace CareerHub.Api.Models;
 
+using CareerHub.Api.Controllers;
+
 public enum JobType { FullTime, PartTime, Contract, Internship }
 
 public class JobListing
@@ -19,6 +21,11 @@ public class JobListing
     // EF Core populates Company only when you ask for it via Include().
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;
+
+    // Job requirements
+    public string RequiredDegree { get; set; } = string.Empty;    // e.g., "Bachelor's Degree"
+    public string RequiredDiploma { get; set; } = string.Empty;   // e.g., "AWS Certification"
+    public int MinimumYearsExperience { get; set; } = 0;
 
     // Applications received for this listing, through the explicit join entity.
     public ICollection<Application> Applications { get; set; } = [];

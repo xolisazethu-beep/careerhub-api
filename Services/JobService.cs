@@ -2,6 +2,7 @@ using CareerHub.Api.Data;
 using CareerHub.Api.DTOs;
 using CareerHub.Api.Exceptions;
 using CareerHub.Api.Models;
+using CareerHub.Api.Controllers;
 using Microsoft.EntityFrameworkCore;
 
 namespace CareerHub.Api.Services;

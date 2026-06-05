@@ -1,4 +1,5 @@
 using CareerHub.Api.Models;
+using CareerHub.Api.Controllers;
 using Microsoft.EntityFrameworkCore;
 
 namespace CareerHub.Api.Data;

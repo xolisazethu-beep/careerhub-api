@@ -1,4 +1,5 @@
 using CareerHub.Api.Models;
+using CareerHub.Api.Controllers;
 using Microsoft.EntityFrameworkCore;
 
 namespace CareerHub.Api.Data;
@@ -73,6 +74,11 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
             entity.Property(j => j.SalaryMax).HasColumnType("numeric(18,2)");
             entity.Property(j => j.PostedAt).IsRequired();
             entity.Property(j => j.IsActive).IsRequired();
+
+            // New job requirements fields
+            entity.Property(j => j.RequiredDegree).HasMaxLength(200);
+            entity.Property(j => j.RequiredDiploma).HasMaxLength(200);
+            entity.Property(j => j.MinimumYearsExperience).IsRequired();
 
             // One Company -> many JobListings.
             // Reads: "a JobListing HAS ONE Company; that Company has MANY JobListings".

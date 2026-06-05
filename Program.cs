@@ -18,6 +18,7 @@ builder.Services.AddDbContext<CareerHubDbContext>(options =>
 // Service layer.
 builder.Services.AddScoped<IJobService, JobService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // ── JWT AUTHENTICATION ──────────────────────────────────────────────────────
 var jwt = builder.Configuration.GetSection("Jwt");
@@ -37,6 +38,9 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization();
+
+// Register controllers for the new Application and Job controllers.
+builder.Services.AddControllers();
 
 // Clean error responses for domain exceptions.
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -79,5 +83,6 @@ using (var scope = app.Services.CreateScope())
 
 app.MapAuthEndpoints();
 app.MapJobEndpoints();
+app.MapControllers();
 
 app.Run();
