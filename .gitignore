@@ -10,6 +10,9 @@ obj/
 # Local secrets (keep the template appsettings.json, ignore real secrets)
 appsettings.*.local.json
 
+# Environment file for docker-compose (keep .env.example, ignore real .env)
+.env
+
 # OS
 .DS_Store
 Thumbs.db
