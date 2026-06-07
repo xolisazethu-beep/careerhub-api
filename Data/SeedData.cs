@@ -27,9 +27,20 @@ public static class SeedData
         var openUntil = DateTime.UtcNow.AddDays(30);
         var alreadyClosed = DateTime.UtcNow.AddDays(-1);
 
+        // A small catalogue of reusable skills. SkillRepository would create these
+        // on demand at runtime, but seeding them lets the search-by-skill endpoint
+        // return results immediately on a fresh database.
+        var skills = new List<Skill>
+        {
+            new() { Id = Guid.NewGuid(), Name = "C#" },
+            new() { Id = Guid.NewGuid(), Name = ".NET" },
+            new() { Id = Guid.NewGuid(), Name = "PostgreSQL" },
+            new() { Id = Guid.NewGuid(), Name = "Docker" },
+        };
+
         var listings = new List<JobListing>
         {
-            new() { Id = Guid.NewGuid(), Title = "Backend Engineer",   Description = "Build and maintain APIs.",        Location = "Cape Town",     Type = JobType.FullTime,   CompanyId = companies[0].Id, SalaryMin = 600000, SalaryMax = 850000, ClosingDate = openUntil },
+            new() { Id = Guid.NewGuid(), Title = "Backend Engineer",   Description = "Build and maintain APIs.",        Location = "Cape Town, ZA", IsRemote = false, MinYearsExperience = 3, Qualifications = "BSc Computer Science or equivalent experience; strong C# and REST API background.", Type = JobType.FullTime,   CompanyId = companies[0].Id, SalaryMin = 600000, SalaryMax = 850000, ClosingDate = openUntil, RequiredSkills = [skills[0], skills[1], skills[2]] },
             new() { Id = Guid.NewGuid(), Title = "Data Analyst",       Description = "Model financial datasets.",       Location = "Johannesburg", Type = JobType.FullTime,   CompanyId = companies[1].Id, SalaryMin = 500000, SalaryMax = 720000, ClosingDate = openUntil },
             new() { Id = Guid.NewGuid(), Title = "Mobile Developer",   Description = "Ship the patient mobile app.",    Location = "Remote",        Type = JobType.Contract,   CompanyId = companies[2].Id, SalaryMin = 550000, SalaryMax = 780000, ClosingDate = openUntil },
             new() { Id = Guid.NewGuid(), Title = "Game Designer",      Description = "Design core gameplay loops.",     Location = "Durban",        Type = JobType.FullTime,   CompanyId = companies[3].Id, SalaryMin = 480000, SalaryMax = 700000, ClosingDate = openUntil },
@@ -53,6 +64,7 @@ public static class SeedData
         };
 
         db.Companies.AddRange(companies);
+        db.Skills.AddRange(skills);
         db.JobListings.AddRange(listings);
         db.Applicants.AddRange(applicants);
         db.Applications.Add(sampleApplication);

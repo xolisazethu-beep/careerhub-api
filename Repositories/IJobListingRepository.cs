@@ -16,6 +16,11 @@ public interface IJobListingRepository
     // A single listing in full detail, or null if it does not exist.
     Task<JobDetailResponse?> GetListingDetailAsync(Guid id);
 
+    // A filtered, paged page of OPEN listings. All filtering, counting and the
+    // projection happen in the repository; the service only validates the filter
+    // and passes it through.
+    Task<PagedResult<JobListingResponse>> SearchAsync(JobSearchFilter filter);
+
     // The tracked domain entity, used by the service when it needs to APPLY a
     // change (owner check, closed check, then update). Returns null if missing.
     Task<JobListing?> GetListingForUpdateAsync(Guid id);

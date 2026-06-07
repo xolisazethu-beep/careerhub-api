@@ -1,4 +1,5 @@
 using CareerHub.Api.DTOs;
+using CareerHub.Api.Models;
 using CareerHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,22 @@ public class JobsController(IJobListingService jobs) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetActive() =>
         Ok(await jobs.GetActiveListingsAsync());
+
+    // GET /api/jobs/search?location=&skill=&minExperience=&jobType=&q=&page=&pageSize=
+    // Every parameter is optional; the binder defaults page/pageSize. The action
+    // only packs the query into a filter and calls one service method — all
+    // filtering, validation and paging live behind that call.
+    [HttpGet("search")]
+    public async Task<IActionResult> Search(
+        [FromQuery] string? location,
+        [FromQuery] string? skill,
+        [FromQuery] int? minExperience,
+        [FromQuery] JobType? jobType,
+        [FromQuery] string? q,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20) =>
+        Ok(await jobs.SearchAsync(
+            new JobSearchFilter(location, skill, minExperience, jobType, q, page, pageSize)));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id) =>

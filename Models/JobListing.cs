@@ -8,6 +8,20 @@ public class JobListing
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Location { get; set; } = string.Empty;
+
+    // Whether the role can be performed remotely. Independent of Location — a
+    // listing can be both "Cape Town, ZA" and remote-friendly.
+    public bool IsRemote { get; set; }
+
+    // The minimum years of experience the role expects. Business rule: must be
+    // >= 0 (enforced in JobListingService). Drives the /jobs/search minExperience
+    // filter ("show me jobs I qualify for with N years").
+    public int MinYearsExperience { get; set; }
+
+    // Free-text description of the qualifications a candidate needs
+    // (e.g. "BSc Computer Science or equivalent; AWS certification a plus").
+    public string Qualifications { get; set; } = string.Empty;
+
     public JobType Type { get; set; }
     public decimal? SalaryMin { get; set; }
     public decimal? SalaryMax { get; set; }
@@ -32,4 +46,9 @@ public class JobListing
 
     // Applications received for this listing, through the explicit join entity.
     public ICollection<Application> Applications { get; set; } = [];
+
+    // The skills this listing requires. A pure many-to-many (skip navigation):
+    // EF Core owns the join table; the service populates this collection from the
+    // request's skill names via ISkillRepository. (See CareerHubDbContext.)
+    public ICollection<Skill> RequiredSkills { get; set; } = [];
 }

@@ -11,10 +11,33 @@ namespace CareerHub.Api.Services;
 
 public class JobListingService(
     IJobListingRepository listings,
-    ICompanyRepository companies) : IJobListingService
+    ICompanyRepository companies,
+    ISkillRepository skills) : IJobListingService
 {
+    // The largest page the search endpoint will serve in one request. Caps an
+    // over-eager (or malicious) pageSize so one call cannot pull the whole table.
+    private const int MaxPageSize = 100;
+
     public Task<List<JobListingResponse>> GetActiveListingsAsync() =>
         listings.GetActiveListingsAsync();
+
+    public Task<PagedResult<JobListingResponse>> SearchAsync(JobSearchFilter filter)
+    {
+        // The service owns paging validation; the repository trusts the filter.
+        var page = filter.Page < 1 ? 1 : filter.Page;
+        var pageSize = filter.PageSize switch
+        {
+            < 1 => 20,
+            > MaxPageSize => MaxPageSize,
+            _ => filter.PageSize
+        };
+
+        // MinExperience is a "years I have" ceiling — a negative value is nonsense.
+        if (filter.MinExperience is < 0)
+            throw new ValidationException("minExperience cannot be negative.");
+
+        return listings.SearchAsync(filter with { Page = page, PageSize = pageSize });
+    }
 
     public async Task<JobDetailResponse> GetByIdAsync(Guid id) =>
         await listings.GetListingDetailAsync(id)
@@ -30,19 +53,29 @@ public class JobListingService(
         if (request.ClosingDate <= DateTime.UtcNow)
             throw new ValidationException("A listing's closing date must be in the future.");
 
+        // RULES: location must be present and experience must be non-negative.
+        ValidateListingFields(request.Location, request.MinYearsExperience);
+
+        // Resolve skill names to Skill rows (creating any new ones) and attach them.
+        var requiredSkills = await skills.GetOrCreateByNamesAsync(request.RequiredSkills ?? []);
+
         var listing = new JobListing
         {
             Id = Guid.NewGuid(),
             Title = request.Title,
             Description = request.Description,
             Location = request.Location,
+            IsRemote = request.IsRemote,
+            MinYearsExperience = request.MinYearsExperience,
+            Qualifications = request.Qualifications,
             Type = request.Type,
             CompanyId = request.CompanyId,
             SalaryMin = request.SalaryMin,
             SalaryMax = request.SalaryMax,
             PostedAt = DateTime.UtcNow,
             ClosingDate = request.ClosingDate,
-            IsActive = true
+            IsActive = true,
+            RequiredSkills = requiredSkills
         };
 
         await listings.AddListingAsync(listing);
@@ -66,16 +99,42 @@ public class JobListingService(
         if (request.ClosingDate <= DateTime.UtcNow)
             throw new ValidationException("A listing's closing date must be in the future.");
 
+        // RULES: location must be present and experience must be non-negative.
+        ValidateListingFields(request.Location, request.MinYearsExperience);
+
+        // Resolve the requested skills and REPLACE the listing's skill set. The
+        // navigation was Included by the repository, so clearing and re-adding
+        // lets EF Core diff the join rows on save.
+        var requiredSkills = await skills.GetOrCreateByNamesAsync(request.RequiredSkills ?? []);
+
         listing.Title = request.Title;
         listing.Description = request.Description;
         listing.Location = request.Location;
+        listing.IsRemote = request.IsRemote;
+        listing.MinYearsExperience = request.MinYearsExperience;
+        listing.Qualifications = request.Qualifications;
         listing.Type = request.Type;
         listing.SalaryMin = request.SalaryMin;
         listing.SalaryMax = request.SalaryMax;
         listing.ClosingDate = request.ClosingDate;
 
+        listing.RequiredSkills.Clear();
+        foreach (var skill in requiredSkills)
+            listing.RequiredSkills.Add(skill);
+
         await listings.UpdateListingAsync(listing);
         return await GetByIdAsync(id);
+    }
+
+    // Shared value rules for create and update. Throws ValidationException (-> 400)
+    // so the GlobalExceptionHandler maps it; the controller never sees the check.
+    private static void ValidateListingFields(string location, int minYearsExperience)
+    {
+        if (string.IsNullOrWhiteSpace(location))
+            throw new ValidationException("A listing's location is required.");
+
+        if (minYearsExperience < 0)
+            throw new ValidationException("Minimum years of experience cannot be negative.");
     }
 
     public async Task CloseAsync(Guid id)

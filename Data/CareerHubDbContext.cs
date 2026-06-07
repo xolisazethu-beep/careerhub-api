@@ -9,6 +9,7 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Applicant> Applicants => Set<Applicant>();
     public DbSet<Application> Applications => Set<Application>();
+    public DbSet<Skill> Skills => Set<Skill>();
 
     // ── PART 5: N+1 DIAGNOSIS TOGGLE ────────────────────────────────────────
     // Uncomment the body below to print every SQL statement EF Core runs to the
@@ -68,6 +69,9 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
             entity.Property(j => j.Title).IsRequired().HasMaxLength(200);
             entity.Property(j => j.Description).IsRequired().HasMaxLength(4000);
             entity.Property(j => j.Location).IsRequired().HasMaxLength(200);
+            entity.Property(j => j.IsRemote).IsRequired();
+            entity.Property(j => j.MinYearsExperience).IsRequired();
+            entity.Property(j => j.Qualifications).IsRequired().HasMaxLength(2000);
             entity.Property(j => j.Type).IsRequired().HasConversion<string>().HasMaxLength(20);
             entity.Property(j => j.SalaryMin).HasColumnType("numeric(18,2)");
             entity.Property(j => j.SalaryMax).HasColumnType("numeric(18,2)");
@@ -87,6 +91,30 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
 
             // No duplicate listing with the same title for the same company.
             entity.HasIndex(j => new { j.Title, j.CompanyId }).IsUnique();
+
+            // JobListing <-> Skill : a pure many-to-many with no payload of its
+            // own, so it uses an EF Core SKIP NAVIGATION. EF generates and owns the
+            // join table (named explicitly below); neither side needs an entity
+            // class for the join. Reads: "a listing requires MANY skills; a skill
+            // belongs to MANY listings".
+            entity.HasMany(j => j.RequiredSkills)
+                  .WithMany(s => s.JobListings)
+                  .UsingEntity(join => join.ToTable("job_listing_skills"));
+        });
+
+        // ── SKILL ───────────────────────────────────────────────────────────
+        modelBuilder.Entity<Skill>(entity =>
+        {
+            entity.ToTable("skills");
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Id).ValueGeneratedNever();   // app supplies the Guid
+
+            entity.Property(s => s.Name).IsRequired().HasMaxLength(100);
+
+            // Business rule: no two skills with the same name. SkillRepository
+            // matches case-insensitively before inserting, so this index never
+            // trips on "C#" vs "c#".
+            entity.HasIndex(s => s.Name).IsUnique();
         });
 
         // ── APPLICATION (explicit join entity) ──────────────────────────────
