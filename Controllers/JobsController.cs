@@ -38,12 +38,27 @@ public class JobsController(IJobService jobs) : ControllerBase
         [FromQuery] JobType? type, CancellationToken ct)
         => await jobs.BrowseAsync(title, location, type, ct);
 
-    /// <summary>Full detail of a single listing by id. 404 if it does not exist.</summary>
+    /// <summary>
+    /// Full detail of a single listing by id. 404 if it does not exist. PART 7:
+    /// returns a strong ETag (SHA256 of Id:PostedAt.Ticks:SalaryMin) and honours
+    /// If-None-Match with a 304. A private, must-revalidate Cache-Control (extra
+    /// #6) tells the browser to issue conditional requests against that ETag.
+    /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<JobListingDetailResponse>> GetById(Guid id, CancellationToken ct)
-        => await jobs.GetDetailByIdAsync(id, ct) is { } listing
-            ? Ok(listing)
-            : NotFound();
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
+    {
+        var listing = await jobs.GetDetailByIdAsync(id, ct);
+        if (listing is null)
+            return NotFound();
+
+        var etag = EtagHelper.Compute(listing.Id, listing.CreatedAt.Ticks, listing.SalaryMin);
+        if (Request.Headers.IfNoneMatch == etag)
+            return StatusCode(StatusCodes.Status304NotModified);
+
+        Response.Headers.ETag = etag;
+        Response.Headers.CacheControl = "private, must-revalidate";
+        return Ok(listing);
+    }
 
     /// <summary>An employer's own postings (any status), PAGINATED + FILTERED + SORTED.</summary>
     [HttpGet("company/{companyId:guid}")]

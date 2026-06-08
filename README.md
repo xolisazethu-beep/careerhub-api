@@ -850,3 +850,46 @@ When a breaking change is needed we **add** `v2` rather than mutate `v1`:
 The URL-segment reader makes each step unambiguous: the version a client is on is
 always visible in the path, in logs, and in the dashboard, so we can measure
 migration progress before pulling `v1`.
+
+## Part 7 — ETags
+
+`Infrastructure/EtagHelper.Compute(params object[])` joins the fingerprint parts
+with `:`, SHA-256 hashes them, base64-encodes, and wraps the result in double
+quotes (the entity-tag grammar requires the quotes). Both controllers use it so
+the logic is never duplicated:
+
+| Endpoint | ETag fingerprint |
+|---|---|
+| `GET /api/v1/jobs/{id}` | `SHA256("{Id}:{PostedAt.Ticks}:{SalaryMin}")` |
+| `GET /api/v1/applications/{jobListingId}/{applicantId}` | `SHA256("{JobListingId}:{ApplicantId}:{Status}")` |
+
+Each single-resource GET:
+
+1. checks `If-None-Match`; on a match it returns **`304 Not Modified` with no
+   body**,
+2. otherwise sets `Response.Headers.ETag` (and `Cache-Control: private,
+   must-revalidate` — extra #6 — so the browser actually issues the conditional
+   request) and returns `Ok(dto)`.
+
+Both GET actions return `IActionResult` so they can return either `304` or `200`.
+
+### The stale-304 problem and the proper fix
+
+The job ETag is derived from only `Id`, `PostedAt` and `SalaryMin`. That is a
+**deliberately weak fingerprint** chosen to match the assignment, and it has a real
+failure mode: a **`PATCH` that changes only `Description`** (Part 5A) leaves `Id`,
+`CreatedAt` and `SalaryMin` untouched, so the ETag is **unchanged** — a client
+holding the old ETag gets a `304` and keeps showing stale content even though the
+listing's body actually changed.
+
+The proper fix is a **single column that changes on *every* write**:
+
+- a **`RowVersion`** (`byte[]`) mapped to PostgreSQL's system **`xmin`** column
+  (`[Timestamp]` / `IsRowVersion()`), which Postgres bumps on every row update, or
+- an application-maintained **`UpdatedAt`** timestamp set in `SaveChanges`.
+
+Hashing that one value (`EtagHelper.Compute(listing.RowVersion)`) makes the ETag a
+true content fingerprint: any update — including a `Description`-only PATCH — moves
+it, so conditional GETs can never serve stale data. Adding that column is a schema
+change, which Assignment 3.1's ground rules put out of scope, so it is documented
+here rather than implemented.

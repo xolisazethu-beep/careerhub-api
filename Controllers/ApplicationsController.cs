@@ -33,6 +33,27 @@ public class ApplicationsController(IApplicationService applications) : Controll
         => await applications.GetMineAsync(User.GetUserId(), ct);
 
     /// <summary>
+    /// PART 7: a single application by composite key. Returns a strong ETag
+    /// (SHA256 of JobListingId:ApplicantId:Status) and honours If-None-Match with a
+    /// 304. Authenticated users only.
+    /// </summary>
+    [HttpGet("api/v{version:apiVersion}/applications/{jobListingId:guid}/{applicantId:guid}")]
+    public async Task<IActionResult> GetById(Guid jobListingId, Guid applicantId, CancellationToken ct)
+    {
+        var application = await applications.GetAsync(jobListingId, applicantId, ct);
+        if (application is null)
+            return NotFound();
+
+        var etag = EtagHelper.Compute(application.JobListingId, application.ApplicantId, application.Status);
+        if (Request.Headers.IfNoneMatch == etag)
+            return StatusCode(StatusCodes.Status304NotModified);
+
+        Response.Headers.ETag = etag;
+        Response.Headers.CacheControl = "private, must-revalidate";
+        return Ok(application);
+    }
+
+    /// <summary>
     /// PART 5B: transition an application's status, enforcing the legal-transition
     /// state machine (illegal moves → 400). Employer-only. Applications are
     /// identified by their composite key (jobListingId, applicantId) since the
