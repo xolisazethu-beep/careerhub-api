@@ -15,8 +15,14 @@ public class JobService(IJobListingRepository jobs) : IJobService
     public Task<IReadOnlyList<JobListingResponse>> GetActiveListingsAsync(CancellationToken ct = default) =>
         jobs.GetActiveListingsAsync(ct);
 
+    public Task<PagedResponse<JobListingResponse>> GetActiveListingsPagedAsync(JobListingFilterQuery query, CancellationToken ct = default) =>
+        jobs.GetActiveListingsPagedAsync(query, ct);
+
     public Task<IReadOnlyList<JobListingResponse>> GetByCompanyAsync(Guid companyId, CancellationToken ct = default) =>
         jobs.GetByCompanyAsync(companyId, ct);
+
+    public Task<PagedResponse<JobListingResponse>> GetByCompanyPagedAsync(Guid companyId, JobListingFilterQuery query, CancellationToken ct = default) =>
+        jobs.GetByCompanyPagedAsync(companyId, query, ct);
 
     public Task<IReadOnlyList<JobListingResponse>> BrowseAsync(
         string? title, string? location, JobType? type, CancellationToken ct = default) =>

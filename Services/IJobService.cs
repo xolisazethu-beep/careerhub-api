@@ -6,7 +6,9 @@ namespace CareerHub.Api.Services;
 public interface IJobService
 {
     Task<IReadOnlyList<JobListingResponse>> GetActiveListingsAsync(CancellationToken ct = default);
+    Task<PagedResponse<JobListingResponse>> GetActiveListingsPagedAsync(JobListingFilterQuery query, CancellationToken ct = default);
     Task<IReadOnlyList<JobListingResponse>> GetByCompanyAsync(Guid companyId, CancellationToken ct = default);
+    Task<PagedResponse<JobListingResponse>> GetByCompanyPagedAsync(Guid companyId, JobListingFilterQuery query, CancellationToken ct = default);
     Task<IReadOnlyList<JobListingResponse>> BrowseAsync(
         string? title, string? location, JobType? type, CancellationToken ct = default);
     Task<JobListingDetailResponse?> GetDetailByIdAsync(Guid id, CancellationToken ct = default);

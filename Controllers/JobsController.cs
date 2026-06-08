@@ -11,10 +11,19 @@ namespace CareerHub.Api.Controllers;
 [Route("api/jobs")]
 public class JobsController(IJobService jobs) : ControllerBase
 {
-    /// <summary>Public job board — active, unexpired listings.</summary>
+    /// <summary>
+    /// Public job board — active, unexpired listings, PAGINATED, FILTERED and
+    /// SORTED (Parts 3 + 4). All query params are optional: filter by
+    /// location/employmentType/salaryMin/salaryMax/companyId/q/postedSince/remoteOnly,
+    /// sort by sort+dir, page with page+pageSize. pageSize is clamped to ≤ 100.
+    /// Writes the total match count to the <c>X-Total-Count</c> header.
+    /// </summary>
     [HttpGet]
-    public async Task<IReadOnlyList<JobListingResponse>> GetActive(CancellationToken ct)
-        => await jobs.GetActiveListingsAsync(ct);
+    public async Task<IActionResult> GetActive([FromQuery] JobListingFilterQuery query, CancellationToken ct)
+    {
+        query.PageSize = Math.Clamp(query.PageSize, 1, 100);
+        return Paged(await jobs.GetActiveListingsPagedAsync(query, ct));
+    }
 
     /// <summary>
     /// Filter the active job board by any combination of job name (title),
@@ -34,10 +43,13 @@ public class JobsController(IJobService jobs) : ControllerBase
             ? Ok(listing)
             : NotFound();
 
-    /// <summary>An employer's own postings.</summary>
+    /// <summary>An employer's own postings (any status), PAGINATED + FILTERED + SORTED.</summary>
     [HttpGet("company/{companyId:guid}")]
-    public async Task<IReadOnlyList<JobListingResponse>> GetByCompany(Guid companyId, CancellationToken ct)
-        => await jobs.GetByCompanyAsync(companyId, ct);
+    public async Task<IActionResult> GetByCompany(Guid companyId, [FromQuery] JobListingFilterQuery query, CancellationToken ct)
+    {
+        query.PageSize = Math.Clamp(query.PageSize, 1, 100);
+        return Paged(await jobs.GetByCompanyPagedAsync(companyId, query, ct));
+    }
 
     // ── PART 5: full-text search. One line — service -> repository. ───────────
     [HttpGet("search")]
@@ -60,5 +72,14 @@ public class JobsController(IJobService jobs) : ControllerBase
         var companyId = User.GetCompanyId();
         var id = await jobs.CreateAsync(request, companyId, ct);
         return CreatedAtAction(nameof(GetByCompany), new { companyId }, new { id });
+    }
+
+    // ── PART 3: paged envelope helper ────────────────────────────────────────
+    // Writes X-Total-Count on every paginated response and attaches the
+    // HATEOAS-lite navigation links built from the current request.
+    private OkObjectResult Paged(PagedResponse<JobListingResponse> page)
+    {
+        Response.Headers["X-Total-Count"] = page.TotalCount.ToString();
+        return Ok(page with { Links = PaginationLinks.Build(Request, page) });
     }
 }

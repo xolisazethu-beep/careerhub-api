@@ -47,6 +47,112 @@ public class JobListingRepository(CareerHubDbContext db) : IJobListingRepository
         return results;
     }
 
+    // ── PART 3/4: PAGINATED + FILTERED + SORTED PUBLIC BOARD ─────────────────
+    public Task<PagedResponse<JobListingResponse>> GetActiveListingsPagedAsync(
+        JobListingFilterQuery query, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        var q = db.JobListings
+            .AsNoTracking()
+            .Where(j => j.Status == ListingStatus.Active && j.ExpiresAt > now);
+        return PageAsync(ApplyFilters(q, query), query, ct);
+    }
+
+    // ── PART 3/4: PAGINATED COMPANY LISTINGS (any status) ────────────────────
+    public Task<PagedResponse<JobListingResponse>> GetByCompanyPagedAsync(
+        Guid companyId, JobListingFilterQuery query, CancellationToken ct = default)
+    {
+        var q = db.JobListings
+            .AsNoTracking()
+            .Where(j => j.CompanyId == companyId);
+        return PageAsync(ApplyFilters(q, query), query, ct);
+    }
+
+    // ── PART 4: COMPOSABLE FILTERS ───────────────────────────────────────────
+    // Each supplied filter narrows the IQueryable with an additional Where (AND
+    // semantics); absent (null) filters are skipped so they never reach the SQL.
+    private static IQueryable<JobListing> ApplyFilters(IQueryable<JobListing> q, JobListingFilterQuery f)
+    {
+        // EXTRA "q": reuse the 2.4 GIN-indexed full-text search when present, then
+        // compose the rest of the filters on top of it (Bitmap-AND in Postgres).
+        if (!string.IsNullOrWhiteSpace(f.Q))
+        {
+            var words = f.Q.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var tsQuery = string.Join(" & ", words);
+            q = q.Where(j => j.SearchVector.Matches(EF.Functions.ToTsQuery("english", tsQuery)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(f.Location))
+            q = q.Where(j => EF.Functions.ILike(j.Location, $"%{f.Location}%"));
+
+        if (f.EmploymentType is not null)
+            q = q.Where(j => j.Type == f.EmploymentType);
+
+        // SalaryMin = "pays at least X": the top of the listing's range must reach
+        // it (fall back to the floor when no max is stated). SalaryMax = "pays at
+        // most Y": the bottom of the range must not exceed it.
+        if (f.SalaryMin is not null)
+            q = q.Where(j => (j.SalaryMax ?? j.SalaryMin) >= f.SalaryMin);
+        if (f.SalaryMax is not null)
+            q = q.Where(j => (j.SalaryMin ?? j.SalaryMax) <= f.SalaryMax);
+
+        if (f.CompanyId is not null)
+            q = q.Where(j => j.CompanyId == f.CompanyId);
+
+        // EXTRA "postedSince": only listings created on or after the given instant.
+        if (f.PostedSince is not null)
+            q = q.Where(j => j.CreatedAt >= f.PostedSince);
+
+        // EXTRA "remoteOnly": case-insensitive contains "remote" on Location.
+        if (f.RemoteOnly == true)
+            q = q.Where(j => EF.Functions.ILike(j.Location, "%remote%"));
+
+        return q;
+    }
+
+    // ── PART 4: SORT via SWITCH EXPRESSION ───────────────────────────────────
+    // Maps sort key + direction to OrderBy/OrderByDescending. The default case is
+    // ALWAYS PostedAt (CreatedAt) DESC. OrderBy is applied here, BEFORE Skip/Take.
+    private static IQueryable<JobListing> ApplySort(IQueryable<JobListing> q, JobListingFilterQuery f)
+    {
+        var asc = string.Equals(f.Dir, "asc", StringComparison.OrdinalIgnoreCase);
+        return f.Sort?.ToLowerInvariant() switch
+        {
+            "salarymin" => asc ? q.OrderBy(j => j.SalaryMin) : q.OrderByDescending(j => j.SalaryMin),
+            "salarymax" => asc ? q.OrderBy(j => j.SalaryMax) : q.OrderByDescending(j => j.SalaryMax),
+            "title"     => asc ? q.OrderBy(j => j.Title) : q.OrderByDescending(j => j.Title),
+            // EXTRA "company": always ascending by company name.
+            "company"   => q.OrderBy(j => j.Company.Name),
+            // EXTRA "expiresat": ascending = expiring-soonest first.
+            "expiresat" => q.OrderBy(j => j.ExpiresAt),
+            // EXTRA "relevance": with no rank surface available we fall back to
+            // PostedAt DESC (results are already narrowed by the full-text filter).
+            "relevance" => q.OrderByDescending(j => j.CreatedAt),
+            "postedat"  => asc ? q.OrderBy(j => j.CreatedAt) : q.OrderByDescending(j => j.CreatedAt),
+            _           => q.OrderByDescending(j => j.CreatedAt) // default: PostedAt DESC
+        };
+    }
+
+    // ── PART 3: SINGLE-PASS PAGINATION ───────────────────────────────────────
+    // Exactly ONE CountAsync (the full match count) and ONE ToListAsync (the
+    // page), both over the same composed IQueryable. OrderBy precedes Skip/Take.
+    private static async Task<PagedResponse<JobListingResponse>> PageAsync(
+        IQueryable<JobListing> filtered, JobListingFilterQuery f, CancellationToken ct)
+    {
+        var page = f.Page < 1 ? 1 : f.Page;
+        var pageSize = Math.Clamp(f.PageSize, 1, 100);
+
+        var totalCount = await filtered.CountAsync(ct);
+
+        var data = await ApplySort(filtered, f)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(Project)
+            .ToListAsync(ct);
+
+        return PagedResponse<JobListingResponse>.Create(data, page, pageSize, totalCount);
+    }
+
     public async Task<IReadOnlyList<JobListingResponse>> GetByCompanyAsync(Guid companyId, CancellationToken ct = default)
     {
         // Hits ix_job_listings_companyid_status (CompanyId leads, equality first).

@@ -14,8 +14,20 @@ public interface IJobListingRepository
     /// <summary>Active, unexpired listings for the public job board. HOT PATH.</summary>
     Task<IReadOnlyList<JobListingResponse>> GetActiveListingsAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// PART 3/4: the paginated, filtered, sorted public job board. Active,
+    /// unexpired listings narrowed by the supplied <see cref="JobListingFilterQuery"/>.
+    /// Exactly ONE CountAsync and ONE ToListAsync over the same composed IQueryable.
+    /// </summary>
+    Task<PagedResponse<JobListingResponse>> GetActiveListingsPagedAsync(
+        JobListingFilterQuery query, CancellationToken ct = default);
+
     /// <summary>An employer's own listings (any status).</summary>
     Task<IReadOnlyList<JobListingResponse>> GetByCompanyAsync(Guid companyId, CancellationToken ct = default);
+
+    /// <summary>PART 3/4: an employer's own listings (any status), paginated + filtered + sorted.</summary>
+    Task<PagedResponse<JobListingResponse>> GetByCompanyPagedAsync(
+        Guid companyId, JobListingFilterQuery query, CancellationToken ct = default);
 
     /// <summary>
     /// Active, unexpired listings narrowed by any combination of free-text title,

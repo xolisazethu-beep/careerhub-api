@@ -92,6 +92,100 @@ public record CompanyResponse(
     int? FoundedYear,
     long ActiveListingCount);
 
+// ── PART 3: PAGINATION ───────────────────────────────────────────────────────
+
+/// <summary>
+/// HATEOAS-lite navigation links for a paged result, built from the current
+/// request URL (extra improvement #1). <c>Next</c>/<c>Previous</c> are null at the
+/// ends of the range so a client can branch on their presence.
+/// </summary>
+public record PageLinks(string Self, string? Next, string? Previous, string First, string Last);
+
+/// <summary>
+/// The standard envelope wrapping every paginated list response. <c>Data</c> holds
+/// the page of items; the rest is the metadata a client needs to render paging
+/// controls. <c>TotalPages</c>, <c>HasNextPage</c> and <c>HasPreviousPage</c> are
+/// derived (see <see cref="Create"/>) so a caller can never construct an
+/// inconsistent envelope by hand.
+/// </summary>
+public record PagedResponse<T>(
+    IReadOnlyList<T> Data,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages,
+    bool HasNextPage,
+    bool HasPreviousPage,
+    PageLinks? Links = null)
+{
+    /// <summary>Build an envelope, deriving TotalPages / HasNext / HasPrevious from the inputs.</summary>
+    public static PagedResponse<T> Create(IReadOnlyList<T> data, int page, int pageSize, int totalCount)
+    {
+        var totalPages = pageSize <= 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        return new PagedResponse<T>(
+            data, page, pageSize, totalCount, totalPages,
+            HasNextPage: page < totalPages,
+            HasPreviousPage: page > 1);
+    }
+}
+
+// ── PART 4: FILTERING + SORTING ──────────────────────────────────────────────
+
+/// <summary>
+/// The bound query string for the paginated job board: composable filters, a
+/// sort key + direction, and the page window. Every filter is optional and is
+/// only applied when non-null (AND semantics). Mutable <c>get; set;</c>
+/// properties so ASP.NET complex-type model binding can populate it from
+/// <c>[FromQuery]</c>. The assignment's <c>EmploymentType</c> maps to the 2.4
+/// <see cref="JobType"/> and the default sort key <c>postedAt</c> maps to
+/// <c>JobListing.CreatedAt</c>.
+/// </summary>
+public record JobListingFilterQuery
+{
+    // ── Filters (assignment) ──
+    public string? Location { get; set; }
+    public JobType? EmploymentType { get; set; }
+    public decimal? SalaryMin { get; set; }
+    public decimal? SalaryMax { get; set; }
+    public Guid? CompanyId { get; set; }
+
+    // ── Sorting (assignment + extras) ──
+    public string? Sort { get; set; } = "postedAt";
+    public string? Dir { get; set; } = "desc";
+
+    // ── Paging ──
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+
+    // ── Extras beyond the assignment ──
+    /// <summary>Free-text search; uses the 2.4 GIN-indexed full-text column when present.</summary>
+    public string? Q { get; set; }
+    /// <summary>Only listings posted (CreatedAt) on or after this instant.</summary>
+    public DateTime? PostedSince { get; set; }
+    /// <summary>When true, only listings whose Location contains "remote" (case-insensitive).</summary>
+    public bool? RemoteOnly { get; set; }
+}
+
+// ── PART 5: PATCH ────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Partial update of a listing. EVERY field is nullable: a null field means
+/// "leave unchanged", a non-null field means "set to this value". The service
+/// re-runs the salary-range check only if a salary field was supplied and the
+/// expiry check only if <see cref="ExpiresAt"/> was supplied.
+/// </summary>
+public record UpdateJobListingRequest(
+    string? Title,
+    string? Description,
+    string? Location,
+    JobType? EmploymentType,
+    decimal? SalaryMin,
+    decimal? SalaryMax,
+    DateTime? ExpiresAt);
+
+/// <summary>Body for the application-status transition endpoint (Part 5B).</summary>
+public record UpdateApplicationStatusRequest(ApplicationStatus Status);
+
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 
 /// <summary>Register a job-seeker account.</summary>

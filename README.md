@@ -682,3 +682,78 @@ to enumerate explicit origins (as above), which is exactly what lets us keep
 (conditional GETs), `api-supported-versions` (versioning) and `Retry-After`
 (rate limiting) so browser `fetch` code can actually read them off a cross-origin
 response — by default only a handful of "simple" response headers are visible.
+
+## Part 3 — Pagination
+
+`PagedResponse<T>` (in `DTOs/Dtos.cs`) is the envelope for every list response:
+
+```jsonc
+{
+  "data": [ /* JobListingResponse[] */ ],
+  "page": 1, "pageSize": 20, "totalCount": 593, "totalPages": 30,
+  "hasNextPage": true, "hasPreviousPage": false,
+  "links": { "self": "...", "next": "...", "previous": null, "first": "...", "last": "..." }
+}
+```
+
+`TotalPages`, `HasNextPage`, `HasPreviousPage` are **derived** by the
+`PagedResponse<T>.Create(...)` factory, so the envelope can never be internally
+inconsistent.
+
+`IJobListingRepository.GetActiveListingsPagedAsync(JobListingFilterQuery)` does
+the work with **exactly one `CountAsync` and one `ToListAsync` over the same
+composed `IQueryable`** (`PageAsync` helper):
+
+```csharp
+var totalCount = await filtered.CountAsync(ct);          // ① one count of all matches
+var data = await ApplySort(filtered, f)                  // OrderBy BEFORE Skip/Take
+    .Skip((page - 1) * pageSize).Take(pageSize)
+    .Select(Project).ToListAsync(ct);                    // ② one materialisation of the page
+```
+
+- **Default sort is `PostedAt DESC`** (`CreatedAt DESC`) and `OrderBy` is always
+  applied before `Skip`/`Take`.
+- Both `GET /api/v1/jobs` and `GET /api/v1/jobs/company/{companyId}` are paginated
+  (the company endpoint keeps its "any status" semantics; the board stays
+  active-and-unexpired).
+- The controller binds `page`/`pageSize` from the query (defaults 1 / 20) and
+  **clamps `pageSize` to a max of 100** (`Math.Clamp(query.PageSize, 1, 100)`),
+  re-clamped defensively in the repository.
+- **`X-Total-Count`** is written on every paginated response.
+
+## Part 4 — Filtering + Sorting
+
+`JobListingFilterQuery` carries all filters, the sort key/direction and the page
+window. Filters **compose** — each non-null parameter adds one `.Where(...)`
+(AND semantics); null parameters never reach the SQL:
+
+| Param | Effect |
+|---|---|
+| `location` | `ILIKE %location%` substring |
+| `employmentType` | `Type == value` (maps to 2.4 `JobType`) |
+| `salaryMin` | listing's `COALESCE(SalaryMax, SalaryMin) >= salaryMin` ("pays at least") |
+| `salaryMax` | listing's `COALESCE(SalaryMin, SalaryMax) <= salaryMax` ("pays at most") |
+| `companyId` | `CompanyId == value` |
+| `q` *(extra)* | GIN-indexed full-text match, composed with the rest |
+| `postedSince` *(extra)* | `CreatedAt >= postedSince` |
+| `remoteOnly` *(extra)* | `ILIKE %remote%` on `Location` |
+
+Sorting is a **switch expression** mapping `sort` + `dir` to
+`OrderBy`/`OrderByDescending`, with a **default case that is always `PostedAt
+DESC`**:
+
+| `sort` | Behaviour |
+|---|---|
+| `postedAt` (default) | `CreatedAt`, honours `dir` |
+| `salaryMin` / `salaryMax` / `title` | honours `dir` |
+| `company` *(extra)* | `Company.Name` ascending |
+| `expiresAt` *(extra)* | `ExpiresAt` ascending = expiring-soonest first |
+| `relevance` *(extra)* | falls back to `PostedAt DESC` (results already narrowed by `q`) |
+| *anything else* | `PostedAt DESC` (default case) |
+
+### Extras beyond the assignment
+
+`q` (full-text), `postedSince`, `remoteOnly`, and the `company`/`expiresAt`/`relevance`
+sort keys are all additions on top of the required four sort keys and five filters.
+`q` reuses the Assignment 2.4 GIN-indexed `SearchVector`, so a full-text search
+still rides the index and then Bitmap-ANDs with the other filters.
