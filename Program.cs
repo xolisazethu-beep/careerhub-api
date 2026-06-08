@@ -120,14 +120,23 @@ builder.Services
 // ── PART 8: RATE LIMITING ────────────────────────────────────────────────────
 builder.Services.AddRateLimiter(options =>
 {
-    // global — fixed window, 200 requests / 60s. Applied to the whole controller
-    // surface via RequireRateLimiting("global") on MapControllers below.
-    options.AddFixedWindowLimiter("global", o =>
-    {
-        o.PermitLimit = 200;
-        o.Window = TimeSpan.FromSeconds(60);
-        o.QueueLimit = 0;
-    });
+    // global — fixed window, 200 requests / 60s, ONE shared bucket for the whole
+    // surface. This is the framework's GlobalLimiter, NOT a named policy: the
+    // GlobalLimiter is always CHAINED with any endpoint-specific limiter, so the
+    // stricter per-endpoint limits below (search/apply/post-listing) actually take
+    // effect on top of it. (A named "global" policy applied via
+    // MapControllers().RequireRateLimiting("global") does NOT chain — its metadata
+    // is added after the action's [EnableRateLimiting] attribute and the middleware
+    // resolves a single, last-wins policy, so it silently overrode the stricter
+    // per-endpoint limits.)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(_ =>
+        RateLimitPartition.GetFixedWindowLimiter("global", _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 200,
+                Window = TimeSpan.FromSeconds(60),
+                QueueLimit = 0
+            }));
 
     // search — sliding window, 30 / 60s across 6 segments (10s each), no queue.
     // Sliding smooths the boundary burst a fixed window allows.
@@ -223,9 +232,10 @@ using (var scope = app.Services.CreateScope())
     await SeedData.SeedDemoAccountsAsync(db); // login-ready demo accounts (idempotent)
 }
 
-// Every controller endpoint is covered by the global 200/60s policy; the
-// search/apply/post-listing actions layer their own stricter [EnableRateLimiting].
-app.MapControllers().RequireRateLimiting("global");
+// Every request is covered by the GlobalLimiter (200/60s); the search/apply/
+// post-listing actions layer their own stricter [EnableRateLimiting] on top, which
+// the framework CHAINS with the GlobalLimiter (see AddRateLimiter above).
+app.MapControllers();
 
 // EXTRA #8: liveness (no dependency checks) vs readiness (pings Postgres).
 app.MapHealthChecks("/health/live", new HealthCheckOptions

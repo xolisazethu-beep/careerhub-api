@@ -211,14 +211,85 @@ public record AuthResponse(
 
 /// <summary>
 /// One row of an applicant's own application history ("track applications").
-/// Flat projection joining the application to its listing + company.
+/// Flat projection joining the application to its listing + company. <c>Status</c>
+/// is the raw internal status (Submitted/UnderReview/…); <c>Stage</c> is the
+/// applicant-friendly bucket (Applied/Pending/Accepted/Rejected) the seeker
+/// actually cares about — see <see cref="Infrastructure.ApplicationStageMapper"/>.
 /// </summary>
 public record MyApplicationResponse(
     Guid JobListingId,
     string JobTitle,
     string CompanyName,
     string Status,
+    string Stage,
     DateTime SubmittedAt);
+
+/// <summary>
+/// The status of one specific application the signed-in applicant submitted, used
+/// by <c>GET /applications/me/{jobListingId}</c> so a seeker can track a single
+/// job. 404 if they never applied to that listing.
+/// </summary>
+public record MyApplicationStatusResponse(
+    Guid JobListingId,
+    string JobTitle,
+    string CompanyName,
+    string Status,
+    string Stage,
+    DateTime SubmittedAt);
+
+/// <summary>
+/// A one-glance summary of the signed-in applicant's pipeline: a count per
+/// friendly stage plus the total. Backs <c>GET /applications/me/summary</c>, which
+/// a dashboard renders as "2 applied · 1 pending · 1 accepted · 0 rejected".
+/// </summary>
+public record MyApplicationsSummaryResponse(
+    int Total,
+    int Applied,
+    int Pending,
+    int Accepted,
+    int Rejected);
+
+// ── EMPLOYER: SEARCH APPLICANTS WHO APPLIED ──────────────────────────────────
+
+/// <summary>
+/// The bound query string for the employer's applicant search
+/// (<c>GET /applicants/search</c>). Every filter is optional and composes with AND
+/// semantics. The search is always scoped server-side to the applicants who have
+/// applied to the caller's OWN company, so an employer can never browse another
+/// company's candidate pool.
+/// </summary>
+public record ApplicantSearchQuery
+{
+    /// <summary>Substring match (ILIKE) over the applicant's Qualifications and Headline.</summary>
+    public string? Qualification { get; set; }
+    /// <summary>Only applicants with at least this many years of experience.</summary>
+    public int? MinExperience { get; set; }
+    /// <summary>Substring match (ILIKE) on the applicant's city.</summary>
+    public string? City { get; set; }
+    /// <summary>Restrict to applicants who applied to this specific listing of yours.</summary>
+    public Guid? JobListingId { get; set; }
+
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+}
+
+/// <summary>
+/// One matching candidate in the employer's applicant search: their profile plus
+/// how they relate to the employer's roles (how many of the company's listings
+/// they applied to, and the stage of their most recent such application). A flat
+/// projection — no entity graphs serialised.
+/// </summary>
+public record ApplicantSearchResponse(
+    Guid ApplicantId,
+    string FullName,
+    string Email,
+    string City,
+    string Headline,
+    int YearsOfExperience,
+    string Qualifications,
+    int ApplicationsToYourCompany,
+    string LatestStage,
+    DateTime LatestAppliedAt);
 
 /// <summary>Body for applying to a listing — just an optional cover note.</summary>
 public record ApplyRequest(string? CoverNote);

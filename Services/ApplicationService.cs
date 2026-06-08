@@ -1,5 +1,6 @@
 using CareerHub.Api.DTOs;
 using CareerHub.Api.Exceptions;
+using CareerHub.Api.Infrastructure;
 using CareerHub.Api.Models;
 using CareerHub.Api.Repositories;
 
@@ -37,8 +38,40 @@ public class ApplicationService(
         await applications.SaveChangesAsync(ct);
     }
 
-    public Task<IReadOnlyList<MyApplicationResponse>> GetMineAsync(Guid applicantId, CancellationToken ct = default) =>
-        applications.GetByApplicantAsync(applicantId, ct);
+    public Task<IReadOnlyList<MyApplicationResponse>> GetMineAsync(
+        Guid applicantId, ApplicationStage? stage = null, CancellationToken ct = default)
+    {
+        // Translate the friendly stage (if any) into the internal statuses it covers,
+        // then let the repository apply the WHERE Status IN (…).
+        var statuses = stage is { } s ? ApplicationStageMapper.ToStatuses(s) : null;
+        return applications.GetByApplicantAsync(applicantId, statuses, ct);
+    }
+
+    public Task<MyApplicationStatusResponse?> GetMineStatusAsync(
+        Guid applicantId, Guid jobListingId, CancellationToken ct = default) =>
+        applications.GetByApplicantAndListingAsync(applicantId, jobListingId, ct);
+
+    public async Task<MyApplicationsSummaryResponse> GetMineSummaryAsync(Guid applicantId, CancellationToken ct = default)
+    {
+        var counts = await applications.GetStatusCountsForApplicantAsync(applicantId, ct);
+
+        // Fold the five internal statuses into the four friendly stages via the
+        // single mapper, so the summary can never disagree with the list endpoint.
+        int Stage(ApplicationStage stage) => counts
+            .Where(kvp => ApplicationStageMapper.ToStage(kvp.Key) == stage)
+            .Sum(kvp => kvp.Value);
+
+        return new MyApplicationsSummaryResponse(
+            Total: counts.Values.Sum(),
+            Applied: Stage(ApplicationStage.Applied),
+            Pending: Stage(ApplicationStage.Pending),
+            Accepted: Stage(ApplicationStage.Accepted),
+            Rejected: Stage(ApplicationStage.Rejected));
+    }
+
+    public Task<(IReadOnlyList<ApplicantSearchResponse> Data, int Total)> SearchApplicantsAsync(
+        Guid companyId, ApplicantSearchQuery query, CancellationToken ct = default) =>
+        applications.SearchApplicantsForCompanyAsync(companyId, query, ct);
 
     public async Task<ApplicationResponse?> GetAsync(Guid jobListingId, Guid applicantId, CancellationToken ct = default)
     {

@@ -53,6 +53,7 @@ public static class SeedData
         {
             var fn = firstNames[i % firstNames.Length];
             var ln = lastNames[rng.Next(lastNames.Length)];
+            var years = rng.Next(0, 15);
             applicants.Add(new Applicant
             {
                 Id = Guid.NewGuid(),
@@ -61,7 +62,8 @@ public static class SeedData
                 PasswordHash = "seed-pbkdf2-placeholder",
                 City = SaTowns[rng.Next(SaTowns.Length)],
                 Headline = $"{fn} — {Roles[rng.Next(Roles.Length)]}",
-                YearsOfExperience = rng.Next(0, 15)
+                YearsOfExperience = years,
+                Qualifications = QualificationsFor(rng, years)
             });
         }
         db.Applicants.AddRange(applicants);
@@ -295,8 +297,13 @@ public static class SeedData
                 Email = applicantEmail,
                 PasswordHash = PasswordHasher.Hash(demoPassword),
                 City = "Cape Town",
-                Headline = "Demo job seeker",
-                YearsOfExperience = 3
+                Headline = "Demo job seeker — Platform Engineer",
+                YearsOfExperience = 6,
+                // Kubernetes-flavoured so the employer applicant-search demo
+                // (?qualification=kubernetes) deterministically finds this account.
+                Qualifications =
+                    "BSc Computer Science (UCT); Certified Kubernetes Administrator (CKA); " +
+                    "Skills: Kubernetes, Docker, Terraform, AWS, C#, PostgreSQL; 6 years' experience."
             });
         }
 
@@ -319,6 +326,71 @@ public static class SeedData
         }
 
         await db.SaveChangesAsync();
+
+        // ── DEMO APPLICATIONS (so "track my applications" is demonstrable) ────
+        // Give the demo applicant one application in EACH friendly stage so
+        // GET /applications/me, /me/summary and /me/{id} all return rich data out
+        // of the box. Guarded on "does the demo applicant already have any?" so it
+        // stays idempotent across restarts. One of these targets a Takealot listing
+        // so the demo EMPLOYER's applicant-search also finds the demo applicant.
+        var demoApplicant = await db.Applicants.FirstOrDefaultAsync(a => a.Email == applicantEmail);
+
+        // Backfill: a demo applicant created BEFORE the Qualifications column existed
+        // would have an empty value, which would break the employer applicant-search
+        // demo. Give it the Kubernetes-flavoured profile so the demo works on upgraded
+        // databases too, without needing a full reseed.
+        if (demoApplicant is not null && string.IsNullOrWhiteSpace(demoApplicant.Qualifications))
+        {
+            demoApplicant.Qualifications =
+                "BSc Computer Science (UCT); Certified Kubernetes Administrator (CKA); " +
+                "Skills: Kubernetes, Docker, Terraform, AWS, C#, PostgreSQL; 6 years' experience.";
+            await db.SaveChangesAsync();
+        }
+
+        if (demoApplicant is not null &&
+            !await db.Applications.AnyAsync(a => a.ApplicantId == demoApplicant.Id))
+        {
+            var takealot = await db.Companies.FirstOrDefaultAsync(c => c.Name == "Takealot");
+            var now = DateTime.UtcNow;
+
+            // Prefer Takealot's active listings first (so the employer demo finds
+            // this applicant), then top up from any other active listings.
+            var targets = await db.JobListings
+                .Where(j => j.Status == ListingStatus.Active && j.ExpiresAt > now
+                            && takealot != null && j.CompanyId == takealot.Id)
+                .OrderBy(j => j.CreatedAt)
+                .Take(2)
+                .Select(j => j.Id)
+                .ToListAsync();
+
+            var more = await db.JobListings
+                .Where(j => j.Status == ListingStatus.Active && j.ExpiresAt > now
+                            && !targets.Contains(j.Id))
+                .OrderBy(j => j.CreatedAt)
+                .Take(4 - targets.Count)
+                .Select(j => j.Id)
+                .ToListAsync();
+            targets.AddRange(more);
+
+            // One application per friendly stage: Applied, Pending, Accepted, Rejected.
+            ApplicationStatus[] demoStatuses =
+                [ApplicationStatus.Submitted, ApplicationStatus.UnderReview,
+                 ApplicationStatus.Offered, ApplicationStatus.Rejected];
+
+            for (int i = 0; i < targets.Count && i < demoStatuses.Length; i++)
+            {
+                db.Applications.Add(new Application
+                {
+                    JobListingId = targets[i],
+                    ApplicantId = demoApplicant.Id,
+                    Status = demoStatuses[i],
+                    SubmittedAt = now.AddDays(-(i + 1) * 3),
+                    CoverNote = "Demo application — keen to contribute and grow with the team."
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
     }
 
     // ── lookup data / helpers ────────────────────────────────────────────────
@@ -335,6 +407,43 @@ public static class SeedData
          "DevOps Engineer", "Product Manager", "QA Engineer", "Mobile Developer",
          "Database Administrator", "Business Analyst", "UX Designer",
          "Site Reliability Engineer", "Systems Engineer", "Cloud Architect", "Security Analyst"];
+
+    // ── Applicant qualifications (what an employer searches when shortlisting) ──
+    private static readonly string[] Degrees =
+        ["BSc Computer Science", "BSc Information Technology", "BCom Information Systems",
+         "BEng Electrical Engineering", "National Diploma in IT", "BSc Honours Data Science",
+         "Matric (NSC) with IT", "BTech Software Development"];
+
+    private static readonly string[] Institutions =
+        ["UCT", "Wits", "Stellenbosch University", "University of Pretoria", "UKZN",
+         "Tshwane University of Technology", "Rhodes University", "UJ"];
+
+    private static readonly string[] Certifications =
+        ["AWS Certified Solutions Architect", "Microsoft Certified: Azure Developer",
+         "Certified Kubernetes Administrator (CKA)", "Professional Scrum Master (PSM I)",
+         "Oracle Certified Professional, Java", "CompTIA Security+",
+         "Google Professional Data Engineer", "Cisco CCNA", "none"];
+
+    private static readonly string[] SkillSets =
+        ["C#, .NET, PostgreSQL, REST APIs", "Python, Pandas, SQL, Power BI",
+         "Java, Spring Boot, Kafka, MySQL", "JavaScript, React, TypeScript, Node.js",
+         "Kubernetes, Docker, Terraform, AWS", "Flutter, Dart, Firebase",
+         "Azure, C#, DevOps pipelines", "SQL Server, T-SQL, SSIS, data modelling",
+         "Go, gRPC, microservices, Linux"];
+
+    // Build a realistic, searchable qualifications string: a degree from an SA
+    // institution, an optional certification, a skills list, and the years of
+    // experience — the free-text column the employer applicant-search runs ILIKE on.
+    private static string QualificationsFor(Random rng, int years)
+    {
+        var degree = Degrees[rng.Next(Degrees.Length)];
+        var institution = Institutions[rng.Next(Institutions.Length)];
+        var cert = Certifications[rng.Next(Certifications.Length)];
+        var skills = SkillSets[rng.Next(SkillSets.Length)];
+
+        var certPart = cert == "none" ? "" : $"{cert}; ";
+        return $"{degree} ({institution}); {certPart}Skills: {skills}; {years} years' experience.";
+    }
 
     // Factory for the hand-written curated listings: Active, created a few days ago
     // and expiring well in the future so they always show on the public board.

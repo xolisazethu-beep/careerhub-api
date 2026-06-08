@@ -54,11 +54,45 @@ public class ApplicationsController(IApplicationService applications, IDistribut
         return StatusCode(StatusCodes.Status201Created);
     }
 
-    /// <summary>The signed-in applicant's own application history.</summary>
+    /// <summary>
+    /// The signed-in applicant's own application history, newest first. Each row
+    /// carries both the raw <c>Status</c> and the friendly <c>Stage</c>
+    /// (Applied/Pending/Accepted/Rejected). Pass <c>?stage=</c> (Applied, Pending,
+    /// Accepted or Rejected) to show only that stage — this is the "check my
+    /// applications by status" view.
+    /// </summary>
     [HttpGet("api/v{version:apiVersion}/applications/me")]
     [Authorize(Roles = "Applicant")]
-    public async Task<IReadOnlyList<MyApplicationResponse>> Mine(CancellationToken ct)
-        => await applications.GetMineAsync(User.GetUserId(), ct);
+    public async Task<IReadOnlyList<MyApplicationResponse>> Mine([FromQuery] string? stage, CancellationToken ct)
+        => await applications.GetMineAsync(User.GetUserId(), ApplicationStageMapper.ParseStage(stage), ct);
+
+    /// <summary>
+    /// A one-glance summary of the signed-in applicant's pipeline — a count per
+    /// friendly stage (Applied/Pending/Accepted/Rejected) plus the total. A
+    /// dashboard renders this without having to page the full history.
+    /// </summary>
+    [HttpGet("api/v{version:apiVersion}/applications/me/summary")]
+    [Authorize(Roles = "Applicant")]
+    public async Task<MyApplicationsSummaryResponse> MineSummary(CancellationToken ct)
+        => await applications.GetMineSummaryAsync(User.GetUserId(), ct);
+
+    /// <summary>
+    /// Track one specific application: the status/stage of the signed-in applicant's
+    /// application to <paramref name="jobListingId"/>. 404 if they never applied to
+    /// it. The literal <c>/me/summary</c> route above is matched first; the GUID
+    /// route constraint here means "summary" can never be mistaken for an id.
+    /// </summary>
+    [HttpGet("api/v{version:apiVersion}/applications/me/{jobListingId:guid}")]
+    [Authorize(Roles = "Applicant")]
+    [ProducesResponseType(typeof(MyApplicationStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MineStatus(Guid jobListingId, CancellationToken ct)
+    {
+        var status = await applications.GetMineStatusAsync(User.GetUserId(), jobListingId, ct);
+        return status is null
+            ? NotFound()
+            : Ok(status);
+    }
 
     /// <summary>
     /// PART 7: a single application by composite key. Returns a strong ETag

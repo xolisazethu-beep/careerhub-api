@@ -177,6 +177,41 @@ Sample `POST /api/jobs` body:
 | Apply | `POST /api/jobs/{id}/applications` (body `{ "coverNote": "..." }`) | `201`; a second apply to the same listing is rejected (one application per person per listing) |
 | My applications | `GET /api/applications/me` | Your application history with job titles and statuses |
 
+### Track my applications — Applied / Pending / Accepted / Rejected (new)
+
+Log in as the **demo applicant** (`demo.applicant@careerhub.co.za` / `DemoPass123!`).
+The seed gives that account **four** applications, one in each friendly stage, so
+every endpoint below returns data immediately. The friendly **stage** maps from the
+internal status: `Submitted`→**Applied**, `UnderReview`/`Shortlisted`→**Pending**,
+`Offered`→**Accepted**, `Rejected`→**Rejected**.
+
+| Try | Endpoint | Expected |
+|---|---|---|
+| Full history | `GET /api/v1/applications/me` | Every application, newest first; **each row has both `status` and `stage`** |
+| Filter by stage | `GET /api/v1/applications/me?stage=Accepted` | Only your **Accepted** (Offered) applications. `stage` is case-insensitive and accepts synonyms (`applied`, `pending`, `accepted`, `rejected`, plus `submitted`/`underview`/`offered`/`declined`…) |
+| Summary | `GET /api/v1/applications/me/summary` | `{ "total":4, "applied":1, "pending":1, "accepted":1, "rejected":1 }` for the demo seed |
+| Track one job | `GET /api/v1/applications/me/{jobListingId}` | That single application's `stage`, or **404** if you never applied to it |
+
+> Copy a `jobListingId` from the `GET /api/v1/applications/me` response into the
+> "track one job" endpoint. A random GUID returns **404**.
+
+### Search applicants by qualification (new — employer/admin)
+
+Log in as the **demo employer** (`demo.employer@takealot.co.za` / `DemoPass123!`).
+This searches only the people who applied to **your** company's roles (the company
+comes from your token — you cannot search another company's candidates).
+
+| Try | Endpoint | Expected |
+|---|---|---|
+| By qualification | `GET /api/v1/applicants/search?qualification=kubernetes` | Paged envelope of your applicants whose **Qualifications/Headline** contain "kubernetes" (the demo applicant qualifies). `X-Total-Count` header set. |
+| By experience + city | `GET /api/v1/applicants/search?minExperience=5&city=Cape Town` | Candidates with ≥ 5 years' experience whose city contains "Cape Town" |
+| For one of your listings | `GET /api/v1/applicants/search?jobListingId={id}` | Only the people who applied to that specific listing of yours |
+| Wrong role | `GET /api/v1/applicants/search` as an **applicant** | **403 Forbidden** — the endpoint is Employer-only |
+
+Each result row carries the candidate's profile plus `applicationsToYourCompany`
+(how many of your listings they applied to) and `latestStage` (the friendly stage
+of their most recent application to you).
+
 ### Constraint proof via Scalar (Part 2)
 
 Try `POST /api/jobs` (as employer) with `"salaryMin": 100000, "salaryMax": 50000`.
@@ -509,3 +544,225 @@ under sustained load — the signal to raise `Maximum Pool Size` or add capacity
 | 6 | Interceptor logs > threshold, silent below | `dotnet run` console |
 | 7 | RANK() + per-status counts, rank 1 correct | API + psql |
 | 8 | Pool sizes set + calculation | `appsettings*.json` |
+
+---
+
+# 11. Full Scalar test script — start to finish (copy / paste)
+
+This is the **one place** to test the whole API by hand, in order, from a cold start.
+Every step says **which endpoint to open in Scalar**, **exactly what to paste**, and
+**what you should see**. Follow it top to bottom.
+
+> **Convention:** "Open `VERB /path`" means find that endpoint in the Scalar list on
+> the left, click it, then use the **Test Request** panel on the right. Paste JSON
+> into the **Body** box; type path/query values into the matching fields.
+
+## Step 0 — Start everything
+
+```bash
+docker compose up -d          # PostgreSQL 17 on localhost:5544
+dotnet run                    # migrates + seeds; serves http://localhost:5080
+```
+
+Wait for `Now listening on: http://localhost:5080`, then open:
+
+```
+http://localhost:5080/scalar/v1
+```
+
+> Fresh database first time? It auto-migrates (incl. the new `Qualifications`
+> column) and seeds 10 companies, ~6 000 listings, 25 applicants **and the two demo
+> accounts with demo applications**. Nothing else to set up.
+
+## Step 1 — Browse the public board (no login needed)
+
+| Open | Paste / fill | Expect |
+|---|---|---|
+| `GET /api/v1/jobs` | query: `page=1`, `pageSize=5` | `200`; a `data` array of 5 + `page/pageSize/totalCount/totalPages/links`. Note the **`X-Total-Count`** response header. |
+| `GET /api/v1/jobs` | query: `location=Cape Town`, `sort=salaryMax`, `dir=desc`, `pageSize=10` | only Cape Town listings, highest salary first |
+| `GET /api/v1/jobs/search` | query: `q=Kubernetes` | exactly **3** listings (Takealot, Naspers, Yoco) |
+| `GET /api/v1/jobs/search` | query: `q=sprint` | the **Scrum Master** listing (stemming: matches "sprinting") |
+
+👉 **Copy one listing's `id`** from any `GET /api/v1/jobs` response — you'll reuse it below as `<JOB_ID>`.
+
+| Open | Paste / fill | Expect |
+|---|---|---|
+| `GET /api/v1/jobs/{id}` | path `id` = `<JOB_ID>` | full detail; response has an **`ETag`** header. Re-send with header `If-None-Match: <that etag>` → **304 Not Modified**. |
+
+## Step 2 — Log in as the EMPLOYER and authorise Scalar
+
+Open `POST /api/v1/auth/login`, paste this body, **Send**:
+
+```json
+{ "email": "demo.employer@takealot.co.za", "password": "DemoPass123!" }
+```
+
+➡️ Copy the **`token`** from the response. Click the **🔒 Authentication** area at the
+top of Scalar, choose **Bearer**, and paste the token. Every request now sends
+`Authorization: Bearer …`.
+
+> You are now acting as a **Takealot recruiter** (the company is baked into the token).
+
+## Step 3 — Employer actions
+
+**Post a job** — open `POST /api/v1/jobs`, paste:
+
+```json
+{
+  "title": "Senior Backend Engineer",
+  "description": "Build and scale our order platform in C# and PostgreSQL.",
+  "minimumRequirements": "Matric; degree in CS; 5+ years C#/.NET; valid SA work permit.",
+  "location": "Sandton, Gauteng",
+  "type": "FullTime",
+  "salaryMin": 75000,
+  "salaryMax": 110000,
+  "expiresAt": "2026-12-31T00:00:00Z"
+}
+```
+→ `201 Created` with the new `id`. (Company comes from your token, **not** the body.)
+
+**Constraint/validation proof** — same endpoint, paste an inverted salary range:
+
+```json
+{ "title": "Bad", "description": "d", "minimumRequirements": "r", "location": "x",
+  "type": "FullTime", "salaryMin": 100000, "salaryMax": 50000, "expiresAt": "2026-12-31T00:00:00Z" }
+```
+→ **`400 Bad Request`** (`problem+json`: "SalaryMax must be greater than SalaryMin").
+
+**Pipeline stats** — open `GET /api/v1/jobs/stats` → per-status counts + `RANK()`;
+Takealot's most-applied listing is **rank 1** (18 applications).
+
+**PATCH a listing** — open `PATCH /api/v1/jobs/{id}`, path `id` = the `201` id from above, body:
+
+```json
+{ "location": "Remote (South Africa)", "salaryMax": 120000 }
+```
+→ `204 No Content` (only those two fields change).
+
+## Step 4 — ⭐ Employer searches applicants by qualification (NEW)
+
+Still authorised as the employer. Open `GET /api/v1/applicants/search`:
+
+| Fill query | Expect |
+|---|---|
+| `qualification=kubernetes` | paged envelope of **your** applicants whose Qualifications/Headline contain "kubernetes" (the demo applicant is one). `X-Total-Count` set. Each row has `applicationsToYourCompany` + `latestStage`. |
+| `minExperience=5` | only candidates with ≥ 5 years' experience |
+| `city=Cape Town` | only candidates whose city contains "Cape Town" |
+| `qualification=AWS&minExperience=3` | filters **compose** (AND) |
+
+> **Security check:** this only ever returns people who applied to **Takealot**
+> (your token's company). There is no parameter to search another company's pool.
+
+## Step 5 — Log in as the APPLICANT and re-authorise
+
+Open `POST /api/v1/auth/login`, paste:
+
+```json
+{ "email": "demo.applicant@careerhub.co.za", "password": "DemoPass123!" }
+```
+➡️ Copy the new **`token`**, open **🔒 Authentication → Bearer**, and **replace** the
+employer token with this one. You are now the **job seeker**.
+
+## Step 6 — ⭐ Applicant tracks their applications (NEW)
+
+The demo applicant is seeded with **four** applications — one in each stage.
+
+| Open | Paste / fill | Expect |
+|---|---|---|
+| `GET /api/v1/applications/me` | *(nothing)* | 4 rows; each has **`status`** (Submitted/…) **and `stage`** (Applied/Pending/Accepted/Rejected) |
+| `GET /api/v1/applications/me` | query: `stage=Accepted` | only the **Accepted** (Offered) one |
+| `GET /api/v1/applications/me` | query: `stage=Pending` | only UnderReview/Shortlisted ones |
+| `GET /api/v1/applications/me/summary` | *(nothing)* | `{ "total":4, "applied":1, "pending":1, "accepted":1, "rejected":1 }` |
+| `GET /api/v1/applications/me/{jobListingId}` | path = a `jobListingId` from the `me` list | that one application's `stage` |
+| `GET /api/v1/applications/me/{jobListingId}` | path = a random GUID | **404 Not Found** |
+
+**Apply to a new job** — open `POST /api/v1/jobs/{jobListingId}/applications`, path =
+a `<JOB_ID>` you have **not** applied to yet, body:
+
+```json
+{ "coverNote": "I'm keen — my Kubernetes background fits this role." }
+```
+→ `201`. Re-send the exact same call → **`409 Conflict`** (one application per listing).
+Now `GET /api/v1/applications/me` shows the new row with `stage` = **Applied**.
+
+## Step 7 — Employer moves an application along the pipeline
+
+You need a real `(jobListingId, applicantId)` pair. The easy source:
+- **`applicantId`** = the **`userId`** field from the **applicant** login response (Step 5).
+- **`jobListingId`** = any `jobListingId` from `GET /api/v1/applications/me` whose
+  current `stage` is **Applied** or **Pending** (terminal Accepted/Rejected rows can't move).
+
+Switch back to the **employer** token (Step 2), open
+`PATCH /api/v1/applications/{jobListingId}/{applicantId}/status`, fill those two path
+values, body:
+
+```json
+{ "status": "UnderReview" }
+```
+→ `204`. Re-check as the applicant (`GET /applications/me`) → that application is now
+**Pending**. An **illegal** move (e.g. body `{ "status": "Submitted" }` on an already
+`Offered`/Accepted row) → **`400`** naming both states.
+
+## Step 8 — Cross-cutting headers (any endpoint)
+
+| Check | How | Expect |
+|---|---|---|
+| Versioning | any `GET`, look at response headers | `api-supported-versions: 1.0` |
+| Rate limit | spam `GET /api/v1/jobs/search?q=engineer` ~40× | eventually `429` + `Retry-After` |
+| Health | open `GET /health/live` and `/health/ready` (no auth) | `200 Healthy` |
+
+✅ That's the full surface. Every numbered ⭐ step is the new functionality added on
+top of Assignment 3.1; the rest exercises the original 3.1 + 2.4 features.
+
+---
+
+# 12. Assignment summary
+
+**CareerHub API** is a three-layer ASP.NET Core (.NET 10) + PostgreSQL job-board API
+with a South-African dataset (ZAR salaries, real SA employers). It is built up across
+two assignments plus the additions in this round.
+
+### Assignment 2.4 — query optimisation & PostgreSQL features (foundation)
+Database-enforced **check constraints**, strategic **composite + GIN indexes**, a
+**stored generated `tsvector`** full-text column, **compiled queries** for hot paths,
+a **slow-query interceptor**, a **raw-SQL window-function** statistics report
+(`RANK()` + `COUNT(… ) FILTER`), and a tuned **Npgsql connection pool** — each proven
+with `EXPLAIN ANALYZE` before/after and psql.
+
+### Assignment 3.1 — API boundary hardening
+**CORS** (named credentialed policy), **pagination** (`PagedResponse<T>` + HATEOAS
+links + `X-Total-Count`), **filtering & sorting** (composable, AND semantics),
+**PATCH** (partial listing update + an application-status **state machine**), URL-segment
+**versioning** (`/api/v1`), **ETags** (`If-None-Match` → 304), and **rate limiting**
+(global / search / apply / post-listing, with per-user partitioning). Plus extras:
+ProblemDetails, global exception handler, response compression, idempotency keys,
+health checks, correlation ids, and WebApplicationFactory integration tests.
+
+### This round — applicant tracking & employer applicant search (new)
+- **Applicant** can track applications by friendly **stage** — *Applied / Pending /
+  Accepted / Rejected* — via `GET /applications/me` (+ `?stage=`),
+  `/me/summary`, and `/me/{jobListingId}`. One `ApplicationStageMapper` keeps the
+  list, filter and summary perfectly consistent.
+- **Employer/admin** can search the candidates who applied to **their own** roles by
+  **qualification**, experience and city via `GET /applicants/search` — paginated,
+  and scoped server-side by the JWT's company so no one can read another company's
+  pool. Backed by a new searchable `Qualifications` column (migration
+  `AddApplicantQualifications`) and seeded demo data.
+
+### Architecture & security in one line
+Thin controllers → services (business rules) → repositories (EF Core: `IQueryable`
+composition, `AsNoTracking`, flat projections, compiled/raw SQL) → `CareerHubDbContext`.
+JWT bearer auth with **`Applicant`/`Employer`** roles; company-scoped endpoints read
+the company from the **token, never the request**, so an account can only ever act on
+or read its own data.
+
+### How to run & verify
+`docker compose up -d` then `dotnet run` (auto-migrate + seed) → Scalar at
+`http://localhost:5080/scalar/v1`. `dotnet test` runs the integration suite (Postgres
+must be up). Section 11 above is the hand-test script; section 10 is the 2.4 proofs.
+
+### Demo accounts
+| Role | Email | Password |
+|---|---|---|
+| Applicant | `demo.applicant@careerhub.co.za` | `DemoPass123!` |
+| Employer (Takealot) | `demo.employer@takealot.co.za` | `DemoPass123!` |

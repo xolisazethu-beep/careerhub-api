@@ -936,6 +936,88 @@ policy); only `apply` needs the custom partitioning.
 
 ---
 
+# Applicant Tracking & Employer Applicant Search
+
+Two feature sets added on top of Assignment 3.1: a **job seeker** can now track the
+status of every application they have made, and an **employer** can search the
+people who applied to *their* roles by qualification. No existing endpoint changed
+its meaning; these are additive.
+
+## A. Applicant — "track my applications" (Applied / Pending / Accepted / Rejected)
+
+The five internal pipeline statuses (`Submitted`, `UnderReview`, `Shortlisted`,
+`Rejected`, `Offered`) are recruiter language. A seeker thinks in four buckets, so
+a single mapper (`Infrastructure/ApplicationStageMapper`) collapses them into a
+friendly **`Stage`** — and *every* applicant endpoint uses that one mapper, so the
+list, the filter and the summary can never disagree:
+
+| Friendly `Stage` | Internal status(es) | Meaning to the seeker |
+|---|---|---|
+| **Applied** | `Submitted` | Received, not yet looked at |
+| **Pending** | `UnderReview`, `Shortlisted` | Actively being considered |
+| **Accepted** | `Offered` | You got the role |
+| **Rejected** | `Rejected` | Unsuccessful |
+
+Three new applicant-only endpoints (all under `GET /api/v1/applications/me`):
+
+| Endpoint | Returns |
+|---|---|
+| `GET /applications/me` | Full history, newest first. Each row carries **both** the raw `status` and the friendly `stage`. |
+| `GET /applications/me?stage=Pending` | The same history filtered to one stage. `stage` is case-insensitive and accepts synonyms (`applied`/`submitted`, `pending`/`inreview`/`underreview`/`shortlisted`, `accepted`/`offered`, `rejected`/`declined`). An unrecognised value is treated as "no filter". |
+| `GET /applications/me/summary` | A per-stage count + total: `{ total, applied, pending, accepted, rejected }` — what a dashboard renders without paging the list. |
+| `GET /applications/me/{jobListingId}` | Track **one** job: the stage of *your* application to that listing, or **404** if you never applied. The literal `me/summary` route is matched first; the `:guid` constraint means "summary" can never be read as an id. |
+
+The stage filter is pushed into SQL as `WHERE Status IN (…)` (the mapper turns
+`Pending` into `('UnderReview','Shortlisted')`); the status→stage label is applied
+in memory on the tiny result page. The `me` and `me/{id}` queries ride the existing
+`ix_applications_applicantid_joblistingid` index (applicant column leads).
+
+## B. Employer — search applicants who applied, by qualification
+
+A new `Qualifications` column on `Applicant` (free text — degree, certifications,
+skills, e.g. *"BSc Computer Science (UCT); Certified Kubernetes Administrator;
+Skills: Kubernetes, Docker, AWS; 6 years' experience."*) is the field employers
+search. Added via migration **`AddApplicantQualifications`** and populated by the
+seed for all 25 applicants plus the demo accounts.
+
+**`GET /api/v1/applicants/search`** — Employer-only. Composable filters:
+
+| Param | Effect |
+|---|---|
+| `qualification` | `ILIKE %…%` over the applicant's **Qualifications** *and* **Headline** |
+| `minExperience` | `YearsOfExperience >= value` |
+| `city` | `ILIKE %…%` on the applicant's city |
+| `jobListingId` | restrict to applicants who applied to that one listing of yours |
+| `page` / `pageSize` | paginated (pageSize clamped ≤ 100), same `PagedResponse<T>` envelope + `X-Total-Count` + HATEOAS links as the job board |
+
+Each result row is the candidate's profile plus how they relate to your roles:
+`applicationsToYourCompany` (how many of your listings they applied to) and
+`latestStage` (the friendly stage of their most recent application to you).
+
+**Security — the same model as the Part 8 stats endpoint.** The company is read
+from the employer's **JWT**, never a query parameter, and the candidate pool is
+filtered server-side to `WHERE JobListing.CompanyId = <your company>`. So an
+employer can only ever search the people who applied to *their own* roles — there
+is no parameter that could widen the search to another company's candidate pool.
+
+### How the query is built (and stays translatable)
+
+The search is rooted on `Applicants` so the profile filters are plain `Where`s, and
+the per-applicant aggregates (`applicationsToYourCompany`, `latestStage`) are
+correlated sub-queries EF Core translates cleanly — no client-side `GroupBy`, no
+"load everything then filter in memory". The `qualification` filter uses
+`EF.Functions.ILike`, so a case-insensitive substring match runs in PostgreSQL.
+
+> **Scaling note (documented, not implemented).** `ILIKE %term%` cannot use a plain
+> B-tree index. At today's candidate volume that is irrelevant, but the index-correct
+> fix for a large applicant base is a **`pg_trgm` GIN trigram index** on
+> `Qualifications` (`CREATE EXTENSION pg_trgm; CREATE INDEX … USING gin (…
+> gin_trgm_ops)`), which *does* accelerate substring `ILIKE`. It is left as a
+> documented next step to keep this change schema-light, mirroring the Part 7 ETag
+> `RowVersion` note.
+
+---
+
 # What's new / extras
 
 Ten improvements layered on top of the assignment requirements:
@@ -974,7 +1056,8 @@ Ten improvements layered on top of the assignment requirements:
    log line for the request is tagged with it.
 10. **Integration tests** — `CareerHub.Api.Tests` (WebApplicationFactory) covers the
     pagination envelope, filter composition, PATCH partial update, the ETag 304
-    round-trip, the rate-limit 429 + Retry-After, and the CORS preflight. See the
+    round-trip, the rate-limit 429 + Retry-After, the CORS preflight, the applicant
+    application-tracking endpoints and the employer applicant-search. See the
     *Testing* section below.
 
 ---
@@ -1000,6 +1083,11 @@ dotnet test                 # runs the integration suite (CareerHub.slnx)
 | `Etag_round_trip_…` | `If-None-Match` → 304 with no body (Part 7) |
 | `Search_exceeding_30_per_minute_…` | sliding-window 429 + `Retry-After` body (Part 8) |
 | `Cors_preflight_…` | preflight echoes `Access-Control-Allow-Origin`/`-Credentials` (Part 2) |
+| `New_applicant_starts_with_empty_history_…` | fresh applicant: empty history + zero summary |
+| `Applying_shows_up_as_Applied_stage_…` | apply → `me`, `me?stage=`, `me/summary`, `me/{id}` all show stage **Applied** |
+| `Tracking_a_listing_never_applied_to_returns_404` | `me/{id}` 404 when not applied |
+| `Employer_search_is_scoped_and_filters_compose` | applicant search scoped to listing + `minExperience` filter composes |
+| `Applicant_search_is_forbidden_for_applicants` | `applicants/search` is Employer-only → 403 |
 
 ---
 
@@ -1016,7 +1104,10 @@ dotnet test                 # runs the integration suite (CareerHub.slnx)
 | POST | `/api/v1/jobs` | Employer | **post-listing** (10/60min) |
 | PATCH | `/api/v1/jobs/{id}` | Employer | global |
 | POST | `/api/v1/jobs/{jobListingId}/applications` | Applicant | **apply** (5/60min, per-user) |
-| GET | `/api/v1/applications/me` | Applicant | global |
+| GET | `/api/v1/applications/me` · `?stage=` | Applicant | global · **track my applications** |
+| GET | `/api/v1/applications/me/summary` | Applicant | global · **per-stage counts** |
+| GET | `/api/v1/applications/me/{jobListingId}` | Applicant | global · **track one job (404 if not applied)** |
+| GET | `/api/v1/applicants/search` | Employer | global · **search applicants by qualification** |
 | GET | `/api/v1/applications/{jobListingId}/{applicantId}` | authenticated | global (ETag) |
 | PATCH | `/api/v1/applications/{jobListingId}/{applicantId}/status` | Employer | global |
 | POST | `/api/v1/auth/register/applicant` · `register/employer` · `login` | anonymous | global |
@@ -1096,3 +1187,248 @@ curl -i -X POST "$BASE/api/v1/jobs/<JOB_ID>/applications" \
 curl -i "$BASE/health/live"    # → 200 Healthy (no dependencies)
 curl -i "$BASE/health/ready"   # → 200 Healthy (Postgres reachable)
 ```
+
+**Applicant — track my applications** (log in as the demo applicant first):
+```bash
+# APP_TOKEN from logging in as demo.applicant@careerhub.co.za / DemoPass123!
+curl -s "$BASE/api/v1/applications/me" -H "Authorization: Bearer $APP_TOKEN"
+# → rows with both "status" (Submitted/…) and "stage" (Applied/Pending/Accepted/Rejected)
+
+curl -s "$BASE/api/v1/applications/me?stage=Accepted" -H "Authorization: Bearer $APP_TOKEN"
+# → only the Accepted (Offered) applications
+
+curl -s "$BASE/api/v1/applications/me/summary" -H "Authorization: Bearer $APP_TOKEN"
+# → { "total":4, "applied":1, "pending":1, "accepted":1, "rejected":1 }  (demo seed)
+
+curl -i "$BASE/api/v1/applications/me/<JOB_ID>" -H "Authorization: Bearer $APP_TOKEN"
+# → 200 with that application's stage, or 404 if you never applied to <JOB_ID>
+```
+
+**Employer — search applicants by qualification** (log in as the demo employer first):
+```bash
+# EMP_TOKEN from logging in as demo.employer@takealot.co.za / DemoPass123!
+curl -i "$BASE/api/v1/applicants/search?qualification=kubernetes&pageSize=10" \
+  -H "Authorization: Bearer $EMP_TOKEN"
+# → X-Total-Count header + paged envelope of applicants (to Takealot's roles) whose
+#   Qualifications/Headline contain "kubernetes" — the demo applicant is one of them.
+
+curl -s "$BASE/api/v1/applicants/search?minExperience=5&city=Cape%20Town" \
+  -H "Authorization: Bearer $EMP_TOKEN"
+# → composes: ≥5 years' experience AND city contains "Cape Town"
+
+# Scoping proof: an APPLICANT token is forbidden (Employer-only) → 403
+curl -i "$BASE/api/v1/applicants/search" -H "Authorization: Bearer $APP_TOKEN"   # → 403
+```
+
+---
+
+# Testing in Scalar — click-by-click guide
+
+This is the **point-and-click** version of the curl section above: how to demonstrate
+every Assignment 3.1 requirement from the **Scalar UI** in the browser, with the exact
+endpoint, the exact JSON body, and where each filter/search/sort lives.
+
+### 0. Start the app and open Scalar
+
+```bash
+docker compose up -d        # Postgres 17 on localhost:5544
+dotnet run                  # migrates + seeds, serves on :5080
+```
+
+Open **`http://localhost:5080/scalar/v1`**. The left sidebar groups every endpoint by
+tag — **Auth · Jobs · Applications · Applicants · Companies**. To send a request:
+pick an endpoint → fill the **Body** / **Query parameters** / **Headers** fields →
+click **Send**. The response (status, headers, JSON) appears on the right.
+
+> Every route is versioned: the paths all begin with **`/api/v1/...`**. Scalar fills
+> the `v1` segment for you.
+
+### 1. Log in to get a token (do this first — most demos need it)
+
+Two seeded demo accounts exist (password **`DemoPass123!`** for both):
+
+| Role | Email | Use it for |
+|---|---|---|
+| Applicant | `demo.applicant@careerhub.co.za` | applying, "track my applications" |
+| Employer (Takealot) | `demo.employer@takealot.co.za` | posting, PATCH, stats, applicant search |
+
+1. Sidebar → **Auth** → **`POST /api/v1/auth/login`** → **Body**:
+   ```json
+   { "email": "demo.employer@takealot.co.za", "password": "DemoPass123!" }
+   ```
+2. **Send** → copy the **`token`** value from the response.
+3. Click the **Authorize** / 🔒 button at the top of Scalar, paste the token as a
+   **Bearer** token. Every subsequent request now sends `Authorization: Bearer …`
+   automatically. (Log in as the **applicant** instead when an endpoint is
+   Applicant-only — re-authorize with that token.)
+
+> No account yet? Use **`POST /api/v1/auth/register/applicant`** with body
+> `{ "fullName":"Test User", "email":"you@test.co.za", "password":"Pass123!" }`.
+> For an employer you also need a `companyId` — grab one from **`GET /api/v1/companies`**.
+
+### 2. Search jobs — **`GET /api/v1/jobs/search`**
+
+Sidebar → **Jobs** → **`GET /api/v1/jobs/search`**. In **Query parameters** set
+**`q`** = `Kubernetes` → **Send**. Returns exactly the **3** Kubernetes platform
+listings (Takealot, Yoco, Naspers). Try `q` = `sprint` to see stemming — it matches
+the **Scrum Master** listing whose text says "*sprinting*". *(This endpoint is rate-
+limited to 30/min — see step 9.)*
+
+### 3. Filter "by specification" — **`GET /api/v1/jobs`**
+
+The job board (**`GET /api/v1/jobs`**) takes all the filters as **query parameters**;
+each one you fill in is ANDed with the rest. Leave a box empty to ignore it.
+
+| Query param | Example value | Meaning |
+|---|---|---|
+| `location` | `Cape Town` | location contains (case-insensitive) |
+| `employmentType` | `FullTime` | exact type — `FullTime` / `PartTime` / `Contract` / `Internship` / `Temporary` |
+| `salaryMin` | `40000` | pays **at least** R40 000 |
+| `salaryMax` | `120000` | pays **at most** R120 000 |
+| `companyId` | *(a GUID)* | one company's listings |
+| `q` | `engineer` | full-text search, composed with the filters |
+| `remoteOnly` | `true` | only listings whose location says "remote" |
+| `postedSince` | `2026-01-01` | posted on/after this date |
+
+Example: set `location=Cape Town`, `employmentType=FullTime`, `salaryMin=40000`,
+**Send** → only full-time Cape Town roles paying ≥ R40 000.
+
+### 4. Filter / sort "by alphabet" — `sort` + `dir` on **`GET /api/v1/jobs`**
+
+Same endpoint, two more query parameters control ordering:
+
+| `sort` value | Orders by |
+|---|---|
+| `title` | **alphabetical by job title** ← "by alphabet" |
+| `company` | alphabetical by company name |
+| `salaryMin` / `salaryMax` | salary |
+| `postedAt` *(default)* | newest first |
+| `expiresAt` | expiring soonest first |
+
+`dir` = `asc` (A→Z) or `desc` (Z→A). **To list jobs A→Z:** set `sort=title`,
+`dir=asc`, **Send**. The response is the `PagedResponse` envelope — note the
+`X-Total-Count` header and the `links` block (HATEOAS).
+
+### 5. Pagination — **`GET /api/v1/jobs`**
+
+Set `page=2` and `pageSize=5` → **Send**. The body shows
+`page/pageSize/totalCount/totalPages/hasNextPage/links`, and the response **headers**
+include `X-Total-Count`. Try `pageSize=500` to prove the **clamp**: it comes back as
+`pageSize: 100`.
+
+### 6. Post a listing — **`POST /api/v1/jobs`** *(Employer token)*
+
+Sidebar → **Jobs** → **`POST /api/v1/jobs`** → **Body**:
+
+```json
+{
+  "title": "Senior Backend Engineer",
+  "description": "Build and scale our order pipeline on .NET and PostgreSQL.",
+  "minimumRequirements": "5+ years C#, EF Core, PostgreSQL.",
+  "location": "Cape Town",
+  "type": "FullTime",
+  "salaryMin": 70000,
+  "salaryMax": 110000,
+  "expiresAt": "2026-12-31T00:00:00Z"
+}
+```
+
+**Send** → **201 Created** with the new `id`. (`companyId` is **not** in the body —
+it comes from your employer token.) Demonstrate validation: swap to
+`"salaryMin": 90000, "salaryMax": 50000` → **400** with
+*"SalaryMax must be greater than SalaryMin."* *(Post-listing is limited to 10/hour.)*
+
+### 7. PATCH a listing — **`PATCH /api/v1/jobs/{id}`** *(Employer token)*
+
+Put a job's `id` in the **path** field, then send only the fields you want to change:
+
+```json
+{ "location": "Remote (South Africa)", "salaryMax": 120000 }
+```
+
+**Send** → **204 No Content**; everything you didn't send is untouched. An inverted
+salary range in the body → **400 problem+json**.
+
+### 8. Application status transition — **`PATCH /api/v1/applications/{jobListingId}/{applicantId}/status`** *(Employer token)*
+
+`Application` has a **composite key**, so the path takes **both** ids. Body:
+
+```json
+{ "status": "UnderReview" }
+```
+
+Legal move → **204**. An illegal one (e.g. body `{ "status": "Submitted" }` on an
+already-`Offered` application) → **400** naming both states. Legal flow:
+`Submitted → UnderReview → Shortlisted → Offered` (`Rejected`/`Offered` are terminal).
+
+### 9. Rate limiting (429) — **`GET /api/v1/jobs/search`**
+
+Hit **Send** on the search endpoint **rapidly ~35 times**. After 30 within the minute
+you get **429 Too Many Requests**, a **`Retry-After`** header, and the plain-text body
+*"Rate limit exceeded. Please retry after N seconds."*
+
+### 10. ETags / 304 — **`GET /api/v1/jobs/{id}`**
+
+1. Send `GET /api/v1/jobs/{id}` for any job → copy the **`ETag`** value from the
+   response headers.
+2. Send the **same** request again, adding a **Header** `If-None-Match` = that ETag →
+   **304 Not Modified** with no body.
+
+### 11. Versioning — any endpoint
+
+Any response's headers carry **`api-supported-versions: 1.0`** (because
+`ReportApiVersions` is on). Visible on, e.g., `GET /api/v1/jobs?pageSize=1`.
+
+### 12. Apply to a job — **`POST /api/v1/jobs/{jobListingId}/applications`** *(Applicant token)*
+
+Re-authorize as the **applicant** first. Put a job `id` in the path, body:
+
+```json
+{ "coverNote": "Keen to join — strong PostgreSQL background." }
+```
+
+**Send** → **201**. To prove **idempotency** (extra #7): add a **Header**
+`Idempotency-Key` = `abc-123` and send twice — the second send replays the first
+result instead of creating a duplicate. *(Apply is limited to 5/hour per user.)*
+
+### 13. Track my applications — **Applications** tag *(Applicant token)*
+
+| Endpoint | What to do | Shows |
+|---|---|---|
+| `GET /api/v1/applications/me` | just Send | full history; each row has raw `status` **and** friendly `stage` |
+| `GET /api/v1/applications/me` + query `stage=Pending` | set `stage` | only that stage (`Applied`/`Pending`/`Accepted`/`Rejected`) |
+| `GET /api/v1/applications/me/summary` | just Send | `{ total, applied, pending, accepted, rejected }` |
+| `GET /api/v1/applications/me/{jobListingId}` | put a job id in the path | that one application's stage, or **404** if you never applied |
+
+### 14. Employer applicant search — **`GET /api/v1/applicants/search`** *(Employer token)*
+
+Re-authorize as the **employer**. Query parameters (all optional, all compose):
+
+| Query param | Example | Meaning |
+|---|---|---|
+| `qualification` | `kubernetes` | substring over the applicant's Qualifications **and** Headline |
+| `minExperience` | `5` | ≥ 5 years' experience |
+| `city` | `Cape Town` | city contains |
+| `jobListingId` | *(a GUID)* | only people who applied to that listing of yours |
+
+**Send** → paged envelope of candidates **who applied to your company's roles** (the
+pool is scoped to your company via the token — there is no parameter to widen it).
+Each row includes `applicationsToYourCompany` and `latestStage`. Proof it's locked
+down: send the same request with an **applicant** token → **403 Forbidden**.
+
+### 15. Employer stats & companies
+
+- **`GET /api/v1/jobs/stats`** *(Employer token)* — per-status counts + `RANK()` for
+  **your** company (no params; company comes from the token).
+- **`GET /api/v1/companies`** *(anonymous)* — every company with its active-listing
+  count; handy for grabbing a `companyId` for filters or employer registration.
+
+### 16. Health checks (no auth)
+
+Browse to **`/health/live`** (process up) and **`/health/ready`** (Postgres
+reachable) — both return **200 Healthy**.
+
+> **Quick demo order for a marker:** log in (1) → search (2) → filter+A–Z sort
+> (3–4) → pagination (5) → post (6) → PATCH (7) → status transition (8) → 429 (9) →
+> ETag 304 (10) → apply (12) → track (13) → applicant search + 403 (14). That walks
+> every Assignment 3.1 part in one pass.

@@ -41,6 +41,7 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
             entity.Property(a => a.PasswordHash).IsRequired().HasMaxLength(500);
             entity.Property(a => a.City).HasMaxLength(100);
             entity.Property(a => a.Headline).HasMaxLength(200);
+            entity.Property(a => a.Qualifications).HasMaxLength(1000);
 
             entity.HasIndex(a => a.Email).IsUnique();
         });
