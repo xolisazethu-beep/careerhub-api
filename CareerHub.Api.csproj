@@ -8,6 +8,15 @@
     <AssemblyName>CareerHub.Api</AssemblyName>
   </PropertyGroup>
 
+  <!-- The test project lives in a subfolder of this Web-SDK project, whose default
+       glob would otherwise compile the test .cs files into the API assembly. -->
+  <ItemGroup>
+    <Compile Remove="CareerHub.Api.Tests/**/*.cs" />
+    <Content Remove="CareerHub.Api.Tests/**" />
+    <None Remove="CareerHub.Api.Tests/**" />
+    <EmbeddedResource Remove="CareerHub.Api.Tests/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Mvc" Version="10.0.0" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.0.0" />
