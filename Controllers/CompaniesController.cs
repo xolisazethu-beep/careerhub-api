@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using CareerHub.Api.DTOs;
 using CareerHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -5,7 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace CareerHub.Api.Controllers;
 
 [ApiController]
-[Route("api/companies")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class CompaniesController(ICompanyService companies) : ControllerBase
 {
     /// <summary>All employers, with each one's active-listing count.</summary>

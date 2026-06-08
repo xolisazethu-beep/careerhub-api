@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using CareerHub.Api.DTOs;
 using CareerHub.Api.Infrastructure;
 using CareerHub.Api.Models;
@@ -8,7 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace CareerHub.Api.Controllers;
 
 [ApiController]
-[Route("api/jobs")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class JobsController(IJobService jobs) : ControllerBase
 {
     /// <summary>

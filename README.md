@@ -805,3 +805,48 @@ encodes the **legal** transitions:
 with a message that **names the from-state and the to-state**, e.g. *"Illegal status
 transition from Offered to Submitted. Offered is a terminal state and cannot be
 changed."*
+
+## Part 6 — Versioning
+
+`Asp.Versioning.Mvc` + `Asp.Versioning.Mvc.ApiExplorer` are configured in
+`Program.cs`:
+
+```csharp
+builder.Services.AddApiVersioning(o =>
+{
+    o.DefaultApiVersion = new ApiVersion(1, 0);
+    o.AssumeDefaultVersionWhenUnspecified = true;   // /api/v1 is assumed if omitted
+    o.ReportApiVersions = true;                      // adds api-supported-versions header
+    o.ApiVersionReader = new UrlSegmentApiVersionReader();
+}).AddApiExplorer(o => { o.GroupNameFormat = "'v'VVV"; o.SubstituteApiVersionInUrl = true; });
+```
+
+Every controller carries `[ApiVersion("1.0")]` and routes on
+`api/v{version:apiVersion}/[controller]` (the application endpoints, which are
+nested method-level routes, carry the same `{version:apiVersion}` segment). No
+service or repository signature changed — versioning is purely a routing/explorer
+concern. `ReportApiVersions = true` means every response advertises
+`api-supported-versions: 1.0`.
+
+### Introducing v2 — the deprecation lifecycle
+
+When a breaking change is needed we **add** `v2` rather than mutate `v1`:
+
+1. **Parallel run.** Ship `v2` controllers/actions alongside `v1`. Both are live;
+   `[ApiVersion("1.0")]` and `[ApiVersion("2.0")]` co-exist. Clients migrate at
+   their own pace. A typical window is **~3–6 months** depending on how many
+   external consumers there are.
+2. **Deprecate v1.** Mark it `[ApiVersion("1.0", Deprecated = true)]`. With
+   `ReportApiVersions` the response then carries `api-deprecated-versions: 1.0`
+   (alongside `api-supported-versions: 2.0`), a passive signal clients can log/alert
+   on without anything breaking yet.
+3. **Announce a sunset.** Return a **`Sunset`** header (RFC 8594) on `v1` responses
+   giving the exact date `v1` will be removed, plus a `Link: rel="sunset"` to the
+   migration guide. This is the contractual "it goes away on this date" notice.
+4. **Remove v1.** After the sunset date (and once telemetry shows ~zero `v1`
+   traffic), delete the `v1` actions. Requests to `/api/v1/...` then return 404 /
+   `UnsupportedApiVersion` 400.
+
+The URL-segment reader makes each step unambiguous: the version a client is on is
+always visible in the path, in logs, and in the dashboard, so we can measure
+migration progress before pulling `v1`.

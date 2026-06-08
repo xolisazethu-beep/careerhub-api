@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using CareerHub.Api.DTOs;
 using CareerHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace CareerHub.Api.Controllers;
 
 [ApiController]
-[Route("api/auth")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [AllowAnonymous] // registration and login must be reachable without a token
 public class AuthController(IAuthService auth) : ControllerBase
 {

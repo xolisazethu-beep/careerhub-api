@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using Asp.Versioning;
 using CareerHub.Api.Data;
 using CareerHub.Api.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -23,6 +24,26 @@ builder.Services
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
+
+// ── PART 6: API VERSIONING ───────────────────────────────────────────────────
+// Version travels in the URL segment (/api/v1/...). v1.0 is the default and is
+// assumed when a client omits it, and every response advertises the versions it
+// supports via the `api-supported-versions` header (exposed to browsers in the
+// CORS policy above).
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddApiExplorer(options =>
+    {
+        // "'v'VVV" → v1, v2 … ; substitute the {version} route token in generated URLs.
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
 
 // ── JWT BEARER AUTHENTICATION ────────────────────────────────────────────────
 // Tokens are signed/validated with the symmetric key from configuration (see
