@@ -9,6 +9,7 @@ namespace CareerHub.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[Tags("Auth")]
 [AllowAnonymous] // registration and login must be reachable without a token
 public class AuthController(IAuthService auth) : ControllerBase
 {

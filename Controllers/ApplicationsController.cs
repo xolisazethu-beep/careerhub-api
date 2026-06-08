@@ -5,6 +5,7 @@ using CareerHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CareerHub.Api.Controllers;
 
@@ -16,15 +17,40 @@ namespace CareerHub.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Authorize]
-public class ApplicationsController(IApplicationService applications) : ControllerBase
+[Tags("Applications")] // EXTRA #4: OpenAPI grouping
+public class ApplicationsController(IApplicationService applications, IDistributedCache cache) : ControllerBase
 {
-    /// <summary>Apply to a listing. The applicant is taken from the token, not the body.</summary>
+    /// <summary>
+    /// Apply to a listing. The applicant is taken from the token, not the body.
+    /// EXTRA #7: honours an optional <c>Idempotency-Key</c> request header — the
+    /// first call with a given key (per user) performs the apply and caches the
+    /// outcome for 24h; a retry with the same key replays that outcome instead of
+    /// creating a duplicate, so a flaky network retry is safe.
+    /// </summary>
     [HttpPost("api/v{version:apiVersion}/jobs/{jobListingId:guid}/applications")]
     [Authorize(Roles = "Applicant")]
     [EnableRateLimiting("apply")] // PART 8: fixed window, 5 per 60 minutes, partitioned by user
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Apply(Guid jobListingId, ApplyRequest request, CancellationToken ct)
     {
-        await applications.ApplyAsync(User.GetUserId(), jobListingId, request.CoverNote, ct);
+        var userId = User.GetUserId();
+        var idempotencyKey = Request.Headers["Idempotency-Key"].ToString();
+
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            await applications.ApplyAsync(userId, jobListingId, request.CoverNote, ct);
+            return StatusCode(StatusCodes.Status201Created);
+        }
+
+        var cacheKey = $"idempotency:{userId}:{idempotencyKey}";
+        if (await cache.GetStringAsync(cacheKey, ct) is not null)
+            return StatusCode(StatusCodes.Status201Created); // replay prior outcome — no duplicate
+
+        await applications.ApplyAsync(userId, jobListingId, request.CoverNote, ct);
+        await cache.SetStringAsync(cacheKey, "201",
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
         return StatusCode(StatusCodes.Status201Created);
     }
 

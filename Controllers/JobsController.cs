@@ -12,6 +12,7 @@ namespace CareerHub.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[Tags("Jobs")] // EXTRA #4: OpenAPI grouping
 public class JobsController(IJobService jobs) : ControllerBase
 {
     /// <summary>
@@ -46,6 +47,9 @@ public class JobsController(IJobService jobs) : ControllerBase
     /// #6) tells the browser to issue conditional requests against that ETag.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(JobListingDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var listing = await jobs.GetDetailByIdAsync(id, ct);

@@ -928,3 +928,46 @@ and an unauthenticated caller is still bounded by IP.
 The `global`, `search` and `post-listing` policies use the framework's
 `AddFixedWindowLimiter`/`AddSlidingWindowLimiter` helpers (single shared bucket per
 policy); only `apply` needs the custom partitioning.
+
+---
+
+# What's new / extras
+
+Ten improvements layered on top of the assignment requirements:
+
+1. **HATEOAS-lite links** — every `PagedResponse<T>` carries a `links` object
+   (`self`/`next`/`previous`/`first`/`last`) built from the current request by
+   `Infrastructure/PaginationLinks`, preserving the active filters/sort across pages.
+2. **ProblemDetails everywhere** — `AddProblemDetails()` is registered and every
+   400/404/409 flows through `ValidationExceptionHandler`, so error bodies share one
+   RFC 7807 shape (`type`/`title`/`status`/`detail`).
+3. **Global exception handler** — `ValidationExceptionHandler` (registered with
+   `AddExceptionHandler` + `app.UseExceptionHandler()`) maps the domain exceptions
+   (`NotFoundException`, `ConflictException`, `DuplicateApplicationException`,
+   `ArgumentException`, EF check-constraint violations) to ProblemDetails. Controllers
+   contain **no try/catch**.
+4. **OpenAPI/Scalar polish** — each controller is grouped with `[Tags(...)]`
+   (`Jobs`/`Applications`/`Auth`/`Companies`) and the single-resource GET and apply
+   endpoints declare `[ProducesResponseType]` for 200/304/400/404/409/429 so the
+   Scalar UI documents every outcome. *(Note: `[SwaggerParameter]` belongs to
+   Swashbuckle; this project uses the native `Microsoft.AspNetCore.OpenApi` + Scalar
+   stack, so query parameters are documented via XML doc comments and the
+   `JobListingFilterQuery` shape rather than the Swashbuckle annotation.)*
+5. **Response compression** — `AddResponseCompression` with **Brotli + Gzip** for
+   `application/json` (and `application/problem+json`), enabled before the endpoints.
+6. **Cache-Control** — the single-resource GETs send `Cache-Control: private,
+   must-revalidate` alongside the ETag, so browsers issue conditional requests.
+7. **Idempotency-Key** — `POST /api/v1/applications` accepts an `Idempotency-Key`
+   header; the outcome is stored in an in-memory `IDistributedCache` keyed by
+   `idempotency:{userId}:{key}` for 24h, so a retried request replays the prior result
+   instead of creating a duplicate application.
+8. **Health checks** — `AddHealthChecks().AddNpgSql(...)` exposes **`/health/live`**
+   (liveness — runs no dependency checks) and **`/health/ready`** (readiness — pings
+   PostgreSQL via the `ready`-tagged check).
+9. **Structured logging / correlation id** — `CorrelationIdMiddleware` reads or mints
+   an `X-Correlation-Id`, echoes it on the response, and opens a logging scope so every
+   log line for the request is tagged with it.
+10. **Integration tests** — `CareerHub.Api.Tests` (WebApplicationFactory) covers the
+    pagination envelope, filter composition, PATCH partial update, the ETag 304
+    round-trip, the rate-limit 429 + Retry-After, and the CORS preflight. See the
+    *Testing* section below.

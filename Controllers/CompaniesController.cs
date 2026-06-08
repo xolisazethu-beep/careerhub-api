@@ -8,6 +8,7 @@ namespace CareerHub.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[Tags("Companies")]
 public class CompaniesController(ICompanyService companies) : ControllerBase
 {
     /// <summary>All employers, with each one's active-listing count.</summary>

@@ -6,6 +6,7 @@ using Asp.Versioning;
 using CareerHub.Api.Data;
 using CareerHub.Api.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -88,9 +89,33 @@ builder.Services.AddCors(options =>
         // Without this list they are stripped from cross-origin reads.
         .WithExposedHeaders("X-Total-Count", "ETag", "api-supported-versions", "Retry-After")));
 
-// Validation/constraint failures -> HTTP 400 Problem Details.
+// Validation/constraint failures -> HTTP 400 Problem Details (extra #2/#3: a
+// single exception handler translates every domain exception to RFC 7807, so
+// controllers carry no try/catch).
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+// EXTRA #5: response compression (Brotli + Gzip) for JSON — large paginated
+// payloads compress well. Enabled for HTTPS too (the payloads here aren't secrets).
+builder.Services.AddResponseCompression(o =>
+{
+    o.EnableForHttps = true;
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    o.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+    o.MimeTypes = ["application/json", "application/problem+json"];
+});
+
+// EXTRA #7: in-memory IDistributedCache backing Idempotency-Key support on apply.
+builder.Services.AddDistributedMemoryCache();
+
+// EXTRA #8: health checks. /health/live is a liveness probe (process is up);
+// /health/ready is a readiness probe that also pings PostgreSQL (tagged "ready").
+builder.Services
+    .AddHealthChecks()
+    .AddNpgSql(
+        builder.Configuration.GetConnectionString("DefaultConnection")!,
+        name: "postgres",
+        tags: ["ready"]);
 
 // ── PART 8: RATE LIMITING ────────────────────────────────────────────────────
 builder.Services.AddRateLimiter(options =>
@@ -160,6 +185,13 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+// EXTRA #9: tag every request (and its logs + response) with a correlation id,
+// before anything else so even error responses carry it.
+app.UseMiddleware<CorrelationIdMiddleware>();
+
+// EXTRA #5: compress responses early in the pipeline.
+app.UseResponseCompression();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -194,6 +226,16 @@ using (var scope = app.Services.CreateScope())
 // Every controller endpoint is covered by the global 200/60s policy; the
 // search/apply/post-listing actions layer their own stricter [EnableRateLimiting].
 app.MapControllers().RequireRateLimiting("global");
+
+// EXTRA #8: liveness (no dependency checks) vs readiness (pings Postgres).
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false // run no checks — just confirm the process answers
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready") // include the Postgres check
+});
 
 app.Run();
 
