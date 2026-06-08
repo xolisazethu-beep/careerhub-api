@@ -1,9 +1,12 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Asp.Versioning;
 using CareerHub.Api.Data;
 using CareerHub.Api.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
@@ -89,6 +92,72 @@ builder.Services.AddCors(options =>
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// ── PART 8: RATE LIMITING ────────────────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    // global — fixed window, 200 requests / 60s. Applied to the whole controller
+    // surface via RequireRateLimiting("global") on MapControllers below.
+    options.AddFixedWindowLimiter("global", o =>
+    {
+        o.PermitLimit = 200;
+        o.Window = TimeSpan.FromSeconds(60);
+        o.QueueLimit = 0;
+    });
+
+    // search — sliding window, 30 / 60s across 6 segments (10s each), no queue.
+    // Sliding smooths the boundary burst a fixed window allows.
+    options.AddSlidingWindowLimiter("search", o =>
+    {
+        o.PermitLimit = 30;
+        o.Window = TimeSpan.FromSeconds(60);
+        o.SegmentsPerWindow = 6;
+        o.QueueLimit = 0;
+    });
+
+    // post-listing — fixed window, 10 per 60 MINUTES, no queue.
+    options.AddFixedWindowLimiter("post-listing", o =>
+    {
+        o.PermitLimit = 10;
+        o.Window = TimeSpan.FromMinutes(60);
+        o.QueueLimit = 0;
+    });
+
+    // apply — fixed window, 5 per 60 MINUTES, no queue, PARTITIONED per user:
+    // by the JWT `sub` claim when authenticated, falling back to the client IP.
+    // So one applicant's 5/hour budget is theirs alone, not shared site-wide.
+    options.AddPolicy("apply", httpContext =>
+    {
+        var partitionKey =
+            httpContext.User.FindFirstValue("sub")
+            ?? httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ =>
+            new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(60),
+                QueueLimit = 0
+            });
+    });
+
+    // Rejected requests → 429 + Retry-After (seconds) + a plain-text body.
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        var retrySeconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+            ? (int)Math.Ceiling(retryAfter.TotalSeconds)
+            : 60;
+
+        context.HttpContext.Response.Headers.RetryAfter = retrySeconds.ToString();
+        context.HttpContext.Response.ContentType = "text/plain";
+        await context.HttpContext.Response.WriteAsync(
+            $"Rate limit exceeded. Please retry after {retrySeconds} seconds.", token);
+    };
+});
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -106,6 +175,9 @@ if (app.Environment.IsDevelopment())
 // SPA can never see the real status.
 app.UseCors(CorsPolicy);
 
+// ── PART 8: rate limiter sits right after CORS, before authentication ────────
+app.UseRateLimiter();
+
 // Authentication then authorization, in that order, for every request.
 app.UseAuthentication();
 app.UseAuthorization();
@@ -119,7 +191,9 @@ using (var scope = app.Services.CreateScope())
     await SeedData.SeedDemoAccountsAsync(db); // login-ready demo accounts (idempotent)
 }
 
-app.MapControllers();
+// Every controller endpoint is covered by the global 200/60s policy; the
+// search/apply/post-listing actions layer their own stricter [EnableRateLimiting].
+app.MapControllers().RequireRateLimiting("global");
 
 app.Run();
 

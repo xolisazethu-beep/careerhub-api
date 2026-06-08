@@ -5,6 +5,7 @@ using CareerHub.Api.Models;
 using CareerHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CareerHub.Api.Controllers;
 
@@ -70,6 +71,7 @@ public class JobsController(IJobService jobs) : ControllerBase
 
     // ── PART 5: full-text search. One line — service -> repository. ───────────
     [HttpGet("search")]
+    [EnableRateLimiting("search")] // PART 8: sliding window, 30/60s
     public async Task<IReadOnlyList<JobListingResponse>> Search([FromQuery] string q, CancellationToken ct)
         => await jobs.SearchAsync(q, ct);
 
@@ -84,6 +86,7 @@ public class JobsController(IJobService jobs) : ControllerBase
     /// <summary>Publish a listing. Employer-only; always posted under the employer's own company.</summary>
     [HttpPost]
     [Authorize(Roles = "Employer")]
+    [EnableRateLimiting("post-listing")] // PART 8: fixed window, 10 per 60 minutes
     public async Task<IActionResult> Create(CreateJobListingRequest request, CancellationToken ct)
     {
         var companyId = User.GetCompanyId();

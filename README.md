@@ -893,3 +893,38 @@ true content fingerprint: any update — including a `Description`-only PATCH �
 it, so conditional GETs can never serve stale data. Adding that column is a schema
 change, which Assignment 3.1's ground rules put out of scope, so it is documented
 here rather than implemented.
+
+## Part 8 — Rate Limiting
+
+`AddRateLimiter` defines four policies; `app.UseRateLimiter()` sits **right after
+`UseCors`, before `UseAuthentication`**:
+
+| Policy | Algorithm | Limit | Queue | Applied to |
+|---|---|---|---|---|
+| `global` | fixed window | **200 / 60 s** | 0 | `MapControllers().RequireRateLimiting("global")` — the whole surface |
+| `search` | sliding window (6 segments) | **30 / 60 s** | 0 | `GET /api/v1/jobs/search` |
+| `apply` | fixed window | **5 / 60 min** | 0 | `POST /api/v1/jobs/{id}/applications` |
+| `post-listing` | fixed window | **10 / 60 min** | 0 | `POST /api/v1/jobs` |
+
+### `OnRejected`
+
+A rejected request gets **HTTP 429**, a **`Retry-After`** header taken from the
+lease metadata (`MetadataName.RetryAfter`, rounded up to whole seconds, defaulting
+to 60s if the limiter supplies none), and a **plain-text** body:
+
+```
+Rate limit exceeded. Please retry after {N} seconds.
+```
+
+### EXTRA — per-user partitioning of `apply`
+
+The `apply` policy is built with `RateLimitPartition.GetFixedWindowLimiter` and a
+**key selector**: the JWT **`sub`** claim when the caller is authenticated
+(falling back to `ClaimTypes.NameIdentifier`, then the client IP). So each
+applicant gets their **own** 5-per-hour budget rather than sharing one global
+bucket — one prolific applicant can't exhaust everyone else's ability to apply,
+and an unauthenticated caller is still bounded by IP.
+
+The `global`, `search` and `post-listing` policies use the framework's
+`AddFixedWindowLimiter`/`AddSlidingWindowLimiter` helpers (single shared bucket per
+policy); only `apply` needs the custom partitioning.

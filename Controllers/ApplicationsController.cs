@@ -4,6 +4,7 @@ using CareerHub.Api.Infrastructure;
 using CareerHub.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CareerHub.Api.Controllers;
 
@@ -20,6 +21,7 @@ public class ApplicationsController(IApplicationService applications) : Controll
     /// <summary>Apply to a listing. The applicant is taken from the token, not the body.</summary>
     [HttpPost("api/v{version:apiVersion}/jobs/{jobListingId:guid}/applications")]
     [Authorize(Roles = "Applicant")]
+    [EnableRateLimiting("apply")] // PART 8: fixed window, 5 per 60 minutes, partitioned by user
     public async Task<IActionResult> Apply(Guid jobListingId, ApplyRequest request, CancellationToken ct)
     {
         await applications.ApplyAsync(User.GetUserId(), jobListingId, request.CoverNote, ct);
