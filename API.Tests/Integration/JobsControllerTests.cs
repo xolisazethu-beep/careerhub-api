@@ -151,7 +151,7 @@ public class JobsControllerTests(WebApplicationFactoryFixture factory)
     }
 
     [Fact]
-    public async Task GetJobById_ReturnsStrongETagHeader()
+    public async Task GetJobById_ResponseIncludesETagHeader()
     {
         var client = factory.CreateClient();
         var id = await FirstListingIdAsync(client);
@@ -201,7 +201,7 @@ public class JobsControllerTests(WebApplicationFactoryFixture factory)
     }
 
     [Fact]
-    public async Task CreateJob_WithoutAuthentication_Returns401()
+    public async Task PostJob_WithoutToken_Returns401()
     {
         var client = factory.CreateClient();
 

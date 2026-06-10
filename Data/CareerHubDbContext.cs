@@ -152,10 +152,14 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
             entity.ToTable("applications", t =>
             {
                 // ── PART 2: CHECK CONSTRAINT ──────────────────────────────────
-                // An application cannot be backdated into the future.
+                // An application cannot be backdated into the future. SubmittedAt
+                // is stamped from the API host clock while this is validated against
+                // the database clock, so a small skew tolerance (5s) keeps the rule
+                // meaningful without rejecting valid inserts when the two clocks
+                // drift apart (e.g. a Docker/WSL VM running slightly behind the host).
                 t.HasCheckConstraint(
                     "ck_applications_submitted_not_future",
-                    "\"SubmittedAt\" <= now()");
+                    "\"SubmittedAt\" <= now() + interval '5 seconds'");
             });
 
             // Composite PK = natural identity. "One application per person per
