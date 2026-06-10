@@ -42,11 +42,11 @@ public sealed class JobListingBuilder
     private Guid _id = Guid.NewGuid();
     private string _title = "Software Engineering Position";
     private string _description = "Build and maintain backend services in C# and PostgreSQL.";
-    private string _minimumRequirements = "Matric; 3+ years C#; valid SA work permit.";
+    private string _minimumRequirements = "Matric; 3+ years C# .NET10; valid SA work permit.";
     private string _location = "Sandton, Gauteng";
     private JobType _type = JobType.FullTime;
-    private decimal? _salaryMin = 50_000m;
-    private decimal? _salaryMax = 90_000m;
+    private decimal? _salaryMin = R50_000;
+    private decimal? _salaryMax = R90_000;
     private ListingStatus _status = ListingStatus.Active;
     private DateTime _createdAt = DateTime.UtcNow.AddDays(-1);
     private DateTime _expiresAt = DateTime.UtcNow.AddDays(30);
