@@ -1048,3 +1048,60 @@ is in the README's Assignment 3.2 section.)
 `build → unit → transitions → failing-demo (break & restore) → [Docker: integration →
 repository → full] → CI green → branch-protection`. The first four and CI need no
 Docker; the bracketed three run once Docker is back.
+
+---
+
+# 14. Session quick-reference — results, key concepts & gotchas
+
+A compact recap of the verification run and the things that are easy to forget.
+
+## 14.1 "Proving It Works" — captured results
+
+| # | Step | Command | Result |
+|---|------|---------|--------|
+| 1 | Unit | `dotnet test API.Tests/API.Tests.csproj --filter "FullyQualifiedName~Unit"` | **16 passed**, ~1s; per-test logic < 60ms |
+| 2 | Status transitions | `--filter "FullyQualifiedName~UpdateStatusAsync"` | 10 cases pass; removing the guard → 4 illegal cases fail (`No exception was thrown`); restored → pass |
+| 3 | Integration | `--filter "FullyQualifiedName~Integration"` | **14 passed**, 42s; `GetJobById_WithMatchingETag_Returns304` ✓ |
+| 4 | Repository | `--filter "FullyQualifiedName~Repository"` | **13 passed**; live `postgres:16` container (port `57341`) + Ryuk captured; CHECK + full-text ✓ |
+| 5 | Full suite | `dotnet test API.Tests/API.Tests.csproj` | **43 passed**, 3m25s |
+| 6 | CI | push branch + PR → `main` | job **Build and Test CareerHub API** runs on the PR |
+| 7 | Failing-test demo | remove `SalaryMax > SalaryMin` from `PatchAsync` | only `PatchAsync_WhenOnlySalaryMinChanged_CallsValidation` fails; restored → pass |
+
+## 14.2 Key concepts (one-line each)
+
+| Concept | Why it matters here |
+|--------|---------------------|
+| **NSubstitute** | fake the repository; `Received(1)` / `DidNotReceive()` assert how the service used it. Fresh substitutes in the constructor → no state leaks. |
+| **`WebApplicationFactory<Program>`** | boots the real API in-process; needs `public partial class Program;` at the bottom of `Program.cs` (top-level statements make `Program` internal). |
+| **Testcontainers** | throwaway `postgres:16` per test class via `IAsyncLifetime`; **Ryuk** reaper guarantees cleanup; `CreateContext()` calls `Database.Migrate()`. |
+| **Respawn** | wipes rows (not schema) between tests so the suite is repeatable without re-migrating. |
+| **CHECK constraints** | DB-level guarantees that fire even when the C# guard is bypassed → repository tests insert bad rows directly and assert SQLSTATE `23xxx`. |
+| **Full-text + stemmer** | stored generated `tsvector` + GIN + `english` stemmer; `"engineer"` matches `"Engineering"` — impossible on the in-memory provider. |
+| **ETag / 304** | strong ETag + `If-None-Match` → `304 Not Modified`, empty body — a real conditional GET. |
+| **`[Theory]`/`[InlineData]`** | one method, many cases — used for the 5 legal + 4 illegal status transitions. |
+
+## 14.3 Gotchas — things to remember
+
+1. **`MSB1011` "more than one project or solution file."** The root holds *both*
+   `CareerHub.slnx` and `CareerHub.Api.csproj`. **Always name the target:**
+   `dotnet build CareerHub.slnx` (or `... CareerHub.Api.csproj`). A bare `dotnet build`
+   refuses to choose.
+2. **`Failed to connect to 127.0.0.1:5544`.** The dev DB isn't running. Integration
+   tests boot the real app and migrate against it — `docker compose up -d db` and wait
+   for `healthy`. "Docker Desktop running" ≠ "the DB container is up".
+3. **Apply returns `400` intermittently (clock skew).** `applications` stamp
+   `SubmittedAt` with the **host** clock, but the `ck_applications_submitted_not_future`
+   constraint validates against the **DB** clock; if the Docker/WSL VM clock drifts
+   behind the host, a valid insert looks "in the future" and is rejected. **Fixed** by
+   relaxing the constraint to `"SubmittedAt" <= now() + interval '5 seconds'` (migration
+   `RelaxSubmittedAtSkewTolerance`). If drift persists, `wsl --shutdown` then restart Docker.
+4. **`postgres:16` vs `postgres:17`.** Repository tests pin **16** (brief requirement);
+   docker-compose + the CI service use **17**. Independent databases — both are fine.
+5. **Per-test timing artifact.** The first test in each parallel class shows an inflated
+   duration (hundreds of ms) — one-time assembly load + JIT + NSubstitute proxy
+   generation, not assertion cost. Proven by the outlier moving on a re-run. Real
+   per-test logic is < 60ms.
+6. **Test artifacts are git-ignored.** `TestResults/` and `*.trx` are in `.gitignore` —
+   don't commit them.
+7. **CI only triggers on `main`.** The workflow runs on push to `main` and PRs targeting
+   `main`. Pushing a feature branch alone does **nothing** in Actions — open a PR to `main`.
