@@ -55,3 +55,29 @@ export function formatRelativeDate(isoDate: string, now: Date = new Date()): str
   const years = Math.floor(days / 365);
   return years === 1 ? "1 year ago" : `${years} years ago`;
 }
+
+/**
+ * Format an ISO 8601 closing date as a short human label, e.g.
+ *   "Closes today" / "Closes tomorrow" / "Closes in 5 days" / "Closes 12 Aug 2026" / "Closed".
+ * Used for the small footer hint on a card and the detail panel.
+ */
+export function formatClosingDate(isoDate: string, now: Date = new Date()): string {
+  const closes = new Date(isoDate);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  // Compare at day granularity in the user's locale, ignoring time of day.
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfClose = new Date(closes.getFullYear(), closes.getMonth(), closes.getDate());
+  const days = Math.round((startOfClose.getTime() - startOfToday.getTime()) / msPerDay);
+
+  if (days < 0) return "Closed";
+  if (days === 0) return "Closes today";
+  if (days === 1) return "Closes tomorrow";
+  if (days <= 14) return `Closes in ${days} days`;
+
+  const long = closes.toLocaleDateString("en-ZA", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return `Closes ${long}`;
+}

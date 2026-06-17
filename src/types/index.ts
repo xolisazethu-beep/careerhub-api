@@ -32,6 +32,19 @@ export interface JobListing {
   postedAt: string;
   isActive: boolean;
   applicantCount: number;
+
+  /** One-paragraph overview of the role. */
+  description: string;
+  /** What the person will actually do day-to-day. */
+  responsibilities: string[];
+  /** Required degree / qualification, e.g. "Bachelor's degree in Computer Science or related". */
+  minimumQualification: string;
+  /** Minimum years of professional experience required. 0 means open to entry-level. */
+  minimumExperienceYears: number;
+  /** Tools, frameworks and languages the candidate should know. */
+  skills: string[];
+  /** ISO 8601 date — the last day an application is accepted. */
+  closingDate: string;
 }
 
 /** A signed-in user. Auth is mocked locally for the frontend-only milestone. */

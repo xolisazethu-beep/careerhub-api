@@ -2,7 +2,11 @@
 
 import type { JobListing } from "@/types";
 import { EMPLOYMENT_TYPE_STYLES } from "@/lib/employmentType";
-import { formatRelativeDate, formatSalaryRange } from "@/lib/format";
+import {
+  formatClosingDate,
+  formatRelativeDate,
+  formatSalaryRange,
+} from "@/lib/format";
 
 /**
  * Props are defined in the same file as the component. Nothing is `any`.
@@ -41,6 +45,7 @@ export default function JobCard({
   onApply,
 }: JobCardProps) {
   const typeStyle = EMPLOYMENT_TYPE_STYLES[job.employmentType];
+  const closingLabel = job.isActive ? formatClosingDate(job.closingDate) : null;
 
   return (
     <article
@@ -106,6 +111,10 @@ export default function JobCard({
       <p className="mt-3 text-sm font-semibold text-ink">
         {formatSalaryRange(job.salaryMin, job.salaryMax)}
       </p>
+
+      {closingLabel ? (
+        <p className="mt-1 text-xs font-medium text-brand-700">{closingLabel}</p>
+      ) : null}
 
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-4 text-xs text-slate-500">
         <span>Posted {formatRelativeDate(job.postedAt)}</span>

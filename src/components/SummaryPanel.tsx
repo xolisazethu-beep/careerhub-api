@@ -2,7 +2,11 @@
 
 import type { JobListing } from "@/types";
 import { EMPLOYMENT_TYPE_STYLES } from "@/lib/employmentType";
-import { formatRelativeDate, formatSalaryRange } from "@/lib/format";
+import {
+  formatClosingDate,
+  formatRelativeDate,
+  formatSalaryRange,
+} from "@/lib/format";
 
 export interface SummaryPanelProps {
   job: JobListing;
@@ -21,11 +25,18 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatExperience(years: number): string {
+  if (years <= 0) return "Open to entry-level";
+  if (years === 1) return "1+ year";
+  return `${years}+ years`;
+}
+
 export default function SummaryPanel({ job, onClear, onApply }: SummaryPanelProps) {
   const typeStyle = EMPLOYMENT_TYPE_STYLES[job.employmentType];
 
   return (
     <div className="overflow-hidden rounded-2xl bg-brand-800 shadow-lg shadow-brand-900/20">
+      {/* Top hero — title, meta, stats, actions. */}
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -49,6 +60,8 @@ export default function SummaryPanel({ job, onClear, onApply }: SummaryPanelProp
           <dl className="mt-5 grid grid-cols-2 gap-4 sm:max-w-md">
             <Stat label="Salary" value={formatSalaryRange(job.salaryMin, job.salaryMax)} />
             <Stat label="Posted" value={formatRelativeDate(job.postedAt)} />
+            <Stat label="Closing" value={formatClosingDate(job.closingDate)} />
+            <Stat label="Experience" value={formatExperience(job.minimumExperienceYears)} />
             {job.applicantCount > 0 ? (
               <Stat label="Applicants" value={String(job.applicantCount)} />
             ) : null}
@@ -80,6 +93,75 @@ export default function SummaryPanel({ job, onClear, onApply }: SummaryPanelProp
               />
             </svg>
           </button>
+        </div>
+      </div>
+
+      {/* Detail body — description, what you'll do, requirements, skills. */}
+      <div className="border-t border-white/10 bg-white px-6 py-6 text-ink sm:px-8">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+              About the role
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-700">
+              {job.description}
+            </p>
+
+            <h3 className="mt-6 font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+              What you&apos;ll be doing
+            </h3>
+            <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+              {job.responsibilities.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600"
+                  />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <aside className="space-y-5">
+            <div>
+              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+                Minimum requirements
+              </h3>
+              <dl className="mt-2 space-y-2 text-sm">
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Qualification
+                  </dt>
+                  <dd className="mt-0.5 text-slate-800">{job.minimumQualification}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Experience
+                  </dt>
+                  <dd className="mt-0.5 text-slate-800">
+                    {formatExperience(job.minimumExperienceYears)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div>
+              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+                Tools &amp; skills
+              </h3>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {job.skills.map((skill) => (
+                  <li
+                    key={skill}
+                    className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-inset ring-brand-100"
+                  >
+                    {skill}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
         </div>
       </div>
     </div>
