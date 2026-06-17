@@ -28,11 +28,30 @@ export const metadata: Metadata = {
     "Browse curated job listings across South Africa. Built with Next.js 15, React 19 and TypeScript.",
 };
 
+// Runs before first paint to set the `.dark` class on <html> from the stored
+// preference (or the OS preference when none is stored). Inlining it here — not
+// in ThemeToggle's effect, which only runs after hydration — is what prevents a
+// flash of the wrong theme on load. ThemeToggle later re-applies the same logic
+// to keep its own `isDark` label in sync.
+const themeBootScript = `
+(function () {
+  try {
+    var stored = localStorage.getItem("careerhub:theme");
+    var prefersDark = stored === "dark" ||
+      (stored === null && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", prefersDark);
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body className={`${inter.variable} ${jakarta.variable} antialiased`}>
         <AuthProvider>
           <ToastProvider>

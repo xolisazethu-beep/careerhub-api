@@ -251,6 +251,242 @@ Route (app)                                 Size  First Load JS
 
 ---
 
+# Assignment 1.2 — Styling, Badges & Effects
+
+Assignment 1.1 produced a working component tree. Assignment 1.2 makes it
+*production-grade*: shadcn/ui is installed and owned in-tree, employment-type and
+expiry signals are unified in one `JobStatusBadge`, every template literal in the card
+is replaced with `cn`, the page remembers the user's selected job across refreshes via
+`useEffect` + `sessionStorage`, and a class-based dark mode (with OS-preference fallback
+and no flash on load) is wired through the whole app. **No component logic from 1.1 was
+changed** — only styling, the badge extraction, the two persistence effects, and the
+theme plumbing were added.
+
+## Part 1 — Written Decisions
+
+### 1. The shadcn/ui ownership model
+
+The `@mui/material` disaster — a major version renaming `variant` to `intent` and breaking
+the build in thirty places — **cannot happen with a shadcn/ui component**, because shadcn/ui
+is not a dependency you import from. It is a generator.
+
+- **Where the source lives after installation.** When I ran the Badge "install", shadcn/ui
+  *copied* `badge.tsx` into `src/components/ui/badge.tsx` — a real file inside my repository,
+  committed to my git history. There is no `@shadcn/badge` package in `node_modules`; nothing
+  in `package.json` points at a shadcn component. The only runtime dependencies the Badge
+  pulls in are the small, stable primitives it happens to use (`class-variance-authority`,
+  `@radix-ui/react-slot`, `clsx`, `tailwind-merge`).
+- **Who is responsible for it.** I am. The moment the file lands in `src/`, it is *my* code —
+  identical in status to a component I hand-wrote. shadcn/ui has no further claim on it and
+  cannot reach in and change it.
+- **What the upgrade path actually is.** When shadcn/ui ships an improved Badge, *nothing
+  happens to my project* until I choose to act. There is no transitive version bump, no
+  `npm update` that can rewrite my component. To adopt the new version I would re-run the add
+  command and review the diff against my file — a deliberate, reviewable, opt-in change I make
+  on my schedule. A renamed prop could only ever appear in my codebase because **I** typed it
+  in, having read the diff. The build can never break out from under me because there is no
+  upstream package with the power to break it.
+
+### 2. Why the `cn` utility exists
+
+My `JobCard` composes the card surface from several conditional class groups. The base
+includes `bg-white` (and `dark:bg-slate-900`); the **expired** branch adds `bg-slate-50`
+(and `dark:bg-slate-900/50`). Both target the **same CSS property: `background-color`.**
+
+With plain string concatenation, an expired card's class attribute ends up containing **both**
+`bg-white` and `bg-slate-50`. Tailwind generates each utility as a class of equal specificity,
+so CSS cannot use specificity to pick a winner — the one that wins is simply **whichever appears
+later in the generated stylesheet**. That order is decided by Tailwind's build, *not* by the
+order I wrote the classes in the string. So `"bg-white " + "bg-slate-50"` is unreliable: the
+card might render white *or* slate depending on how the utilities happen to be emitted, and that
+can silently change between builds.
+
+`tailwind-merge` (inside `cn`) understands that `bg-white` and `bg-slate-50` belong to the same
+conflict group and keeps **only the last one passed**, deleting the earlier one from the string
+entirely. So `cn("bg-white", isExpired && "bg-slate-50")` produces just `bg-slate-50` for an
+expired card and just `bg-white` otherwise — a single, deterministic background that does not
+depend on stylesheet source order at all. That is the difference: string concatenation emits a
+conflict and hopes; `cn` resolves the conflict before it reaches the DOM.
+
+### 3. The event handler versus `useEffect` argument
+
+Writing the `sessionStorage` call directly inside the click handler works for the case the
+teammate tested: a click selects a job and writes storage; a second click deselects and removes
+it. But the click handler is only one of several ways `selectedId` can change — and it **cannot
+handle the one that matters most: restoring state on mount.**
+
+When the user refreshes the page (or opens the URL in a new tab), there is *no click*. The
+component mounts, `selectedId` is read from storage and set programmatically — and any code path
+that updates `selectedId` *without going through the click handler* (the restore effect itself,
+a "clear selection" button in the summary panel, a future deep-link) would never write to
+storage, because the handler is the only thing that does. The handler couples persistence to
+*one specific user gesture* instead of to the *state* it is supposed to mirror.
+
+`useEffect(…, [selectedId])` binds persistence to the **value**, not the gesture. However
+`selectedId` came to change — click, keyboard, restore, programmatic clear — the effect runs and
+storage stays correct. This matters for real users because the whole point of the feature is
+that a refresh or a recovered tab brings their selection back; the event-handler approach is
+structurally incapable of doing the very thing the feature exists for.
+
+### 4. The source of truth for dark mode
+
+- **What `isDark` in `ThemeToggle` is actually used for.** Purely *presentation of the button
+  itself* — choosing the sun-vs-moon icon and the "Light"/"Dark" word, and phrasing the
+  `aria-label`. It is a local mirror so the control can describe the current mode. It drives
+  **nothing** about how the rest of the app is styled.
+- **What the true source of truth is.** The presence or absence of the **`.dark` class on the
+  `<html>` element** (`document.documentElement`). Every `dark:` utility in every component reads
+  from that one class via the `@custom-variant dark` directive in `globals.css`. The themed UI
+  responds to the DOM class, never to React state.
+- **What happens if `ThemeToggle` unmounts and remounts after the user enabled dark mode.** The
+  app stays dark — correctly — because the `.dark` class lives on `<html>`, which is *outside*
+  React's component tree and is unaffected by a component unmounting. On remount, `isDark`
+  re-initialises to its default `false`, but the mount effect immediately reads the real source
+  of truth (the persisted preference / the existing class) and corrects `isDark` back to `true`,
+  so the button's icon and label re-sync to the still-dark page. The brief reset of `isDark`
+  never reaches the screen as a theme change, because `isDark` was never what made the page dark
+  in the first place. This is exactly *why* the class — not React state — must be the source of
+  truth: state is destroyed on unmount; a class on `<html>` survives it.
+
+## Part 2 — shadcn/ui Setup — Proving It Changed
+
+`components.json` (project root), `src/lib/utils.ts` (exports `cn`) and
+`src/components/ui/badge.tsx` (exports `Badge` and `badgeVariants`) all exist, and
+`globals.css` carries `@custom-variant dark (&:is(.dark *));` to enable class-based dark mode.
+
+The function in `badge.tsx` that maps a `variant` value to a set of Tailwind classes is
+**`badgeVariants`**, built with **`cva` (`class-variance-authority`)**. In one sentence: `cva`
+takes a base class string plus a map of variant→classes and returns a function that, given props
+like `{ variant: "secondary" }`, returns the correct merged class string for that variant.
+
+## Part 3 — JobStatusBadge — Proving It Changed
+
+`src/components/JobStatusBadge.tsx` exports two pieces with one authoritative mapping each:
+
+- **`EmploymentTypeBadge`** — colour derives entirely from `employmentType` via the
+  `EMPLOYMENT_TYPE_BADGE` `Record<EmploymentType, string>` map, defined once. All four union
+  values render distinct colours: **FullTime → emerald, PartTime → sky, Contract → amber,
+  Internship → violet**. The seed data covers all four, so all four colours appear at once.
+- **`ActiveStatusBadge`** — returns `null` when `isActive` is `true`, so a still-open listing
+  renders **only** its employment-type badge with **no hidden element in the DOM**. When
+  `isActive` is `false` (the Luno DevOps listing) it renders a "No longer accepting
+  applications" badge beside the type badge.
+
+Both use the shadcn `Badge` (never a `<span>`) and `cn` for class composition; no prop is typed
+`any` or `string` where a union is correct (`employmentType: EmploymentType`).
+
+## Part 4 — Tailwind Design Pass — Proving It Changed
+
+`JobCard.tsx` and `JobList.tsx` contain **no template literals** for class composition —
+`JobCard` composes its surface entirely with `cn`. Every colour-bearing class in the card has a
+`dark:` variant (background, border, text, ring, shadow). The **selected** state is distinct in
+both modes (brand border + ring + shadow + accent rail); the **expired** state is communicated
+at the *card* level — dashed border, muted surface, reduced opacity — not only through the badge.
+`JobList`'s result count and empty state are both dark-readable.
+
+## Part 5 — useEffect Session Persistence — Proving It Changed
+
+`page.tsx` has **two separate effects** (a code comment on each explains its dependency array):
+
+1. `[]` — runs once on mount, restores `selectedId` from `sessionStorage` **only if** the stored
+   id still matches a job in the dataset (stale ids are ignored silently).
+2. `[selectedId]` — runs on every selection change; writes the id when one is selected, and
+   **removes the key entirely** when none is, so no stale value is left behind.
+
+Select a job → refresh → the same job is selected and the summary panel reappears. Deselect →
+refresh → nothing is selected and the panel is absent. DevTools → Application → Session Storage
+shows `careerhub:selectedJobId` present only while a job is selected.
+
+## Part 6 — Dark Mode Toggle — Proving It Changed
+
+`src/components/ThemeToggle.tsx` toggles the `.dark` class on `document.documentElement`, reads
+the stored preference from `localStorage` on first mount (falling back to
+`window.matchMedia("(prefers-color-scheme: dark)")` when none is stored), persists every choice,
+shows text reflecting the current mode, and carries an `aria-label` describing the *action*
+("Switch to dark mode"). It lives in the app **header** (the `Navbar`, rendered from
+`layout.tsx`) alongside the application name, and the header has light + dark classes. An inline
+boot script in `layout.tsx` applies the theme before first paint, so there is no flash. Toggling
+switches every surface — header, page background, summary panel, cards, badges, empty state;
+the choice survives refreshes and new tabs; clearing `localStorage` falls back to the OS
+preference on next load.
+
+## README Updates
+
+### 1. Component extraction rationale
+
+`JobStatusBadge` is a separate component, not inline logic in `JobCard`, because of the **single
+responsibility principle**: a card's job is to lay out a listing, not to *own the definition* of
+what colour a "Contract" badge is or how a closed listing reads. Those two visual decisions are
+their own responsibility, so they live in their own module with one authoritative mapping each.
+
+Concretely, suppose the employment-type colour scheme changes (say Contract moves from amber to
+rose):
+
+- **With the extracted component:** I edit exactly **one** line in the `EMPLOYMENT_TYPE_BADGE`
+  map in `JobStatusBadge.tsx`. Every call site — `JobCard`, and any future summary panel or
+  search result — updates automatically, because they all ask `JobStatusBadge` for the colour.
+- **Without it (inline in `JobCard`):** the colour logic would be duplicated at every place a
+  badge is shown. I'd have to find and edit each one, and the first one I missed would render
+  the old colour — the classic drift bug that single-responsibility extraction exists to
+  prevent.
+
+### 2. The `cn` utility
+
+`cn` runs two libraries in sequence (`src/lib/utils.ts`):
+
+- **`clsx`** flattens conditional inputs — strings, arrays, and objects like
+  `{ "border-dashed": !isActive }` — into one space-separated class string, dropping every falsy
+  entry. It is purely about *assembling* the string from conditions.
+- **`tailwind-merge`** then *de-conflicts* that string: when two utilities target the same CSS
+  property, it keeps only the last one.
+
+**The failure mode `tailwind-merge` prevents**, from my `JobCard`: the base classes set
+`bg-white`, and the expired branch adds `bg-slate-50` — both set `background-color`. Without
+`tailwind-merge` the element carries both classes and the winner is decided by Tailwind's
+generated stylesheet order, not my intent, so the expired card's background is unreliable. With
+it, `cn` collapses the pair to just `bg-slate-50`, giving a single deterministic background.
+
+### 3. Effect responsibilities table
+
+| Effect                  | Dependency array | Runs when                                                                 |
+| ----------------------- | ---------------- | ------------------------------------------------------------------------- |
+| Restore selection       | `[]`             | Once, immediately after the first render (mount) — never again.           |
+| Persist selection       | `[selectedId]`   | After mount and after every render in which `selectedId` changed value.   |
+| *If the two were merged* | `[selectedId]`  | The restore logic would re-run on **every** selection change, not just on mount — re-reading storage and risking overwriting the user's live choice with the persisted one. A single effect cannot be both "once on mount" *and* "on every change"; the two responsibilities need two dependency arrays. |
+
+### 4. Gate
+
+`npm run build` completes with **zero TypeScript errors and zero ESLint errors/warnings**:
+
+```
+> careerhub-frontend@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.19
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 14.6s
+   Linting and checking validity of types ...
+   Collecting page data ...
+ ✓ Generating static pages (7/7)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      19 kB         121 kB
+├ ○ /_not-found                            993 B         103 kB
+├ ○ /forgot-password                     2.59 kB         108 kB
+├ ○ /login                               3.04 kB         109 kB
+└ ○ /signup                              3.14 kB         109 kB
++ First Load JS shared by all             102 kB
+
+○  (Static)  prerendered as static content
+```
+
+`npx next lint` → `✔ No ESLint warnings or errors`.
+
+---
+
 ## What was required vs. what was added
 
 **Required (the assignment):** typed `JobListing` interface, `JobCard` (derived badge colour,

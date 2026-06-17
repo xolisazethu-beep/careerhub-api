@@ -1,117 +1,178 @@
+// =============================================================
+// src/components/Navbar.tsx
+// Dark-purple top bar + slide-out menu. Shows the CareerHub brand
+// (laptop-with-code mark), a Track applications link, a light/dark
+// theme toggle, and sign-in / account controls.
+// Needs lucide-react.
+// =============================================================
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  Menu as MenuIcon,
+  X,
+  Search,
+  Building2,
+  Users,
+  Info,
+  Mail,
+  Laptop,
+  Code2,
+  LogOut,
+  UserCircle,
+} from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/context/ToastContext";
 
-function Logo() {
-  return (
-    <Link href="/" className="flex items-center gap-2.5" aria-label="CareerHub home">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-700 text-white shadow-sm">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          className="h-5 w-5"
-          aria-hidden="true"
-        >
-          <path
-            d="M4 8.5a2 2 0 0 1 2-2h3V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5h3a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.5Z"
-            stroke="currentColor"
-            strokeWidth="1.7"
-          />
-          <path d="M4 12h16" stroke="currentColor" strokeWidth="1.7" />
-          <path d="M11 6.5h2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        </svg>
-      </span>
-      <span className="font-display text-lg font-extrabold tracking-tight text-ink">
-        Career<span className="text-brand-700">Hub</span>
-      </span>
-    </Link>
-  );
-}
+const menuItems = [
+  { label: "Find a Job", href: "/", icon: Search },
+  { label: "Companies", href: "/companies", icon: Building2 },
+  { label: "Employers and Recruiters", href: "/recruiter", icon: Users },
+  { label: "About Us", href: "/about", icon: Info },
+  { label: "Contact Us", href: "/contact", icon: Mail },
+];
 
 export default function Navbar() {
-  const { user, isReady, signOut } = useAuth();
-  const { notify } = useToast();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const router = useRouter();
 
   const handleSignOut = () => {
     signOut();
-    setMenuOpen(false);
-    notify("You have been signed out.", "info");
+    setOpen(false);
+    router.push("/login");
   };
 
-  const initials = user
-    ? user.name
-        .split(" ")
-        .map((part) => part[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    : "";
-
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur">
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Logo />
+    <>
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-violet-500/20 bg-gradient-to-r from-[#1c0f33] via-[#140a24] to-[#1c0f33] px-4 py-3 text-white">
+        {/* Brand — laptop-with-code mark + gradient wordmark */}
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
+            <Laptop className="h-5 w-5 text-white" />
+            <Code2 className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded bg-[#140a24] p-0.5 text-fuchsia-300" />
+          </span>
+          <span className="font-display text-xl font-extrabold tracking-tight">
+            <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-300 bg-clip-text text-transparent">
+              Career
+            </span>
+            <span className="text-white">Hub</span>
+          </span>
+        </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {!isReady ? (
-            <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />
-          ) : user ? (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMenuOpen((open) => !open)}
-                className="flex items-center gap-2 rounded-full border border-slate-200 py-1 pl-1 pr-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white">
-                  {initials}
-                </span>
-                <span className="hidden sm:inline">{user.name.split(" ")[0]}</span>
-              </button>
+          <Link
+            href="/applications"
+            className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
+          >
+            Track applications
+          </Link>
 
-              {menuOpen ? (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-900/10"
-                >
-                  <div className="border-b border-slate-100 px-4 py-3">
-                    <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
-                    <p className="truncate text-xs text-slate-500">{user.email}</p>
-                  </div>
+          <ThemeToggle />
+
+          {user ? (
+            <button
+              onClick={handleSignOut}
+              className="hidden items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10 sm:inline-flex"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold hover:bg-violet-600 sm:inline-flex"
+            >
+              <UserCircle className="h-4 w-4" />
+              Sign in
+            </Link>
+          )}
+
+          <button
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+            aria-label="Open menu"
+          >
+            <MenuIcon className="h-5 w-5" />
+            Menu
+          </button>
+        </div>
+      </header>
+
+      {/* Slide-out menu */}
+      {open && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setOpen(false)}
+          />
+          <nav className="absolute right-0 top-0 h-full w-full max-w-md bg-white text-slate-800 shadow-xl dark:bg-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between bg-[#2b3543] px-5 py-4 text-white">
+              <span className="text-lg font-semibold">Menu</span>
+              <button onClick={() => setOpen(false)} aria-label="Close menu">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Account summary */}
+            <div className="border-b border-slate-100 px-5 py-4 text-sm dark:border-slate-800">
+              {user ? (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <UserCircle className="h-5 w-5 text-brand-600" />
+                    <span className="truncate">{user.name || user.email}</span>
+                  </span>
                   <button
-                    type="button"
                     onClick={handleSignOut}
-                    className="block w-full px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
-                    role="menuitem"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
                   >
-                    Sign out
+                    <LogOut className="h-3.5 w-3.5" /> Sign out
                   </button>
                 </div>
-              ) : null}
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex items-center gap-2 font-semibold text-brand-700 hover:underline dark:text-brand-400"
+                >
+                  <UserCircle className="h-5 w-5" /> Sign in or create an account
+                </Link>
+              )}
             </div>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition hover:text-brand-700"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
-              >
-                Create account
-              </Link>
-            </>
-          )}
+
+            <ul>
+              {menuItems.map(({ label, href, icon: Icon }) => (
+                <li
+                  key={label}
+                  className="border-b border-slate-100 dark:border-slate-800"
+                >
+                  <Link
+                    href={href}
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    <Icon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                    <span>{label}</span>
+                  </Link>
+                </li>
+              ))}
+              <li className="border-b border-slate-100 dark:border-slate-800">
+                <Link
+                  href="/applications"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
+                >
+                  <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                  <span>Track applications</span>
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
-      </nav>
-    </header>
+      )}
+    </>
   );
 }

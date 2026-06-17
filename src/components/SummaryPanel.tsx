@@ -1,7 +1,7 @@
 "use client";
 
 import type { JobListing } from "@/types";
-import { EMPLOYMENT_TYPE_STYLES } from "@/lib/employmentType";
+import { EMPLOYMENT_TYPE_LABELS } from "@/lib/employmentType";
 import {
   formatClosingDate,
   formatRelativeDate,
@@ -32,16 +32,16 @@ function formatExperience(years: number): string {
 }
 
 export default function SummaryPanel({ job, onClear, onApply }: SummaryPanelProps) {
-  const typeStyle = EMPLOYMENT_TYPE_STYLES[job.employmentType];
+  const typeLabel = EMPLOYMENT_TYPE_LABELS[job.employmentType];
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-brand-800 shadow-lg shadow-brand-900/20">
+    <div className="overflow-hidden rounded-2xl bg-brand-800 shadow-lg shadow-brand-900/20 dark:bg-brand-900 dark:ring-1 dark:ring-white/10">
       {/* Top hero — title, meta, stats, actions. */}
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white">
-              {typeStyle.label}
+              {typeLabel}
             </span>
             {!job.isActive ? (
               <span className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-brand-100">
@@ -97,20 +97,20 @@ export default function SummaryPanel({ job, onClear, onApply }: SummaryPanelProp
       </div>
 
       {/* Detail body — description, what you'll do, requirements, skills. */}
-      <div className="border-t border-white/10 bg-white px-6 py-6 text-ink sm:px-8">
+      <div className="border-t border-white/10 bg-white px-6 py-6 text-ink dark:bg-slate-900 dark:text-slate-100 sm:px-8">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+            <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800 dark:text-brand-400">
               About the role
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-700">
+            <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
               {job.description}
             </p>
 
-            <h3 className="mt-6 font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+            <h3 className="mt-6 font-display text-sm font-bold uppercase tracking-wide text-brand-800 dark:text-brand-400">
               What you&apos;ll be doing
             </h3>
-            <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+            <ul className="mt-2 space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
               {job.responsibilities.map((item) => (
                 <li key={item} className="flex gap-2">
                   <span
@@ -125,21 +125,21 @@ export default function SummaryPanel({ job, onClear, onApply }: SummaryPanelProp
 
           <aside className="space-y-5">
             <div>
-              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800 dark:text-brand-400">
                 Minimum requirements
               </h3>
               <dl className="mt-2 space-y-2 text-sm">
                 <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Qualification
                   </dt>
-                  <dd className="mt-0.5 text-slate-800">{job.minimumQualification}</dd>
+                  <dd className="mt-0.5 text-slate-800 dark:text-slate-200">{job.minimumQualification}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Experience
                   </dt>
-                  <dd className="mt-0.5 text-slate-800">
+                  <dd className="mt-0.5 text-slate-800 dark:text-slate-200">
                     {formatExperience(job.minimumExperienceYears)}
                   </dd>
                 </div>
@@ -147,14 +147,14 @@ export default function SummaryPanel({ job, onClear, onApply }: SummaryPanelProp
             </div>
 
             <div>
-              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800">
+              <h3 className="font-display text-sm font-bold uppercase tracking-wide text-brand-800 dark:text-brand-400">
                 Tools &amp; skills
               </h3>
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {job.skills.map((skill) => (
                   <li
                     key={skill}
-                    className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-inset ring-brand-100"
+                    className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:ring-brand-500/20"
                   >
                     {skill}
                   </li>

@@ -1,26 +1,114 @@
 @import "tailwindcss";
 
 /*
+  Class-based dark mode.
+
+  This directive is what makes every `dark:` utility in the app respond to a
+  `.dark` class on an ancestor (we put it on <html>). Without this line Tailwind
+  v4 has no `dark` variant wired up to a class, so the ThemeToggle would flip the
+  class on <html> and *nothing* would visually change.
+*/
+@custom-variant dark (&:is(.dark *));
+
+/*
   CareerHub design tokens.
   Brand: deep forest-emerald (trust, growth) with a warm amber accent.
   Typography: Plus Jakarta Sans for display, Inter for body — set in layout.tsx.
 */
 @theme {
-  --color-brand-50: #ecfdf5;
-  --color-brand-100: #d1fae5;
-  --color-brand-500: #10b981;
-  --color-brand-600: #059669;
-  --color-brand-700: #047857;
-  --color-brand-800: #065f46;
-  --color-brand-900: #064e3b;
+  /* Brand: violet/purple — the CareerHub accent across light and dark. */
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed;
+  --color-brand-700: #6d28d9;
+  --color-brand-800: #5b21b6;
+  --color-brand-900: #4c1d95;
 
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  --color-accent-500: #d946ef;
+  --color-accent-600: #c026d3;
 
-  --color-ink: #0b1120;
+  /* Dark "ink" surfaces lean purple, not navy. */
+  --color-ink: #140a24;
+  --color-surface: #1d1235;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-jakarta), var(--font-inter), ui-sans-serif, sans-serif;
+}
+
+/*
+  shadcn/ui theme variables. The Badge component (and any future shadcn
+  component) references semantic tokens — bg-primary, text-primary-foreground,
+  ring-ring, border, bg-destructive, etc. These map those tokens to concrete
+  colours, with a separate `.dark` block that the class-based dark mode swaps in.
+*/
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
 
 html {
@@ -32,6 +120,13 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Dark surface for the document itself — a deep purple-black. Every component
+   then layers its own `dark:` utilities on top of this base. */
+.dark body {
+  background-color: #0f0a1e;
+  color: #e9e5f5;
 }
 
 /* Respect users who prefer reduced motion. */
