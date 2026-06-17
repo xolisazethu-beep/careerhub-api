@@ -262,7 +262,7 @@ appears and disappears (truly removed from the DOM).
 **Added beyond the brief:** authentication (sign in, sign up, forgot password with a mock
 provider whose public shape matches a future real API), a search box, employment-type filter
 chips, sorting, "open roles only" toggle, save / bookmark with auth gating, an apply flow with a
-confirmation modal, toast notifications, a sticky auth-aware navbar with a user menu, a footer,
+confirmation modal, toast notifications, descrption of the role like minimum academic requerements, experience and what you will be doing on the job and tools that you should know, a sticky auth-aware navbar with a user menu, a footer,
 self-hosted fonts, full keyboard operability, visible focus rings, and `prefers-reduced-motion`
 support. See `FEATURES.pdf` for a full breakdown.
 
