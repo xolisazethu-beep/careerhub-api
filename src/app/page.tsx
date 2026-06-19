@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import JobList from "@/components/JobList";
+import { JobListSkeleton } from "@/components/JobCardSkeleton";
 import SummaryPanel from "@/components/SummaryPanel";
 import FilterBar, { type SortOption } from "@/components/FilterBar";
-import { JOBS } from "@/lib/seed-jobs";
+import { fetchJobs } from "@/lib/api";
 import {
   getLatestApplication,
   type Application,
@@ -22,6 +24,21 @@ export default function Home() {
   const { user } = useAuth();
   const { notify } = useToast();
   const router = useRouter();
+
+  // Server state lives entirely in TanStack Query now. The hardcoded array is
+  // gone — jobs arrive over HTTP via `fetchJobs`. The ["jobs"] key is the
+  // cache identity; any other component asking for the same key shares this
+  // single fetch and its cached result.
+  const {
+    data: jobs,
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["jobs"],
+    queryFn: fetchJobs,
+  });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -43,7 +60,7 @@ export default function Home() {
 
   const visibleJobs = useMemo(() => {
     const term = query.trim().toLowerCase();
-    const filtered = JOBS.filter((job) => {
+    const filtered = (jobs ?? []).filter((job) => {
       if (typeFilter !== "All" && job.employmentType !== typeFilter) return false;
       if (activeOnly && !job.isActive) return false;
       if (
@@ -66,17 +83,19 @@ export default function Home() {
       sorted.sort((a, b) => a.salaryMin - b.salaryMin);
     }
     return sorted;
-  }, [query, typeFilter, sort, activeOnly]);
+  }, [jobs, query, typeFilter, sort, activeOnly]);
 
   // EFFECT 1 — restore on mount only.
   // Empty dependency array `[]`: reading sessionStorage is a one-time startup
   // side effect that must run exactly once, after the first render, never again.
-  // We restore the stored id ONLY if it still matches a job in the current
-  // dataset; a stale id (e.g. a listing that has since been removed) is ignored
-  // silently so the user never lands on a selection that no longer exists.
+  // The old validation `jobs.some((j) => j.id === stored)` is GONE: on mount
+  // `jobs` is still undefined (the query is pending), so the guard could never
+  // pass. We now restore the stored id unconditionally. If it no longer matches
+  // any loaded job, `selectedJob` simply resolves to `null` once data arrives
+  // and nothing renders in the summary panel — graceful degradation, no error.
   useEffect(() => {
     const stored = sessionStorage.getItem(SELECTED_JOB_KEY);
-    if (stored && JOBS.some((job) => job.id === stored)) {
+    if (stored) {
       setSelectedId(stored);
     }
   }, []);
@@ -96,8 +115,8 @@ export default function Home() {
   }, [selectedId]);
 
   const selectedJob = useMemo(
-    () => JOBS.find((job) => job.id === selectedId) ?? null,
-    [selectedId],
+    () => (jobs ?? []).find((job) => job.id === selectedId) ?? null,
+    [jobs, selectedId],
   );
 
   // Clicking the already-selected card deselects it.
@@ -141,7 +160,8 @@ export default function Home() {
           Find your next role in South Africa
         </h1>
         <p className="mt-2 max-w-2xl text-slate-600 dark:text-slate-400">
-          Browse {JOBS.length} curated openings from leading local employers.
+          Browse {jobs ? `${jobs.length} ` : ""}curated openings from leading
+          local employers.
           {user ? " Save the ones you like and apply in a click." : " Sign in to save roles and apply."}
         </p>
       </section>
@@ -168,39 +188,71 @@ export default function Home() {
         </Link>
       )}
 
-      <div className="mb-6">
-        <FilterBar
-          query={query}
-          onQueryChange={setQuery}
-          typeFilter={typeFilter}
-          onTypeFilterChange={setTypeFilter}
-          sort={sort}
-          onSortChange={setSort}
-          activeOnly={activeOnly}
-          onActiveOnlyChange={setActiveOnly}
-        />
-      </div>
+      {/* Three mutually exclusive query states. */}
+      {isPending ? (
+        // PENDING — only the skeleton grid. Nothing else renders while the
+        // first fetch is in flight.
+        <JobListSkeleton />
+      ) : isError ? (
+        // ERROR — surface the real message and offer a retry. `refetch()` re-runs
+        // the same query; on success the component re-renders into the grid.
+        <div
+          role="alert"
+          className="rounded-2xl border border-red-200 bg-red-50 px-6 py-10 text-center dark:border-red-900/50 dark:bg-red-950/30"
+        >
+          <h3 className="font-display text-lg font-bold text-red-800 dark:text-red-300">
+            We couldn&apos;t load the job listings
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-red-700 dark:text-red-400">
+            {error.message}
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-5 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-500 dark:focus-visible:ring-offset-slate-950"
+          >
+            Try again
+          </button>
+        </div>
+      ) : (
+        // SUCCESS — `jobs` is defined here. Filter bar, optional summary panel
+        // and the job grid all render against live data.
+        <>
+          <div className="mb-6">
+            <FilterBar
+              query={query}
+              onQueryChange={setQuery}
+              typeFilter={typeFilter}
+              onTypeFilterChange={setTypeFilter}
+              sort={sort}
+              onSortChange={setSort}
+              activeOnly={activeOnly}
+              onActiveOnlyChange={setActiveOnly}
+            />
+          </div>
 
-      {/* Summary panel renders ONLY when a job is selected — otherwise it is
-          absent from the DOM entirely (not hidden, not an empty node). */}
-      {selectedJob ? (
-        <div className="mb-6">
-          <SummaryPanel
-            job={selectedJob}
-            onClear={() => setSelectedId(null)}
+          {/* Summary panel renders ONLY when a job is selected — otherwise it is
+              absent from the DOM entirely (not hidden, not an empty node). */}
+          {selectedJob ? (
+            <div className="mb-6">
+              <SummaryPanel
+                job={selectedJob}
+                onClear={() => setSelectedId(null)}
+                onApply={handleApply}
+              />
+            </div>
+          ) : null}
+
+          <JobList
+            jobs={visibleJobs}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            savedIds={savedIds}
+            onToggleSave={handleToggleSave}
             onApply={handleApply}
           />
-        </div>
-      ) : null}
-
-      <JobList
-        jobs={visibleJobs}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-        savedIds={savedIds}
-        onToggleSave={handleToggleSave}
-        onApply={handleApply}
-      />
+        </>
+      )}
     </div>
   );
 }

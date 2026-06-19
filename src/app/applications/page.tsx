@@ -9,14 +9,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Inbox } from "lucide-react";
+import { Inbox, Trash2 } from "lucide-react";
 import {
   getApplications,
   getApplicationsByEmail,
+  withdrawApplication,
   type Application,
   type ApplicationStatus,
 } from "@/lib/careerhub-store";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 // The happy-path stages, in order. "Rejected" is deliberately not here — it is
 // a terminal state shown on its own, not a step on this track.
@@ -40,6 +43,7 @@ const PILL_CLASS: Record<ApplicationStatus, string> = {
 
 export default function ApplicationsPage() {
   const { user } = useAuth();
+  const { notify } = useToast();
 
   // localStorage is client-only, so we read after mount to avoid any
   // server/client hydration mismatch. `ready` distinguishes "still loading"
@@ -47,10 +51,26 @@ export default function ApplicationsPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [ready, setReady] = useState(false);
 
+  // The application the user is about to withdraw. While this is set, the
+  // confirmation dialog is shown. `null` means no dialog.
+  const [pendingWithdraw, setPendingWithdraw] = useState<Application | null>(
+    null,
+  );
+
   useEffect(() => {
     setApps(user ? getApplicationsByEmail(user.email) : getApplications());
     setReady(true);
   }, [user]);
+
+  // Runs only after the user confirms in the dialog. We remove it from storage,
+  // drop it from the on-screen list, close the dialog, and confirm with a toast.
+  function confirmWithdraw() {
+    if (!pendingWithdraw) return;
+    withdrawApplication(pendingWithdraw.id);
+    setApps((current) => current.filter((a) => a.id !== pendingWithdraw.id));
+    setPendingWithdraw(null);
+    notify("Your application has been withdrawn.", "success");
+  }
 
   const latest = apps[0] ?? null;
 
@@ -119,10 +139,40 @@ export default function ApplicationsPage() {
               ) : (
                 <ProgressTracker status={app.status} />
               )}
+
+              {/* Withdraw — opens the confirmation dialog. It only sets the
+                  "pending" application; nothing is deleted until the user
+                  confirms. */}
+              <div className="mt-6 flex justify-end border-t border-slate-100 pt-4 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setPendingWithdraw(app)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Withdraw application
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       </div>
+
+      {/* One dialog for the whole page. It is driven by `pendingWithdraw`:
+          shown when an application is pending, hidden otherwise. */}
+      <ConfirmDialog
+        open={pendingWithdraw !== null}
+        title="Withdraw your application?"
+        message={
+          pendingWithdraw
+            ? `You are about to withdraw your application for ${pendingWithdraw.jobTitle} at ${pendingWithdraw.company}. Are you sure? This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Yes, withdraw"
+        cancelLabel="Cancel"
+        onConfirm={confirmWithdraw}
+        onCancel={() => setPendingWithdraw(null)}
+      />
     </main>
   );
 }

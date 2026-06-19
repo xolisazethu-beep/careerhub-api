@@ -64,12 +64,16 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            href="/applications"
-            className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
-          >
-            Track applications
-          </Link>
+          {/* The "Track applications" link is only meaningful once you have an
+              account, so it is hidden entirely for signed-out visitors. */}
+          {user && (
+            <Link
+              href="/applications"
+              className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
+            >
+              Track applications
+            </Link>
+          )}
 
           <ThemeToggle />
 
@@ -159,16 +163,20 @@ export default function Navbar() {
                   </Link>
                 </li>
               ))}
-              <li className="border-b border-slate-100 dark:border-slate-800">
-                <Link
-                  href="/applications"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
-                >
-                  <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-                  <span>Track applications</span>
-                </Link>
-              </li>
+              {/* Same rule inside the slide-out menu: only signed-in users see
+                  the "Track applications" entry. */}
+              {user && (
+                <li className="border-b border-slate-100 dark:border-slate-800">
+                  <Link
+                    href="/applications"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
+                  >
+                    <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                    <span>Track applications</span>
+                  </Link>
+                </li>
+              )}
             </ul>
           </nav>
         </div>

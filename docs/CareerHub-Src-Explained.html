@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CareerHub — The src Folder Explained (Beginner's Guide)</title>
+<style>
+  :root{
+    --ink:#140a24; --brand:#6d28d9; --brand2:#a855f7; --muted:#475569;
+    --line:#e2e8f0; --bg:#ffffff; --code-bg:#f8f7fb; --accent:#7c3aed;
+  }
+  *{box-sizing:border-box;}
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+    color:#1e1b2e; line-height:1.55; margin:0; font-size:12px;
+  }
+  .page{ padding:46px 54px; }
+  .break{ page-break-before:always; }
+  h1,h2,h3,h4{ color:var(--ink); line-height:1.2; }
+  h1{ font-size:30px; margin:0 0 6px; }
+  h2{ font-size:23px; margin:34px 0 4px; border-bottom:3px solid var(--brand); padding-bottom:6px;}
+  h3{ font-size:16px; margin:22px 0 4px; color:var(--brand); }
+  h4{ font-size:13.5px; margin:16px 0 2px; }
+  p{ margin:8px 0; }
+  code{ font-family:"Consolas","Courier New",monospace; background:var(--code-bg);
+        padding:1px 5px; border-radius:4px; font-size:11px; color:#6d28d9; }
+  pre{ background:#1c0f33; color:#f4f1fb; padding:14px 16px; border-radius:10px;
+       overflow:auto; font-size:10.5px; line-height:1.5; margin:10px 0;
+       font-family:"Consolas","Courier New",monospace; }
+  pre .c{ color:#b39ddb; } /* comment */
+  pre .k{ color:#ff9ad5; } /* keyword */
+  pre .s{ color:#a5f3a0; } /* string */
+  .lead{ font-size:13px; color:var(--muted); }
+  .chip{ display:inline-block; background:var(--brand); color:#fff; font-size:10px;
+         font-weight:700; padding:3px 10px; border-radius:999px; letter-spacing:.4px;}
+  .callout{ border-left:4px solid var(--brand2); background:#faf5ff; padding:10px 14px;
+            border-radius:0 8px 8px 0; margin:12px 0; }
+  .callout.tip{ border-left-color:#10b981; background:#ecfdf5; }
+  .callout.warn{ border-left-color:#f59e0b; background:#fffbeb; }
+  .fig{ border:1px solid var(--line); border-radius:12px; padding:14px; margin:14px 0;
+        background:#fcfcfe; }
+  .figcap{ font-size:10.5px; color:var(--muted); margin-top:8px; text-align:center; }
+  .figcap b{ color:var(--accent); }
+  .shot{ display:block; width:100%; border:1px solid var(--line); border-radius:10px;
+         box-shadow:0 6px 18px rgba(20,10,36,.10); }
+  .shot.narrow{ max-width:330px; margin:0 auto; }
+  .shot.mid{ max-width:560px; margin:0 auto; }
+  .realtag{ display:inline-block; background:#10b981; color:#fff; font-size:9px;
+            font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.3px;
+            vertical-align:middle; margin-left:6px; }
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:11px; }
+  th,td{ border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top;}
+  th{ background:#f3effb; color:var(--ink); }
+  .q{ font-weight:700; color:var(--ink); margin:16px 0 4px; }
+  .q::before{ content:"Q"; background:var(--brand); color:#fff; border-radius:6px;
+              padding:1px 7px; margin-right:8px; font-size:11px; }
+  .a{ margin:0 0 6px; }
+  .a::before{ content:"A"; background:#10b981; color:#fff; border-radius:6px;
+              padding:1px 8px; margin-right:8px; font-size:11px; font-weight:700;}
+  .toc a{ color:var(--ink); text-decoration:none; }
+  .toc li{ margin:5px 0; }
+  .cover{ height:980px; display:flex; flex-direction:column; justify-content:center;
+          background:linear-gradient(160deg,#1c0f33 0%,#140a24 55%,#2b1055 100%);
+          color:#fff; padding:0 70px; }
+  .cover h1{ color:#fff; font-size:46px; line-height:1.1; }
+  .cover .sub{ color:#d6bcfa; font-size:18px; margin-top:14px; }
+  .cover .meta{ margin-top:60px; color:#b39ddb; font-size:13px; }
+  .grad{ background:linear-gradient(90deg,#c4b5fd,#f0abfc,#c4b5fd);
+         -webkit-background-clip:text; background-clip:text; color:transparent; }
+  ul.tight{ margin:6px 0; } ul.tight li{ margin:3px 0; }
+  .small{ font-size:10.5px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="chip" style="background:#7c3aed;width:max-content;">BEGINNER FRIENDLY GUIDE</div>
+  <h1>Inside <span class="grad">CareerHub</span><br>The <code style="color:#f0abfc;background:transparent;font-size:40px;">src</code> Folder Explained</h1>
+  <div class="sub">How the Front-End is built — folder by folder, code by code, with pictures of what each part draws on screen and how it talks to a C# back-end.</div>
+  <div class="meta">
+    Next.js 15 · React 19 · TypeScript · Tailwind CSS<br>
+    Chapters 0–7 · Two Summaries · 40 Interview Questions &amp; Answers<br>
+    With real screenshots captured from the running app · 2026
+  </div>
+</div>
+
+<!-- ============ TOC ============ -->
+<div class="page break">
+  <h1>Table of Contents</h1>
+  <ul class="toc">
+    <li><b>Chapter 0 —</b> <code>src</code>: the parent folder (the whole front-end lives here)</li>
+    <li><b>Chapter 1 —</b> <code>app</code>: the pages &amp; routes the user actually visits</li>
+    <li><b>Chapter 2 —</b> <code>components</code>: the reusable building blocks of the screen</li>
+    <li><b>Chapter 3 —</b> <code>context</code>: shared memory (who is logged in, pop-up messages)</li>
+    <li><b>Chapter 4 —</b> <code>fonts</code>: the letters and typefaces</li>
+    <li><b>Chapter 5 —</b> <code>lib</code>: the "engine room" — helpers, data &amp; formatting</li>
+    <li><b>Chapter 6 —</b> <code>types</code>: the agreed shape of the data (the contract)</li>
+    <li><b>Chapter 7 —</b> Front-End connecting to a C# Back-End</li>
+    <li><b>Summary — Part 1</b> (the front-end folders, Chapters 0–6)</li>
+    <li><b>Summary — Part 2</b> (connecting to the back-end, Chapter 7)</li>
+    <li><b>Interview Questions &amp; Answers</b> — 5 per chapter (40 total)</li>
+  </ul>
+
+  <div class="callout">
+    <b>How to read this guide.</b> You do not need to be a programmer. Think of the website as a
+    house. The <code>src</code> folder is the whole house. Each sub-folder is a different
+    <i>room</i> with a job to do. We will walk room by room, look at the real code that lives
+    there, and — most importantly — show a picture of what that code <b>draws on the screen</b>
+    and name the exact file responsible for it.
+  </div>
+
+  <div class="callout tip">
+    <b>One word you will see a lot: "Front-End".</b> The Front-End (also called the UI, or User
+    Interface) is everything the user sees and clicks in their browser — buttons, text, colours,
+    cards. The <b>Back-End</b> is the hidden computer (the server) that stores the real data.
+    CareerHub's back-end is written in <b>C#</b>; Chapter 7 explains how the two talk.
+  </div>
+</div>
+
+<!-- ============ CHAPTER 0: src ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 0</div>
+  <h1>The <code>src</code> Folder — the whole front-end</h1>
+  <p class="lead"><code>src</code> is short for <b>source</b> — the source code of the app.
+  Everything a developer writes lives inside it. When the app is built, the tools read
+  <code>src</code> and turn it into the website you see in the browser.</p>
+
+  <h3>The map of the house</h3>
+  <div class="fig">
+    <svg viewBox="0 0 760 360" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Consolas,monospace">
+      <rect x="0" y="0" width="760" height="360" fill="#fcfcfe"/>
+      <rect x="20" y="18" width="170" height="44" rx="9" fill="#1c0f33"/>
+      <text x="105" y="45" fill="#f0abfc" font-size="20" text-anchor="middle" font-weight="bold">src/</text>
+      <text x="105" y="58" fill="#b39ddb" font-size="9" text-anchor="middle">(the whole front-end)</text>
+
+      <!-- connectors -->
+      <g stroke="#a855f7" stroke-width="2" fill="none">
+        <path d="M105 62 L105 90 L300 90"/>
+        <path d="M105 90 L105 135 L300 135"/>
+        <path d="M105 135 L105 180 L300 180"/>
+        <path d="M105 180 L105 225 L300 225"/>
+        <path d="M105 225 L105 270 L300 270"/>
+        <path d="M105 270 L105 315 L300 315"/>
+      </g>
+
+      <g font-size="13">
+        <rect x="300" y="74"  width="440" height="34" rx="8" fill="#ede9fe" stroke="#a855f7"/>
+        <text x="312" y="96"><tspan fill="#6d28d9" font-weight="bold">app/</tspan>      <tspan fill="#475569">— the pages & routes (Chapter 1)</tspan></text>
+
+        <rect x="300" y="119" width="440" height="34" rx="8" fill="#ede9fe" stroke="#a855f7"/>
+        <text x="312" y="141"><tspan fill="#6d28d9" font-weight="bold">components/</tspan> <tspan fill="#475569">— reusable screen blocks (Chapter 2)</tspan></text>
+
+        <rect x="300" y="164" width="440" height="34" rx="8" fill="#ede9fe" stroke="#a855f7"/>
+        <text x="312" y="186"><tspan fill="#6d28d9" font-weight="bold">context/</tspan>  <tspan fill="#475569">— shared memory: login, toasts (Chapter 3)</tspan></text>
+
+        <rect x="300" y="209" width="440" height="34" rx="8" fill="#ede9fe" stroke="#a855f7"/>
+        <text x="312" y="231"><tspan fill="#6d28d9" font-weight="bold">fonts/</tspan>    <tspan fill="#475569">— the typefaces (Chapter 4)</tspan></text>
+
+        <rect x="300" y="254" width="440" height="34" rx="8" fill="#ede9fe" stroke="#a855f7"/>
+        <text x="312" y="276"><tspan fill="#6d28d9" font-weight="bold">lib/</tspan>      <tspan fill="#475569">— helpers, data, formatting (Chapter 5)</tspan></text>
+
+        <rect x="300" y="299" width="440" height="34" rx="8" fill="#ede9fe" stroke="#a855f7"/>
+        <text x="312" y="321"><tspan fill="#6d28d9" font-weight="bold">types/</tspan>    <tspan fill="#475569">— the data contract (Chapter 6)</tspan></text>
+      </g>
+    </svg>
+    <div class="figcap">Figure 0.1 — The six rooms inside <b>src</b>. Each chapter opens one room.</div>
+  </div>
+
+  <h3>Why split it into folders at all?</h3>
+  <p>Imagine one giant file with every button, every colour and every rule mixed together.
+  Changing one thing would risk breaking everything. Folders keep <b>related things together</b>
+  and <b>unrelated things apart</b>. A new developer can guess where something lives: a page? look
+  in <code>app</code>. A button? <code>components</code>. The colour of a salary label? <code>lib/format.ts</code>.</p>
+
+  <table>
+    <tr><th>Folder</th><th>Plain-English job</th><th>Real example from CareerHub</th></tr>
+    <tr><td><code>app</code></td><td>The actual web pages people open</td><td>The home page listing jobs</td></tr>
+    <tr><td><code>components</code></td><td>Pieces reused on many pages</td><td>The job card, the navbar</td></tr>
+    <tr><td><code>context</code></td><td>Information shared everywhere</td><td>"Who is logged in?"</td></tr>
+    <tr><td><code>fonts</code></td><td>The letter shapes</td><td>Inter &amp; Plus Jakarta Sans</td></tr>
+    <tr><td><code>lib</code></td><td>Behind-the-scenes logic</td><td>Turning <code>45000</code> into <code>R45 000</code></td></tr>
+    <tr><td><code>types</code></td><td>The shape data must follow</td><td>What a "Job" must contain</td></tr>
+  </table>
+
+  <div class="callout tip"><b>Takeaway:</b> <code>src</code> is not code by itself — it is the
+  <i>container</i>. Its real value is the organisation. Good organisation is what lets a team
+  build a large app without chaos.</div>
+</div>
+
+<!-- ============ CHAPTER 1: app ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 1</div>
+  <h1><code>app</code> — the pages the user visits</h1>
+  <p class="lead">In Next.js, the <code>app</code> folder is special: <b>every folder inside it
+  becomes a web address (a URL)</b>, and a file named <code>page.tsx</code> is the screen shown at
+  that address. This is called <b>file-based routing</b> — the folder structure <i>is</i> the site map.</p>
+
+  <h3>The site map, built from folders</h3>
+  <table>
+    <tr><th>Folder / file in <code>app</code></th><th>Web address</th><th>What the user sees</th></tr>
+    <tr><td><code>page.tsx</code></td><td><code>/</code></td><td>Home — the job listings</td></tr>
+    <tr><td><code>login/page.tsx</code></td><td><code>/login</code></td><td>Sign-in screen</td></tr>
+    <tr><td><code>signup/page.tsx</code></td><td><code>/signup</code></td><td>Create account</td></tr>
+    <tr><td><code>apply/[jobId]/page.tsx</code></td><td><code>/apply/123</code></td><td>Apply to one job</td></tr>
+    <tr><td><code>applications/page.tsx</code></td><td><code>/applications</code></td><td>Track your applications</td></tr>
+    <tr><td><code>recruiter/page.tsx</code></td><td><code>/recruiter</code></td><td>Recruiter dashboard</td></tr>
+    <tr><td><code>about</code>, <code>contact</code>, <code>forgot-password</code></td><td><code>/about</code> …</td><td>Supporting pages</td></tr>
+    <tr><td><code>api/jobs/route.ts</code></td><td><code>/api/jobs</code></td><td>(not a page — a data endpoint, see Ch.7)</td></tr>
+  </table>
+  <p class="small">The square brackets in <code>[jobId]</code> mean "this part of the address
+  changes" — <code>/apply/abc</code> and <code>/apply/xyz</code> both load the same page with a
+  different job id.</p>
+
+  <h3>The most important file: <code>layout.tsx</code></h3>
+  <p><code>layout.tsx</code> is the <b>frame</b> wrapped around <i>every</i> page. It is where the
+  navbar at the top and the footer at the bottom are placed once, so they appear on all screens.
+  It also loads the fonts and switches the whole site into dark mode before the page even paints.</p>
+
+<pre><span class="c">// src/app/layout.tsx — the frame every page lives inside</span>
+<span class="k">export default function</span> RootLayout({ children }) {
+  <span class="k">return</span> (
+    &lt;html lang=<span class="s">"en"</span>&gt;
+      &lt;body&gt;
+        &lt;Providers&gt;                <span class="c">{/* gives pages access to server data */}</span>
+          &lt;AuthProvider&gt;           <span class="c">{/* remembers who is logged in (Ch.3) */}</span>
+            &lt;ToastProvider&gt;        <span class="c">{/* enables pop-up messages (Ch.3)   */}</span>
+              &lt;Navbar /&gt;            <span class="c">{/* the purple top bar (Ch.2)        */}</span>
+              &lt;main&gt;{children}&lt;/main&gt;  <span class="c">{/* &lt;-- the current page slots in here */}</span>
+              &lt;Footer /&gt;            <span class="c">{/* the bottom bar                   */}</span>
+            &lt;/ToastProvider&gt;
+          &lt;/AuthProvider&gt;
+        &lt;/Providers&gt;
+      &lt;/body&gt;
+    &lt;/html&gt;
+  );
+}</pre>
+  <p class="small"><code>{children}</code> is the slot where each individual page (home, login,
+  apply…) gets dropped in. Everything around it stays constant.</p>
+
+  <h3>What the home page draws</h3>
+  <p>The home page (<code>src/app/page.tsx</code>) asks for the list of jobs, lets the user
+  search/filter/sort them, and shows them as a grid of cards. Here is a picture of the result:</p>
+
+  <div class="fig">
+    <img class="shot" src="shots/home-light.png" alt="CareerHub home page">
+    <div class="figcap">Figure 1.1 <span class="realtag">REAL SCREENSHOT</span> — The live home page. Drawn by
+    <b>src/app/page.tsx</b>, using the <b>FilterBar</b> and <b>JobCard</b> components. Note the
+    dimmed, dashed "DevOps Engineer" card at the bottom — that is a closed listing
+    (<code>isActive: false</code>).</div>
+  </div>
+
+  <h3>The same page in dark mode</h3>
+  <p>One click of the theme toggle re-colours the entire interface. Nothing in the page code
+  changes — the styling reacts to a single <code>.dark</code> class on the page (see Chapter 2's
+  <code>ThemeToggle</code>).</p>
+  <div class="fig">
+    <img class="shot" src="shots/home-dark.png" alt="CareerHub home page in dark mode">
+    <div class="figcap">Figure 1.2 <span class="realtag">REAL SCREENSHOT</span> — The identical page,
+    dark theme. Same <b>page.tsx</b>, same components — only the colours respond.</div>
+  </div>
+
+  <h3>The three states of the page (a key beginner idea)</h3>
+  <p>When the page asks for jobs, one of three things is true at any moment. Good UI shows the
+  right thing for each:</p>
+<pre><span class="c">// src/app/page.tsx — pick exactly one of three views</span>
+{isPending  ? &lt;JobListSkeleton /&gt;        <span class="c">// 1. LOADING  — grey placeholder cards</span>
+ : isError   ? &lt;ErrorBox onRetry={refetch} /&gt; <span class="c">// 2. FAILED — message + "Try again"</span>
+             : &lt;JobList jobs={visibleJobs} /&gt; <span class="c">// 3. SUCCESS — the real cards</span>}</pre>
+  <div class="callout"><b>Responsible code:</b> the loading skeleton is
+  <code>components/JobCardSkeleton.tsx</code>; the data request lives in
+  <code>lib/api.ts</code> (Chapter 5); the cards are <code>components/JobList.tsx</code> +
+  <code>JobCard.tsx</code> (Chapter 2).</div>
+
+  <h3>Clicking a card opens the summary panel</h3>
+  <p>When the user selects a job, <code>page.tsx</code> records its id in state and renders a
+  detail panel above the grid — full description, responsibilities, qualifications and skills.
+  Click the same card again to deselect and the panel disappears from the page entirely.</p>
+  <div class="fig">
+    <img class="shot" src="shots/home-selected.png" alt="Home page with a job selected and summary panel open">
+    <div class="figcap">Figure 1.3 <span class="realtag">REAL SCREENSHOT</span> — A selected card
+    (highlighted purple) and the <b>SummaryPanel</b> it opens. The panel only exists in the page
+    while a job is selected.</div>
+  </div>
+
+  <h3>State: the page's short-term memory</h3>
+  <p>"State" is data that can change while you use the page, causing the screen to redraw. On the
+  home page, the search text, the chosen filter, and which card is selected are all state:</p>
+<pre><span class="k">const</span> [query, setQuery] = useState(<span class="s">""</span>);            <span class="c">// what's typed in search</span>
+<span class="k">const</span> [selectedId, setSelectedId] = useState(null); <span class="c">// which card is clicked</span></pre>
+  <p>When you type, <code>setQuery</code> updates the memory and React redraws the list to match —
+  instantly, with no page reload. That responsiveness is the whole point of a modern front-end.</p>
+</div>
+
+<!-- ============ CHAPTER 2: components ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 2</div>
+  <h1><code>components</code> — reusable screen blocks</h1>
+  <p class="lead">A <b>component</b> is a self-contained piece of UI you can use again and again,
+  like a LEGO brick. Instead of copy-pasting a job card eight times, you write
+  <code>JobCard</code> once and reuse it for every job. Change the brick once, every copy updates.</p>
+
+  <h3>What lives here</h3>
+  <table>
+    <tr><th>Component file</th><th>What it draws on screen</th></tr>
+    <tr><td><code>Navbar.tsx</code></td><td>The purple top bar: logo, links, sign-in, menu</td></tr>
+    <tr><td><code>Footer.tsx</code></td><td>The bottom bar</td></tr>
+    <tr><td><code>JobCard.tsx</code></td><td>One job tile (title, salary, badges, Apply)</td></tr>
+    <tr><td><code>JobList.tsx</code></td><td>Arranges many <code>JobCard</code>s into a grid</td></tr>
+    <tr><td><code>JobCardSkeleton.tsx</code></td><td>Grey "loading" placeholders</td></tr>
+    <tr><td><code>FilterBar.tsx</code></td><td>Search box, sort menu, type filters</td></tr>
+    <tr><td><code>SummaryPanel.tsx</code></td><td>Detail panel for the selected job</td></tr>
+    <tr><td><code>JobStatusBadge.tsx</code></td><td>The coloured "Full-time" / "Closed" tags</td></tr>
+    <tr><td><code>ApplyModal.tsx</code></td><td>The pop-up application form</td></tr>
+    <tr><td><code>AuthShell.tsx</code>, <code>AuthFields.tsx</code></td><td>Shared layout &amp; inputs for login/signup</td></tr>
+    <tr><td><code>ThemeToggle.tsx</code></td><td>The light/dark switch button</td></tr>
+    <tr><td><code>ui/badge.tsx</code></td><td>A tiny generic "pill" used by the badges</td></tr>
+  </table>
+
+  <h3>Picture: the Navbar</h3>
+  <div class="fig">
+    <img class="shot" src="shots/navbar.png" alt="CareerHub navbar">
+    <div class="figcap">Figure 2.1 <span class="realtag">REAL SCREENSHOT</span> — Drawn by
+    <b>components/Navbar.tsx</b>. The "Sign in" button becomes "Sign out" once you log in — it reads
+    the logged-in user from Context (Chapter 3).</div>
+  </div>
+
+<pre><span class="c">// src/components/Navbar.tsx — the button changes based on login state</span>
+<span class="k">const</span> { user, signOut } = useAuth();   <span class="c">// ask the shared memory: who's logged in?</span>
+{user
+  ? &lt;button onClick={signOut}&gt;Sign out&lt;/button&gt;   <span class="c">// logged in  -&gt; show Sign out</span>
+  : &lt;Link href=<span class="s">"/login"</span>&gt;Sign in&lt;/Link&gt;}      <span class="c">// logged out -&gt; show Sign in</span></pre>
+
+  <h3>Props: how a component is told what to show</h3>
+  <p><b>Props</b> are the inputs you hand a component — like the ingredients you give a recipe.
+  <code>JobCard</code> doesn't know about any specific job; you <i>pass</i> it one. The same brick
+  draws "Frontend Engineer" or "Data Analyst" depending only on the props it receives.</p>
+<pre><span class="c">// src/components/JobCard.tsx — its inputs (props) are clearly listed</span>
+<span class="k">interface</span> JobCardProps {
+  job: JobListing;                 <span class="c">// the job to display</span>
+  isSelected: boolean;             <span class="c">// draw the purple highlight?</span>
+  onSelect: (id) =&gt; void;          <span class="c">// what to do when clicked</span>
+  isSaved?: boolean;               <span class="c">// is it bookmarked? (the ? = optional)</span>
+  onApply?: (id) =&gt; void;          <span class="c">// what to do when "Apply" is pressed</span>
+}</pre>
+
+  <h3>Picture: one Job Card, and the code behind each part</h3>
+  <div class="fig">
+    <img class="shot narrow" src="shots/jobcard.png" alt="A single CareerHub job card">
+    <div class="figcap">Figure 2.2 <span class="realtag">REAL SCREENSHOT</span> — One live card from
+    <b>JobCard.tsx</b>. The card does no formatting itself — it borrows helpers from <code>lib</code>.</div>
+  </div>
+  <table>
+    <tr><th>Part of the card you see</th><th>Responsible code</th></tr>
+    <tr><td>"Full-time" coloured badge</td><td><code>components/JobStatusBadge.tsx</code> + <code>lib/employmentType.ts</code></td></tr>
+    <tr><td>Bookmark icon (top-right)</td><td><code>JobCard.tsx</code> via the <code>onToggleSave</code> prop</td></tr>
+    <tr><td>"R75 000 – R95 000 pm"</td><td><code>lib/format.ts</code> → <code>formatSalaryRange()</code></td></tr>
+    <tr><td>"Closes 10 Jul 2026"</td><td><code>lib/format.ts</code> → <code>formatClosingDate()</code></td></tr>
+    <tr><td>"Posted today · 12 applicants"</td><td><code>lib/format.ts</code> → <code>formatRelativeDate()</code></td></tr>
+    <tr><td>"Apply now" button (on hover)</td><td><code>JobCard.tsx</code> via the <code>onApply</code> prop → <code>/apply</code> page</td></tr>
+  </table>
+
+  <div class="callout tip"><b>Beginner takeaway:</b> a component's job is to <i>arrange and display</i>.
+  It delegates "how to format money" or "how to colour a badge" to small specialists. That
+  separation is why the code stays clean as the app grows.</div>
+</div>
+
+<!-- ============ CHAPTER 3: context ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 3</div>
+  <h1><code>context</code> — shared memory across the whole app</h1>
+  <p class="lead">Some information is needed in many places at once: <i>"Is anyone logged in?"</i>
+  is needed by the navbar, the home page, the apply button… Passing it by hand through every layer
+  would be painful. <b>Context</b> is React's way to put a value in one central place that any
+  component can read directly.</p>
+
+  <h3>Two contexts in CareerHub</h3>
+  <table>
+    <tr><th>File</th><th>What it shares with everyone</th></tr>
+    <tr><td><code>context/AuthContext.tsx</code></td><td>The logged-in user, and the
+        <code>signIn</code>, <code>signUp</code>, <code>signOut</code> actions</td></tr>
+    <tr><td><code>context/ToastContext.tsx</code></td><td>The <code>notify(...)</code> action that
+        makes a pop-up message appear anywhere</td></tr>
+  </table>
+
+  <h3>How any component "tunes in"</h3>
+  <p>A component calls a tiny hook — <code>useAuth()</code> or <code>useToast()</code> — and gets
+  the shared value instantly, no matter how deep it sits in the tree.</p>
+<pre><span class="c">// Anywhere in the app:</span>
+<span class="k">const</span> { user } = useAuth();      <span class="c">// read who is logged in</span>
+<span class="k">const</span> { notify } = useToast();   <span class="c">// borrow the pop-up function</span>
+
+notify(<span class="s">"Saved to your list."</span>, <span class="s">"success"</span>);  <span class="c">// green toast slides up</span></pre>
+
+  <h3>Picture: a toast (pop-up message)</h3>
+  <div class="fig">
+    <img class="shot" src="shots/toast.png" alt="A green success toast on the live site">
+    <div class="figcap">Figure 3.1 <span class="realtag">REAL SCREENSHOT</span> — A live green
+    "Saved to your list." toast (bottom), drawn by <b>context/ToastContext.tsx</b>, captured while
+    logged in. Notice the navbar now reads "Sign out" and the first card's bookmark is filled —
+    all reacting to the shared auth state. Toasts auto-disappear after ~3 seconds.</div>
+  </div>
+
+  <h3>The login screen that feeds the auth context</h3>
+  <p>The <code>/login</code> page collects the email and password and calls <code>signIn</code> from
+  <code>useAuth()</code>. On success the whole app knows a user is present — the navbar, the save and
+  apply buttons all update at once.</p>
+  <div class="fig">
+    <img class="shot mid" src="shots/login.png" alt="CareerHub login page">
+    <div class="figcap">Figure 3.2 <span class="realtag">REAL SCREENSHOT</span> — The live
+    <code>/login</code> page (<b>app/login/page.tsx</b>), built from the shared
+    <b>AuthShell</b> and <b>AuthFields</b> components, wired to <b>AuthContext</b>.</div>
+  </div>
+
+  <h3>The "data-source-agnostic" idea (important &amp; clever)</h3>
+  <p>Right now there is no real login server, so accounts are stored in the browser's own storage
+  (<code>localStorage</code>). But notice the <b>shape</b> of what <code>AuthContext</code> offers
+  never changes — <code>user</code>, <code>signIn</code>, <code>signOut</code>. When a real C#
+  login server is built later, <b>only the inside of these functions changes</b>; every screen that
+  uses <code>useAuth()</code> stays exactly the same.</p>
+<pre><span class="c">// src/context/AuthContext.tsx — today it reads the browser; tomorrow a server.</span>
+<span class="k">const</span> signIn = <span class="k">async</span> (email, password) =&gt; {
+  <span class="c">// TODAY: look the account up in localStorage</span>
+  <span class="k">const</span> account = readAccounts().find(a =&gt; a.email === email);
+  <span class="k">if</span> (!account || account.password !== password)
+    <span class="k">throw new</span> Error(<span class="s">"Email or password is incorrect."</span>);
+  persistSession(account);
+  <span class="c">// LATER: replace the two lines above with: await fetch("/api/login", …)</span>
+};</pre>
+  <div class="callout"><b>Why this matters:</b> the UI was built to be "swap-ready". The front-end
+  team could finish the entire interface before the C# back-end existed. Chapter 7 completes that
+  story.</div>
+</div>
+
+<!-- ============ CHAPTER 4: fonts ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 4</div>
+  <h1><code>fonts</code> — the typefaces</h1>
+  <p class="lead">A <b>font</b> is the design of the letters. CareerHub ships its own font files so
+  the text always looks the same and loads fast — even with no internet — instead of fetching them
+  from Google's servers on every visit.</p>
+
+  <h3>What's in the folder</h3>
+  <table>
+    <tr><th>File</th><th>Used for</th></tr>
+    <tr><td><code>inter-variable.woff2</code></td><td><b>Inter</b> — the body text (paragraphs, labels)</td></tr>
+    <tr><td><code>plus-jakarta-sans-variable.woff2</code></td><td><b>Plus Jakarta Sans</b> — the bold display text (headings, the logo)</td></tr>
+  </table>
+  <p class="small"><code>.woff2</code> is a highly-compressed web font format — small files, quick
+  downloads. "Variable" means one file contains every weight from thin to extra-bold.</p>
+
+  <h3>How they get switched on</h3>
+  <p>The fonts are loaded in <code>app/layout.tsx</code> (Chapter 1) and attached to the page so the
+  rest of the styling can use them by name:</p>
+<pre><span class="c">// src/app/layout.tsx</span>
+<span class="k">const</span> inter   = localFont({ src: <span class="s">"../fonts/inter-variable.woff2"</span>,  variable: <span class="s">"--font-inter"</span> });
+<span class="k">const</span> jakarta = localFont({ src: <span class="s">"../fonts/plus-jakarta-sans-variable.woff2"</span>, variable: <span class="s">"--font-jakarta"</span> });
+
+&lt;body className={`${inter.variable} ${jakarta.variable}`}&gt; …</pre>
+
+  <h3>Picture: the two typefaces in use</h3>
+  <div class="fig">
+    <svg viewBox="0 0 760 150" width="100%" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="760" height="150" fill="#fcfcfe" rx="10"/>
+      <text x="30" y="55" font-size="30" font-weight="800" fill="#140a24" font-family="'Segoe UI',sans-serif">CareerHub — Find your next role</text>
+      <text x="30" y="78" font-size="11" fill="#94a3b8" font-family="monospace">↑ Plus Jakarta Sans (display) — headings &amp; logo</text>
+      <text x="30" y="112" font-size="14" fill="#334155" font-family="'Segoe UI',sans-serif">Browse curated job listings across South Africa. Save the ones you like and apply in a click.</text>
+      <text x="30" y="134" font-size="11" fill="#94a3b8" font-family="monospace">↑ Inter (body) — paragraphs &amp; labels</text>
+    </svg>
+    <div class="figcap">Figure 4.1 — Two fonts, two jobs. Headings use the strong display font; body
+    text uses the highly-readable Inter. Both are loaded by <b>app/layout.tsx</b>.</div>
+  </div>
+
+  <div class="callout tip"><b>Why self-host?</b> Privacy (no request to Google on each visit),
+  performance (no extra connection to a third-party server), and reliability (the app's text looks
+  right even offline). The comment in <code>layout.tsx</code> states exactly this reasoning.</div>
+</div>
+
+<!-- ============ CHAPTER 5: lib ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 5</div>
+  <h1><code>lib</code> — the engine room</h1>
+  <p class="lead"><code>lib</code> (short for <b>library</b>) holds the logic that is <i>not</i> a
+  visible component: fetching data, formatting numbers and dates, storing things, and small shared
+  helpers. Keeping it separate means this logic can be tested and reused by any component.</p>
+
+  <h3>What lives here</h3>
+  <table>
+    <tr><th>File</th><th>Job</th></tr>
+    <tr><td><code>api.ts</code></td><td>Fetches the job list over the network (the door to the back-end)</td></tr>
+    <tr><td><code>seed-jobs.ts</code></td><td>The built-in demo job data</td></tr>
+    <tr><td><code>careerhub-store.ts</code></td><td>Saving/reading applications &amp; recruiter jobs in the browser</td></tr>
+    <tr><td><code>format.ts</code></td><td>Turning raw values into human text (money, dates)</td></tr>
+    <tr><td><code>employmentType.ts</code></td><td>The one place that maps <code>"FullTime"</code> → <code>"Full-time"</code></td></tr>
+    <tr><td><code>utils.ts</code></td><td><code>cn()</code> — safely combines styling classes</td></tr>
+  </table>
+
+  <h3>1) Formatting — making data human</h3>
+  <p>The back-end sends a plain number like <code>45000</code> and a machine date like
+  <code>2026-06-17T08:00:00Z</code>. Nobody wants to read those. <code>format.ts</code> converts
+  them into friendly South-African text:</p>
+<pre><span class="c">// src/lib/format.ts</span>
+formatSalaryRange(45000, 65000)  <span class="c">// → "R45 000 – R65 000 pm"</span>
+formatRelativeDate(<span class="s">"2026-06-17..."</span>) <span class="c">// → "2 days ago"</span>
+formatClosingDate(<span class="s">"2026-06-28..."</span>)  <span class="c">// → "Closes in 9 days"</span></pre>
+  <div class="callout"><b>Responsible for what you saw in Figure 2.2:</b> the salary line, the
+  "posted X ago" line, and the "Closes in…" hint all come from this one file.</div>
+
+  <h3>2) The data door — <code>api.ts</code></h3>
+  <p>This is the only file that actually talks to the server. It asks for jobs and carefully checks
+  the answer succeeded before handing the data back:</p>
+<pre><span class="c">// src/lib/api.ts</span>
+<span class="k">export async function</span> fetchJobs() {
+  <span class="k">const</span> res = <span class="k">await</span> fetch(`${baseUrl}/api/jobs`);  <span class="c">// ask the server</span>
+  <span class="k">if</span> (!res.ok)                                  <span class="c">// 404 / 500? treat as a real error</span>
+    <span class="k">throw new</span> Error(`Failed to load jobs — server responded with ${res.status}`);
+  <span class="k">return</span> res.json();                            <span class="c">// success → give back the jobs</span>
+}</pre>
+  <p class="small">This is the exact seam where the C# back-end plugs in — explained fully in
+  Chapter 7.</p>
+
+  <h3>3) Browser storage — <code>careerhub-store.ts</code></h3>
+  <p>Until the real back-end exists, things like submitted applications are saved in the browser so
+  the app feels complete. The functions are named like a database would be —
+  <code>saveApplication</code>, <code>getApplicationsByEmail</code> — so they can later be swapped
+  for real server calls without changing the pages that use them.</p>
+
+  <h3>4) <code>cn()</code> — tidy styling</h3>
+  <p>CareerHub styles things with Tailwind utility classes. When two classes conflict (e.g. two
+  different borders), <code>cn()</code> makes sure the <i>last</i> one wins, so the selected-card
+  highlight always overrides the default border correctly.</p>
+<pre><span class="c">// src/lib/utils.ts</span>
+cn(<span class="s">"border-slate-200"</span>, isSelected &amp;&amp; <span class="s">"border-brand-600"</span>)
+<span class="c">// when selected → keeps only "border-brand-600" (no clash)</span></pre>
+
+  <div class="callout tip"><b>Beginner takeaway:</b> <code>lib</code> is where "how things work"
+  lives, while <code>components</code> is "how things look". Splitting them is what keeps each file
+  small and focused.</div>
+</div>
+
+<!-- ============ CHAPTER 6: types ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 6</div>
+  <h1><code>types</code> — the data contract</h1>
+  <p class="lead">CareerHub is written in <b>TypeScript</b>, which lets you describe the exact
+  <i>shape</i> data must have. The <code>types</code> folder holds those descriptions. They are the
+  written agreement — the <b>contract</b> — between the front-end and the C# back-end about what a
+  "job" or a "user" contains.</p>
+
+  <h3>The single file: <code>types/index.ts</code></h3>
+  <p>It defines what every job must include. If any code tries to use a job without, say, a
+  <code>salaryMax</code>, or misspells a field, the app <b>refuses to build</b> — the mistake is
+  caught on the developer's screen, long before a user ever sees it.</p>
+<pre><span class="c">// src/types/index.ts — the shape every job must follow</span>
+<span class="k">export interface</span> JobListing {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  employmentType: EmploymentType;   <span class="c">// must be one of the four below</span>
+  salaryMin: number;
+  salaryMax: number;
+  postedAt: string;                 <span class="c">// machine date e.g. "2026-06-17T08:00:00Z"</span>
+  isActive: boolean;                <span class="c">// still accepting applications?</span>
+  applicantCount: number;
+  description: string;
+  responsibilities: string[];
+  skills: string[];
+  closingDate: string;
+}
+
+<span class="c">// Only these four words are allowed — nothing else compiles:</span>
+<span class="k">export type</span> EmploymentType = <span class="s">"FullTime"</span> | <span class="s">"PartTime"</span> | <span class="s">"Contract"</span> | <span class="s">"Internship"</span>;</pre>
+
+  <h3>Why a contract prevents bugs</h3>
+  <div class="fig">
+    <svg viewBox="0 0 760 200" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI,sans-serif">
+      <rect x="0" y="0" width="760" height="200" fill="#fcfcfe" rx="10"/>
+      <rect x="30" y="40" width="200" height="120" rx="12" fill="#1c0f33"/>
+      <text x="130" y="95" text-anchor="middle" font-size="14" fill="#f0abfc" font-weight="700">C# Back-End</text>
+      <text x="130" y="118" text-anchor="middle" font-size="10" fill="#b39ddb">JobListingResponse.cs</text>
+
+      <rect x="530" y="40" width="200" height="120" rx="12" fill="#ede9fe" stroke="#a855f7"/>
+      <text x="630" y="95" text-anchor="middle" font-size="14" fill="#6d28d9" font-weight="700">Front-End</text>
+      <text x="630" y="118" text-anchor="middle" font-size="10" fill="#7c3aed">types/index.ts</text>
+
+      <rect x="270" y="70" width="220" height="60" rx="10" fill="#fff" stroke="#10b981" stroke-width="2"/>
+      <text x="380" y="95" text-anchor="middle" font-size="12" fill="#065f46" font-weight="700">The Contract</text>
+      <text x="380" y="114" text-anchor="middle" font-size="10" fill="#475569">same fields, same names</text>
+
+      <line x1="230" y1="100" x2="270" y2="100" stroke="#a855f7" stroke-width="2"/>
+      <line x1="490" y1="100" x2="530" y2="100" stroke="#a855f7" stroke-width="2"/>
+      <text x="380" y="165" text-anchor="middle" font-size="10" fill="#94a3b8">If the back-end changes a field name, the front-end stops compiling until it's fixed → no silent crashes.</text>
+    </svg>
+    <div class="figcap">Figure 6.1 — <b>types/index.ts</b> mirrors the back-end's
+    <code>JobListingResponse.cs</code>. Keeping both in step is what makes the connection safe.</div>
+  </div>
+
+  <p>It also defines the <code>User</code> shape (id, name, email) used by the login system in
+  Chapter 3. Types draw nothing on screen themselves — but they guard <i>everything</i> that does.</p>
+
+  <div class="callout tip"><b>Beginner takeaway:</b> types are like the slots in a vending machine.
+  A R5 coin won't fit the R2 slot. TypeScript rejects the wrong shape of data before it can cause a
+  real-world failure.</div>
+</div>
+
+<!-- ============ CHAPTER 7: connecting to backend ============ -->
+<div class="page break">
+  <div class="chip">CHAPTER 7</div>
+  <h1>Front-End connecting to a C# Back-End</h1>
+  <p class="lead">So far the front-end has used demo data. A real app needs a <b>back-end</b>: a
+  separate program running on a server that owns the real database. CareerHub's back-end is written
+  in <b>C#</b> (using ASP.NET). This chapter explains, in plain terms, how two programs written in
+  two different languages talk to each other.</p>
+
+  <h3>They don't share code — they share a language called HTTP + JSON</h3>
+  <p>The front-end (TypeScript, in the browser) and the back-end (C#, on a server) never call each
+  other's functions directly. Instead they exchange messages over the web using:</p>
+  <ul class="tight">
+    <li><b>HTTP</b> — the same protocol your browser uses to load any website. The front-end sends a
+    <i>request</i> ("please give me the jobs"); the back-end sends a <i>response</i>.</li>
+    <li><b>JSON</b> — a simple, universal text format for data. Both C# and TypeScript can read and
+    write it. It looks like <code>{ "title": "Frontend Engineer", "salaryMin": 45000 }</code>.</li>
+  </ul>
+  <p>Because JSON is just text, it does not matter that one side is C# and the other is TypeScript.
+  JSON is the neutral middle-ground both understand — like two people who speak different languages
+  agreeing to write to each other in English.</p>
+
+  <h3>The full journey of one request</h3>
+  <div class="fig">
+    <svg viewBox="0 0 760 320" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI,sans-serif">
+      <rect x="0" y="0" width="760" height="320" fill="#fcfcfe" rx="10"/>
+      <!-- boxes -->
+      <rect x="24"  y="40" width="150" height="64" rx="12" fill="#ede9fe" stroke="#a855f7"/>
+      <text x="99" y="68" text-anchor="middle" font-size="12" font-weight="700" fill="#6d28d9">Component</text>
+      <text x="99" y="86" text-anchor="middle" font-size="9" fill="#475569">page.tsx (Ch.1)</text>
+
+      <rect x="210" y="40" width="150" height="64" rx="12" fill="#ede9fe" stroke="#a855f7"/>
+      <text x="285" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#6d28d9">fetchJobs()</text>
+      <text x="285" y="80" text-anchor="middle" font-size="9" fill="#475569">lib/api.ts (Ch.5)</text>
+      <text x="285" y="94" text-anchor="middle" font-size="9" fill="#475569">+ TanStack Query</text>
+
+      <rect x="585" y="40" width="150" height="64" rx="12" fill="#1c0f33"/>
+      <text x="660" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#f0abfc">C# Back-End</text>
+      <text x="660" y="80" text-anchor="middle" font-size="9" fill="#b39ddb">ASP.NET API</text>
+      <text x="660" y="94" text-anchor="middle" font-size="9" fill="#b39ddb">+ Database</text>
+
+      <!-- arrows right -->
+      <line x1="174" y1="72" x2="206" y2="72" stroke="#6d28d9" stroke-width="2" marker-end="url(#ar)"/>
+      <line x1="360" y1="62" x2="581" y2="62" stroke="#6d28d9" stroke-width="2" marker-end="url(#ar)"/>
+      <text x="470" y="52" text-anchor="middle" font-size="10" fill="#6d28d9">① HTTP GET /api/v1/jobs</text>
+      <!-- arrows left -->
+      <line x1="581" y1="92" x2="362" y2="92" stroke="#10b981" stroke-width="2" marker-end="url(#ag)"/>
+      <text x="470" y="112" text-anchor="middle" font-size="10" fill="#059669">② JSON: [ { job }, { job } … ]</text>
+
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="#6d28d9"/></marker>
+        <marker id="ag" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="#10b981"/></marker>
+      </defs>
+
+      <!-- bottom steps -->
+      <rect x="24" y="160" width="712" height="135" rx="12" fill="#faf5ff" stroke="#e9d5ff"/>
+      <text x="40" y="184" font-size="11" font-weight="700" fill="#6d28d9">Step by step:</text>
+      <text x="40" y="206" font-size="10.5" fill="#334155">① The component asks TanStack Query for "jobs"; Query calls fetchJobs() in lib/api.ts.</text>
+      <text x="40" y="226" font-size="10.5" fill="#334155">② fetchJobs() sends an HTTP GET request to the C# server's address (e.g. https://api.careerhub.co.za/api/v1/jobs).</text>
+      <text x="40" y="246" font-size="10.5" fill="#334155">③ The C# controller reads the database, builds a list of JobListingResponse objects, and serialises them to JSON.</text>
+      <text x="40" y="266" font-size="10.5" fill="#334155">④ fetchJobs() checks res.ok, parses the JSON, and TypeScript trusts it matches JobListing[] (the Ch.6 contract).</text>
+      <text x="40" y="286" font-size="10.5" fill="#334155">⑤ TanStack Query caches the result and hands it to the component, which re-draws the cards.</text>
+    </svg>
+    <div class="figcap">Figure 7.1 — One round trip. The only file that changes to "go live" is a
+    single environment setting pointing at the real C# server.</div>
+  </div>
+
+  <h3>What the C# side roughly looks like</h3>
+  <p>You don't need to write C#, but seeing it demystifies the connection. A C# controller exposes
+  the same <code>/api/jobs</code> address the front-end already calls:</p>
+<pre><span class="c">// C# (ASP.NET) — the back-end half. Returns JSON the front-end already expects.</span>
+[ApiController]
+[Route(<span class="s">"api/v1/jobs"</span>)]
+<span class="k">public class</span> JobsController : ControllerBase {
+  [HttpGet]
+  <span class="k">public</span> ActionResult&lt;List&lt;JobListingResponse&gt;&gt; GetJobs() {
+    <span class="k">var</span> jobs = _db.Jobs.ToList();   <span class="c">// read the real database</span>
+    <span class="k">return</span> Ok(jobs);               <span class="c">// ASP.NET converts this to JSON automatically</span>
+  }
+}</pre>
+  <p class="small">The C# class <code>JobListingResponse</code> has the same field names as the
+  front-end's <code>JobListing</code> interface (Chapter 6) — that shared shape is the whole secret.</p>
+
+  <h3>The one change to switch from demo to real</h3>
+  <p>Today the front-end points at its own built-in mock route (<code>src/app/api/jobs/route.ts</code>).
+  Going live means pointing <code>fetchJobs()</code> at the C# server instead — a single address in
+  an environment file:</p>
+<pre><span class="c"># .env file — change one line to go live</span>
+NEXT_PUBLIC_API_URL=https://api.careerhub.co.za   <span class="c"># the C# server's address</span></pre>
+<pre><span class="c">// lib/api.ts already reads that setting — no other code changes:</span>
+<span class="k">const</span> baseUrl = process.env.NEXT_PUBLIC_API_URL;
+<span class="k">const</span> res = <span class="k">await</span> fetch(`${baseUrl}/api/jobs`);</pre>
+
+  <h3>Two real-world details the back-end must handle</h3>
+  <ul class="tight">
+    <li><b>CORS</b> — browsers block a website from calling a <i>different</i> server unless that
+    server says "I allow this site". The C# back-end must enable CORS for the front-end's address.</li>
+    <li><b>Authentication tokens</b> — once login is real, the C# server gives the browser a token
+    after sign-in; the front-end then attaches that token to each request so the server knows who is
+    asking. This slots straight into <code>AuthContext</code> (Chapter 3) and <code>api.ts</code>.</li>
+  </ul>
+
+  <div class="callout tip"><b>The big picture:</b> the front-end was deliberately built so the
+  back-end's language is irrelevant. C#, Java, Python or Node — as long as it speaks HTTP and
+  returns JSON in the agreed shape, CareerHub's UI works unchanged.</div>
+</div>
+
+<!-- ============ SUMMARY PART 1 ============ -->
+<div class="page break">
+  <div class="chip">SUMMARY · PART ONE</div>
+  <h1>Part 1 Summary — the front-end folders (Chapters 0–6)</h1>
+  <p class="lead">The <code>src</code> folder is the entire front-end, split into six rooms that
+  each own one clear responsibility. Together they form a clean, swap-ready user interface.</p>
+
+  <table>
+    <tr><th>Room</th><th>Responsibility</th><th>If you remember one thing…</th></tr>
+    <tr><td><code>src</code></td><td>The container that organises everything</td><td>Structure, not code</td></tr>
+    <tr><td><code>app</code></td><td>Pages &amp; URLs (folders become web addresses)</td><td><code>layout.tsx</code> frames every page</td></tr>
+    <tr><td><code>components</code></td><td>Reusable visual blocks fed by "props"</td><td>How things <i>look</i></td></tr>
+    <tr><td><code>context</code></td><td>Shared memory: login &amp; toasts</td><td><code>useAuth()</code>, <code>useToast()</code></td></tr>
+    <tr><td><code>fonts</code></td><td>Self-hosted typefaces</td><td>Fast, private, offline-safe text</td></tr>
+    <tr><td><code>lib</code></td><td>Logic: fetching, formatting, storing</td><td>How things <i>work</i></td></tr>
+    <tr><td><code>types</code></td><td>The data contract guarding everything</td><td>Bugs caught before users see them</td></tr>
+  </table>
+
+  <p><b>The golden thread.</b> Three ideas repeat across every chapter:</p>
+  <ul class="tight">
+    <li><b>Separation of concerns</b> — looks (<code>components</code>) are kept apart from logic
+    (<code>lib</code>), data shape (<code>types</code>) and shared state (<code>context</code>).</li>
+    <li><b>Reuse</b> — write <code>JobCard</code> once, draw it eight times; define a colour or a
+    label in exactly one place.</li>
+    <li><b>Swap-readiness</b> — the demo data and mock login can be replaced by a real server with
+    almost no change to the screens, because everything talks through small, well-shaped seams.</li>
+  </ul>
+  <p>A user clicks a card → the component reads it (Ch.1) → draws it with reusable bricks (Ch.2) →
+  formatting comes from <code>lib</code> (Ch.5) → the shape is guaranteed by <code>types</code>
+  (Ch.6) → login state comes from <code>context</code> (Ch.3) → in the chosen font (Ch.4). Every
+  room played its part.</p>
+</div>
+
+<!-- ============ SUMMARY PART 2 ============ -->
+<div class="page break">
+  <div class="chip">SUMMARY · PART TWO</div>
+  <h1>Part 2 Summary — connecting to the C# back-end (Chapter 7)</h1>
+  <p class="lead">The front-end and the C# back-end are two separate programs that never share code.
+  They cooperate by exchanging text messages over the web.</p>
+
+  <ul class="tight">
+    <li><b>HTTP</b> carries the request and response — the same web protocol your browser already uses.</li>
+    <li><b>JSON</b> is the shared text format both C# and TypeScript can read and write, making the
+    two languages irrelevant to each other.</li>
+    <li><b>The contract</b> (<code>types/index.ts</code> ↔ C# <code>JobListingResponse.cs</code>)
+    guarantees both sides agree on field names and shapes.</li>
+    <li><b>One seam</b> — <code>lib/api.ts</code>'s <code>fetchJobs()</code> — is the single door to
+    the server. Going live means changing one address (<code>NEXT_PUBLIC_API_URL</code>), not the UI.</li>
+    <li><b>The back-end's housekeeping</b> — enabling CORS so the browser is allowed to call it, and
+    issuing auth tokens after login — completes a secure, production-ready connection.</li>
+  </ul>
+
+  <p><b>Why it was built this way.</b> Because the front-end speaks only HTTP + JSON through one
+  small door, the entire user interface could be finished — and demonstrated with mock data — before
+  the C# back-end was ready. When the server lands, the UI flips from demo to live with a
+  one-line change. That is the pay-off of all the separation described in Part 1.</p>
+
+  <div class="callout"><b>In one sentence:</b> the front-end <i>asks</i> over HTTP, the C# back-end
+  <i>answers</i> in JSON shaped to the agreed contract, and a single environment setting decides
+  whether that answer comes from demo data or the real server.</div>
+</div>
+
+<!-- ============ INTERVIEW QUESTIONS ============ -->
+<div class="page break">
+  <div class="chip">INTERVIEW PREP</div>
+  <h1>Interview Questions &amp; Answers</h1>
+  <p class="lead">Five long questions with model answers for each part of this guide. Written to be
+  understood by a beginner while still impressing an interviewer.</p>
+
+  <h2>Part 0 — The <code>src</code> folder</h2>
+  <p class="q">Why is front-end code organised into a <code>src</code> folder with sub-folders instead of a few big files?</p>
+  <p class="a">Organisation manages complexity. <code>src</code> ("source") is the container for all
+  hand-written code, and splitting it into focused sub-folders keeps related things together and
+  unrelated things apart. This makes the code <b>discoverable</b> (a page is in <code>app</code>, a
+  button in <code>components</code>), <b>safer to change</b> (editing a formatter can't accidentally
+  break a page), and <b>easier for teams</b> (people work in different folders without colliding).
+  As the app grows, this structure is what stops it becoming an unmaintainable tangle.</p>
+
+  <p class="q">What is the difference between <code>src</code> and the built website the user sees?</p>
+  <p class="a"><code>src</code> is the <i>source</i> — the human-written instructions. It is not what
+  runs in the browser directly. A build tool (Next.js) reads <code>src</code> and <i>compiles</i> it
+  into optimised HTML, CSS and JavaScript that the browser actually downloads. So <code>src</code> is
+  the recipe; the running website is the finished meal. Editing <code>src</code> and rebuilding is
+  how you change the meal.</p>
+
+  <p class="q">Someone asks you to change the colour of the salary text on a card. How does the folder structure help you find it?</p>
+  <p class="a">The structure tells me where to look. The salary <i>value</i> is produced in
+  <code>lib/format.ts</code> (<code>formatSalaryRange</code>); the salary <i>styling</i> is in the
+  component that renders it, <code>components/JobCard.tsx</code>. I would not need to search the whole
+  app — the separation of "how data is formatted" (lib) from "how it's displayed" (components) points
+  me straight to the two relevant files.</p>
+
+  <p class="q">What does "separation of concerns" mean, and where do you see it across <code>src</code>?</p>
+  <p class="a">It means each part of the code has one clear job and doesn't mix responsibilities. In
+  CareerHub: <code>components</code> handle appearance, <code>lib</code> handles logic and data,
+  <code>types</code> defines the data shape, <code>context</code> holds shared state, and
+  <code>app</code> defines pages/routes. Because these concerns are separated, any one can be changed
+  or tested without disturbing the others — for example, the mock data layer can be replaced with a
+  real API without touching a single component.</p>
+
+  <p class="q">A teammate wants to add a new "Messages" feature. Walking through the folders, where would each piece go?</p>
+  <p class="a">A new page/route → a <code>messages/</code> folder in <code>app</code> with a
+  <code>page.tsx</code>. Visual pieces like a message bubble → <code>components</code>. The
+  network/storage logic for messages → <code>lib</code>. The shape of a "Message" object →
+  <code>types</code>. If the unread-count must be visible app-wide (e.g. in the navbar) → a new
+  context in <code>context</code>. The existing structure gives every piece an obvious home, which
+  is the sign of a healthy architecture.</p>
+
+  <h2 class="break">Part 1 — The <code>app</code> folder</h2>
+  <p class="q">Explain "file-based routing" as if to a non-technical person.</p>
+  <p class="a">In Next.js, the folders inside <code>app</code> <i>are</i> the website's map. If I make
+  a folder called <code>about</code> with a <code>page.tsx</code> inside, the address
+  <code>/about</code> automatically exists and shows that page — I never write a separate list of
+  routes. The structure on disk and the structure of the website are the same thing. It's like a
+  filing cabinet where the drawer labels are also the addresses people use to reach each document.</p>
+
+  <p class="q">What is <code>layout.tsx</code> and why is it important?</p>
+  <p class="a"><code>layout.tsx</code> is the shared frame wrapped around every page. CareerHub uses
+  it to place the <code>Navbar</code> and <code>Footer</code> once, load the fonts, set up the
+  shared providers (auth, toasts, data), and apply dark mode before the first paint. Because it
+  surrounds every page via <code>{children}</code>, common elements appear everywhere consistently
+  without being repeated in each page — change the navbar once and every screen updates.</p>
+
+  <p class="q">What does <code>[jobId]</code> in <code>app/apply/[jobId]</code> mean?</p>
+  <p class="a">The square brackets mark a <b>dynamic segment</b> — a part of the URL that changes.
+  One file, <code>apply/[jobId]/page.tsx</code>, serves every job: <code>/apply/abc</code> and
+  <code>/apply/xyz</code> both load it, and the page reads the <code>jobId</code> from the URL to
+  know which job to show. Without this, I'd need a separate file per job, which is impossible when
+  jobs come from a database.</p>
+
+  <p class="q">The home page shows loading, error and success differently. Why does that matter and how is it done?</p>
+  <p class="a">Fetching data takes time and can fail, so a good UI never leaves the user staring at a
+  blank or frozen screen. <code>page.tsx</code> checks the request's status and renders exactly one
+  of three views: a <b>skeleton</b> while loading, an <b>error box with a Retry button</b> if it
+  failed, or the <b>real cards</b> on success. This is handled cleanly because the data request
+  (via TanStack Query) reports <code>isPending</code>, <code>isError</code> and the data itself, so
+  the component just maps each state to the right UI.</p>
+
+  <p class="q">What is "state" on the home page, and give concrete examples.</p>
+  <p class="a">State is data that can change while the page is open and, when it changes, causes the
+  screen to redraw. On the home page the search text, the selected employment-type filter, the sort
+  order, the "open roles only" checkbox, and which card is selected are all state. When the user
+  types in the search box, <code>setQuery</code> updates the state and React instantly re-filters and
+  re-renders the visible jobs — no page reload. That live responsiveness is the essence of a modern
+  single-page front-end.</p>
+
+  <h2 class="break">Part 2 — The <code>components</code> folder</h2>
+  <p class="q">What is a component, and what's the benefit of using them?</p>
+  <p class="a">A component is a self-contained, reusable piece of UI — like a LEGO brick. CareerHub's
+  <code>JobCard</code> is written once and reused for every job in the list. The benefits are
+  <b>reuse</b> (no copy-paste), <b>consistency</b> (every card looks and behaves the same), and
+  <b>maintainability</b> (fix or restyle the card in one place and all instances update). Components
+  also make complex screens readable, because each is a small, named building block.</p>
+
+  <p class="q">What are "props"? Illustrate with <code>JobCard</code>.</p>
+  <p class="a">Props are the inputs passed into a component — its ingredients. <code>JobCard</code>
+  knows nothing about any specific job; the parent passes it one via the <code>job</code> prop, plus
+  <code>isSelected</code> (whether to highlight), <code>onSelect</code> (what to do on click) and
+  optional <code>onApply</code>/<code>onToggleSave</code> handlers. The same component renders any
+  job depending purely on the props it receives, which is exactly what makes it reusable.</p>
+
+  <p class="q">The navbar shows "Sign in" or "Sign out" depending on the user. How does the component know?</p>
+  <p class="a">It reads shared state from context: <code>const { user, signOut } = useAuth()</code>.
+  If <code>user</code> exists, it renders a "Sign out" button wired to <code>signOut</code>;
+  otherwise it renders a "Sign in" link. The navbar doesn't manage login itself — it simply reflects
+  the central auth state, so the moment the user logs in or out anywhere, the navbar updates
+  automatically.</p>
+
+  <p class="q">Why is the colour and label of a status badge defined in dedicated files rather than inside <code>JobCard</code>?</p>
+  <p class="a">To keep a <b>single source of truth</b>. The label text lives in
+  <code>lib/employmentType.ts</code> and the colours in <code>components/JobStatusBadge.tsx</code>,
+  each defined once as an exhaustive map keyed by the employment type. A card never decides what
+  colour "Contract" is — it asks the badge. If the design changes, I edit one map and every badge
+  across the app updates. It also means adding a new employment type forces me to add its label and
+  colour, or the app won't compile — mistakes are caught early.</p>
+
+  <p class="q">How do components delegate work to the rest of the app? Use <code>JobCard</code> as the example.</p>
+  <p class="a"><code>JobCard</code> focuses on <i>arranging</i> the layout and delegates the
+  specialised work: salary and date text come from <code>lib/format.ts</code>, badge colours from
+  <code>JobStatusBadge.tsx</code>, class-merging from <code>lib/utils.ts</code> (<code>cn</code>),
+  and actions like applying or saving are passed in as props and handled by the parent page. This
+  keeps the component small and readable — it's a coordinator, not a do-everything file, which is a
+  hallmark of clean component design.</p>
+
+  <h2 class="break">Part 3 — The <code>context</code> folder</h2>
+  <p class="q">What problem does React Context solve?</p>
+  <p class="a">It solves "prop drilling" — having to pass a value down through many layers of
+  components that don't even use it, just to reach a deep one that does. Context puts a value in one
+  central place that any component can read directly via a hook. CareerHub uses it for things needed
+  app-wide: the logged-in user (<code>AuthContext</code>) and the toast notifier
+  (<code>ToastContext</code>), so the navbar, home page and apply flow all read them without passing
+  props through every level.</p>
+
+  <p class="q">Walk through what happens when a user clicks "Save" on a job while logged out.</p>
+  <p class="a">The handler checks <code>user</code> from <code>useAuth()</code>. Because it's
+  <code>null</code>, it calls <code>notify("Sign in to save jobs.", "info")</code> from
+  <code>useToast()</code> — a toast pops up — and then redirects to <code>/login</code>. Both the
+  auth check and the toast come from context, which is why any component can perform this flow
+  without owning login or notification logic itself.</p>
+
+  <p class="q">Explain "data-source-agnostic" auth in CareerHub.</p>
+  <p class="a"><code>AuthContext</code> exposes a fixed public shape — <code>user</code>,
+  <code>signIn</code>, <code>signUp</code>, <code>signOut</code> — but today its functions store
+  accounts in the browser's <code>localStorage</code> because there's no auth server yet. When a real
+  C# auth API arrives, only the <i>insides</i> of those functions change (a <code>fetch</code> call
+  replaces the localStorage lookup); every screen calling <code>useAuth()</code> stays identical.
+  The UI is decoupled from where the data actually comes from — that's "data-source-agnostic".</p>
+
+  <p class="q">How does the toast system work, and why does it use context?</p>
+  <p class="a"><code>ToastProvider</code> holds a list of active toasts in state and exposes a single
+  <code>notify(message, tone)</code> function. Calling it adds a toast, which renders as a coloured
+  pill at the bottom of the screen and is auto-removed after about 3 seconds. It's a context because
+  <i>any</i> component — save buttons, the apply page, forms — needs to trigger a notification, and
+  context lets them all share one notifier and one on-screen toast area instead of each building
+  their own.</p>
+
+  <p class="q">Why does <code>useAuth</code> throw an error if used outside an <code>AuthProvider</code>?</p>
+  <p class="a">Because reading auth state only makes sense inside the provider that supplies it. If a
+  component calls <code>useAuth()</code> with no <code>AuthProvider</code> above it, the context value
+  is <code>null</code> and any use of <code>user</code> would fail mysteriously later. Throwing a
+  clear error immediately — "useAuth must be used within an AuthProvider" — turns a confusing runtime
+  bug into an obvious, self-explaining one, which is good defensive design.</p>
+
+  <h2 class="break">Part 4 — The <code>fonts</code> folder</h2>
+  <p class="q">Why does CareerHub ship its own font files instead of loading them from Google Fonts?</p>
+  <p class="a">Three reasons stated in the code: <b>privacy</b> (no request to a third-party server on
+  every visit, so no user data leaks to Google), <b>performance</b> (no extra network connection to
+  set up; the fonts come from the app's own server), and <b>reliability</b> (the text renders
+  correctly even offline or if Google is unreachable). Self-hosting trades a slightly larger initial
+  bundle for control and consistency.</p>
+
+  <p class="q">What is a <code>.woff2</code> "variable" font?</p>
+  <p class="a"><code>.woff2</code> (Web Open Font Format 2) is a heavily compressed font format
+  designed for the web — small files and fast downloads. "Variable" means a single file contains a
+  continuous range of weights (e.g. thin through extra-bold) instead of needing a separate file per
+  weight. CareerHub's Inter file covers weights 100–900 in one download, which is efficient and
+  flexible.</p>
+
+  <p class="q">There are two fonts. What is each used for and why use two?</p>
+  <p class="a">Inter is the <b>body</b> font — highly legible for paragraphs and labels. Plus Jakarta
+  Sans is the <b>display</b> font — used for headings and the logo where a stronger, more
+  characterful look helps. Pairing a clean body font with a distinctive display font creates visual
+  hierarchy: the eye immediately distinguishes titles from content, which improves readability and
+  branding.</p>
+
+  <p class="q">How does a font defined in <code>fonts</code> actually reach the text on screen?</p>
+  <p class="a"><code>app/layout.tsx</code> loads each file with Next.js's <code>localFont</code>,
+  assigning it a CSS variable (<code>--font-inter</code>, <code>--font-jakarta</code>). Those
+  variables are attached to the <code>&lt;body&gt;</code>. The Tailwind styling then references them
+  (e.g. a <code>font-display</code> class for headings), so any element can opt into either typeface.
+  The font files sit in <code>fonts</code>; <code>layout.tsx</code> is the wiring that switches them on.</p>
+
+  <p class="q">A teammate says "fonts are just decoration, low priority." How do you respond?</p>
+  <p class="a">Typography is part of usability and brand, not mere decoration. Readable body text
+  reduces strain and helps users scan listings quickly; a consistent display font makes the product
+  feel polished and trustworthy. Self-hosting also has real engineering consequences for privacy and
+  load performance. So while it's a small folder, it affects accessibility, perceived quality and
+  even compliance — worth getting right.</p>
+
+  <h2 class="break">Part 5 — The <code>lib</code> folder</h2>
+  <p class="q">What kind of code belongs in <code>lib</code>, and how does it differ from <code>components</code>?</p>
+  <p class="a"><code>lib</code> holds non-visual logic: network calls (<code>api.ts</code>), data
+  storage (<code>careerhub-store.ts</code>), formatting (<code>format.ts</code>), shared maps
+  (<code>employmentType.ts</code>) and helpers (<code>utils.ts</code>). <code>components</code> handle
+  how things <i>look</i>; <code>lib</code> handles how things <i>work</i>. Keeping logic out of
+  components makes it reusable across many components and testable on its own, without rendering any UI.</p>
+
+  <p class="q">Why does <code>fetchJobs</code> check <code>res.ok</code> and throw an error?</p>
+  <p class="a">Because <code>fetch</code> only rejects on network-level failures (offline, DNS); an
+  HTTP error like 404 or 500 still <i>resolves</i> with <code>res.ok === false</code>. Without the
+  check, the error response body would be parsed as if it were job data and shown as a fake
+  "success". Throwing on <code>!res.ok</code> — with the status code in the message — routes real
+  server errors into the UI's error state, so the user sees a proper "couldn't load jobs, try again"
+  message instead of a broken screen.</p>
+
+  <p class="q">Explain what <code>format.ts</code> does and why it's separate from the components.</p>
+  <p class="a">It turns raw machine values into human-friendly South African text: a number becomes
+  <code>R45 000 – R65 000 pm</code>, a timestamp becomes <code>2 days ago</code> or
+  <code>Closes in 9 days</code>. It's separated so the exact same formatting is reused by every card
+  and panel, can be unit-tested in isolation, and changed in one place. If a component formatted
+  money inline, every card would risk doing it slightly differently.</p>
+
+  <p class="q">What is <code>cn()</code> in <code>utils.ts</code> and what problem does it solve?</p>
+  <p class="a"><code>cn()</code> combines CSS class names, dropping falsy ones and — crucially —
+  resolving conflicting Tailwind utilities so the last one wins. For example a card has a default
+  border, but when selected it needs a brand-coloured border; <code>cn()</code> ensures only the
+  brand border survives rather than emitting both and letting stylesheet order decide unpredictably.
+  It makes conditional styling reliable and readable.</p>
+
+  <p class="q">How does <code>careerhub-store.ts</code> prepare the app for a future real back-end?</p>
+  <p class="a">It wraps all data access in named functions — <code>saveApplication</code>,
+  <code>getApplicationsByEmail</code>, <code>getJobById</code> — that today read and write the
+  browser's <code>localStorage</code>. The components call these functions, not storage directly.
+  Later, the bodies can be swapped to call the C# API instead, and because the function names and
+  return shapes stay the same, no component needs to change. It mimics a database interface so the
+  swap is seamless.</p>
+
+  <h2 class="break">Part 6 — The <code>types</code> folder</h2>
+  <p class="q">What is TypeScript, and what does the <code>types</code> folder define?</p>
+  <p class="a">TypeScript is JavaScript with type-checking: you describe the shape data must have, and
+  the compiler verifies your code respects it before the app even runs. The <code>types</code> folder
+  (<code>index.ts</code>) defines the core shapes — <code>JobListing</code> (every field a job must
+  have) and <code>User</code> — plus the <code>EmploymentType</code> union. These are the agreed
+  contracts the rest of the app is checked against.</p>
+
+  <p class="q">How does a type catch a bug before a user ever sees it?</p>
+  <p class="a">If any code uses a job incorrectly — a missing <code>salaryMax</code>, a misspelt
+  field, or an employment type outside the allowed four — the project fails to compile and the error
+  appears on the developer's screen immediately. As the comment in the file says, a compile error is
+  the correct failure mode, not a runtime crash. The mistake is stopped at build time rather than
+  becoming a broken page in production.</p>
+
+  <p class="q">Why is <code>EmploymentType</code> a union of four strings instead of just <code>string</code>?</p>
+  <p class="a">Because only four values are valid: <code>"FullTime"</code>, <code>"PartTime"</code>,
+  <code>"Contract"</code>, <code>"Internship"</code>. Typing it as a union means any other value is
+  rejected by the compiler the moment it's written. It also makes related maps (labels, badge
+  colours) <b>exhaustive</b> — add a fifth type to the union and TypeScript forces you to supply its
+  label and colour everywhere, so nothing is forgotten. Plain <code>string</code> would allow typos
+  and silent gaps.</p>
+
+  <p class="q">How do the front-end types relate to the C# back-end?</p>
+  <p class="a">They mirror it. <code>JobListing</code> is the front-end's copy of the back-end's
+  <code>JobListingResponse.cs</code> — same field names and shapes. That shared contract is what lets
+  the two programs exchange JSON safely. If the back-end renames a field, the front-end types are
+  updated, and every place that used the old name fails to compile until it's fixed — turning a
+  potential silent production bug into an obvious build error.</p>
+
+  <p class="q">Types render nothing on screen. Why are they still essential to the UI?</p>
+  <p class="a">Because they guarantee that everything which <i>does</i> render is working with valid
+  data. They're like the slots in a vending machine that only accept the right coin: they make sure a
+  job always has a title, a salary and a valid employment type before a card tries to display it.
+  This prevents whole classes of UI crashes ("cannot read property of undefined") and documents,
+  precisely, what data each screen can rely on.</p>
+
+  <h2 class="break">Part 7 — Front-End connecting to the C# back-end</h2>
+  <p class="q">Two programs in two different languages (TypeScript and C#) need to work together. How is that possible?</p>
+  <p class="a">They never share code or call each other's functions. Instead they exchange messages
+  over <b>HTTP</b> (the web's request/response protocol) using <b>JSON</b> (a universal text format
+  both languages can read and write). The front-end sends an HTTP request; the C# back-end replies
+  with JSON. Because JSON is just text in an agreed shape, the languages on each side are irrelevant —
+  it's a neutral common ground, like two speakers agreeing to correspond in a shared written language.</p>
+
+  <p class="q">Trace one request for the job list from click to cards on screen.</p>
+  <p class="a">The home page asks TanStack Query for the <code>"jobs"</code> data; Query runs
+  <code>fetchJobs()</code> in <code>lib/api.ts</code>, which sends an HTTP GET to the C# server's
+  <code>/api/jobs</code> address. The C# controller queries the database, builds a list of
+  <code>JobListingResponse</code> objects and returns them; ASP.NET serialises that to JSON.
+  <code>fetchJobs()</code> checks <code>res.ok</code>, parses the JSON (trusted to match the
+  <code>JobListing[]</code> contract), and Query caches it and hands it to the component, which
+  re-renders the cards. One clean round trip.</p>
+
+  <p class="q">What single change moves CareerHub from demo data to the real C# server?</p>
+  <p class="a">Pointing <code>fetchJobs()</code> at the real server's address. <code>api.ts</code>
+  already reads <code>process.env.NEXT_PUBLIC_API_URL</code>, so setting that environment variable to
+  the C# server's URL (instead of the local mock route) is essentially the only change. No components,
+  types or pages need editing — the entire UI was built behind that one seam precisely so going live
+  is a configuration change, not a rewrite.</p>
+
+  <p class="q">What is CORS, and why does the C# back-end need to handle it?</p>
+  <p class="a">CORS (Cross-Origin Resource Sharing) is a browser security rule: a web page is blocked
+  from calling a server at a <i>different</i> origin unless that server explicitly permits it. Since
+  the front-end (e.g. <code>careerhub.co.za</code>) and the API (e.g. <code>api.careerhub.co.za</code>)
+  are different origins, the C# back-end must send CORS headers allowing the front-end's address.
+  Without it, the browser would refuse the response even if the server answered correctly.</p>
+
+  <p class="q">How does login (auth) fit into the front-end/back-end connection?</p>
+  <p class="a">Once login is real, the user submits credentials, the C# server verifies them and
+  returns a <b>token</b> (a signed proof of identity). The front-end stores it — slotting straight
+  into <code>AuthContext</code> — and attaches it to the header of each subsequent request in
+  <code>api.ts</code>, so the server knows who is asking and can authorise the action. Because
+  <code>AuthContext</code> already exposes a stable <code>signIn</code>/<code>user</code> shape, only
+  its internals change from mock to real; the UI consuming it stays the same.</p>
+
+  <p style="margin-top:30px;text-align:center;color:#94a3b8;font-size:11px;">— End of guide —<br>
+  CareerHub · <code>src</code> folder explained for beginners · Chapters 0–7</p>
+</div>
+
+</body>
+</html>

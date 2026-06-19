@@ -11,10 +11,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CheckCircle2, FileText, ArrowLeft } from "lucide-react";
+import { CheckCircle2, FileText, ArrowLeft, AlertCircle } from "lucide-react";
 import {
   getJobById,
   saveApplication,
+  hasApplied,
   uid,
   type Application,
 } from "@/lib/careerhub-store";
@@ -46,6 +47,8 @@ export default function ApplyPage() {
 
   const [errors, setErrors] = useState<Errors>({});
   const [submitted, setSubmitted] = useState(false);
+  // True once we detect this person has already applied to this exact job.
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
 
   // Prefill from the signed-in account so the application is linked to them.
   useEffect(() => {
@@ -54,6 +57,15 @@ export default function ApplyPage() {
       setEmail((v) => v || user.email);
     }
   }, [user]);
+
+  // Early guard: if the signed-in user has already applied to this job, show
+  // the "already applied" notice straight away instead of letting them refill
+  // the whole form only to be blocked at submit time.
+  useEffect(() => {
+    if (user && job && hasApplied(job.id, user.email)) {
+      setAlreadyApplied(true);
+    }
+  }, [user, job]);
 
   if (!job) {
     return (
@@ -99,6 +111,14 @@ export default function ApplyPage() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
+    // Block a second application to the same job from the same email. This is
+    // the real enforcement point; the on-mount effect above is just an early
+    // warning for the signed-in case.
+    if (hasApplied(job!.id, email.trim())) {
+      setAlreadyApplied(true);
+      return;
+    }
+
     const application: Application = {
       id: uid(),
       jobId: job!.id,
@@ -117,6 +137,44 @@ export default function ApplyPage() {
     };
     saveApplication(application);
     setSubmitted(true);
+  }
+
+  // Already applied — shown instead of the form. We never reach the success
+  // screen because the duplicate is caught before it is saved.
+  if (alreadyApplied && !submitted) {
+    return (
+      <main className="min-h-[70vh] bg-white px-4 py-16 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
+        <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-white/10 dark:bg-[#1a1133]">
+          <AlertCircle className="mx-auto h-14 w-14 text-amber-500" />
+          <h1 className="mt-4 text-2xl font-bold">You have already applied</h1>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            You&apos;ve already submitted an application for{" "}
+            <span className="font-medium text-slate-900 dark:text-white">
+              {job.title}
+            </span>{" "}
+            at{" "}
+            <span className="font-medium text-slate-900 dark:text-white">
+              {job.company}
+            </span>
+            . You can only apply to each role once.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href="/applications"
+              className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              Track my application
+            </Link>
+            <Link
+              href="/"
+              className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100 dark:border-white/15 dark:hover:bg-white/10"
+            >
+              Browse more jobs
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (submitted) {

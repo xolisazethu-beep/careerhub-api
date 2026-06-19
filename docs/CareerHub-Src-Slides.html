@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CareerHub — src Folder (Slides)</title>
+<style>
+  @page { size: 1280px 720px; margin: 0; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:"Segoe UI",system-ui,Arial,sans-serif; color:#1e1b2e; }
+  .slide{
+    width:1280px; height:720px; padding:60px 70px; page-break-after:always;
+    position:relative; overflow:hidden; display:flex; flex-direction:column;
+  }
+  .slide.center{ justify-content:center; align-items:flex-start; }
+  .dark{ background:linear-gradient(150deg,#1c0f33,#140a24 60%,#2b1055); color:#fff; }
+  .light{ background:#f7f5fc; }
+  .white{ background:#ffffff; }
+  h1{ font-size:64px; line-height:1.05; color:#140a24; }
+  .dark h1{ color:#fff; }
+  h2{ font-size:42px; color:#140a24; margin-bottom:6px; }
+  .kicker{ display:inline-block; background:#7c3aed; color:#fff; font-weight:800;
+           font-size:18px; letter-spacing:2px; padding:7px 18px; border-radius:999px; margin-bottom:24px;}
+  .sub{ font-size:24px; color:#5b5570; margin-top:14px; max-width:1000px; }
+  .dark .sub{ color:#d6bcfa; }
+  .grad{ background:linear-gradient(90deg,#c4b5fd,#f0abfc); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .pagenum{ position:absolute; bottom:28px; right:40px; font-size:16px; color:#a99fc0; font-weight:700; }
+  .dark .pagenum{ color:#7c6aa0; }
+  .row{ display:flex; gap:36px; flex:1; align-items:center; }
+  .col{ flex:1; }
+  img.shot{ width:100%; border-radius:14px; border:1px solid #e2e8f0;
+            box-shadow:0 18px 50px rgba(20,10,36,.30); }
+  ul{ list-style:none; }
+  li{ font-size:26px; margin:18px 0; padding-left:42px; position:relative; color:#2e2a40; line-height:1.35; }
+  .dark li{ color:#ede9fe; }
+  li::before{ content:"▸"; position:absolute; left:0; color:#7c3aed; font-size:26px; }
+  .dark li::before{ color:#c4b5fd; }
+  code{ font-family:Consolas,monospace; background:#efe9fb; color:#6d28d9;
+        padding:2px 9px; border-radius:6px; font-size:.86em; }
+  .dark code{ background:#ffffff1a; color:#f0abfc; }
+  .cap{ font-size:18px; color:#7a7290; margin-top:14px; }
+  .dark .cap{ color:#b39ddb; }
+  .big{ font-size:30px; line-height:1.4; color:#2e2a40; max-width:1050px; }
+  .chips{ display:flex; gap:14px; flex-wrap:wrap; margin-top:28px; }
+  .chip{ background:#ede9fe; color:#5b21b6; font-size:20px; font-weight:700;
+         padding:10px 20px; border-radius:12px; border:1px solid #ddd6fe; }
+  .tree{ font-family:Consolas,monospace; font-size:26px; line-height:1.9; color:#2e2a40; }
+  .tree b{ color:#6d28d9; }
+  .tree span{ color:#7a7290; font-size:21px; }
+  table{ border-collapse:collapse; width:100%; font-size:22px; }
+  td{ padding:12px 16px; border-bottom:1px solid #e7e2f3; }
+  td:first-child code{ font-size:22px; }
+  .flow{ display:flex; align-items:center; gap:18px; justify-content:center; flex:1; }
+  .node{ border-radius:16px; padding:26px 24px; text-align:center; font-size:22px; font-weight:700; }
+  .n-fe{ background:#ede9fe; color:#6d28d9; border:2px solid #a855f7; }
+  .n-api{ background:#fff; color:#7c3aed; border:2px solid #c4b5fd; }
+  .n-be{ background:#1c0f33; color:#f0abfc; }
+  .node small{ display:block; font-weight:500; font-size:16px; color:#8b80a5; margin-top:6px; }
+  .n-be small{ color:#b39ddb; }
+  .arrow{ font-size:30px; color:#7c3aed; font-weight:800; }
+  .arrowlbl{ font-size:16px; color:#64748b; text-align:center; }
+</style>
+</head>
+<body>
+
+<!-- 1 TITLE -->
+<div class="slide dark center">
+  <span class="kicker">BEGINNER GUIDE · SLIDES</span>
+  <h1>Inside <span class="grad">CareerHub</span><br>The <code style="font-size:54px;background:transparent;color:#f0abfc;">src</code> folder</h1>
+  <p class="sub">The front-end, room by room — with real screenshots from the running app, and how it
+  connects to a C# back-end.</p>
+  <div class="chips">
+    <span class="chip" style="background:#ffffff14;color:#e9d5ff;border-color:#ffffff22;">Next.js 15</span>
+    <span class="chip" style="background:#ffffff14;color:#e9d5ff;border-color:#ffffff22;">React 19</span>
+    <span class="chip" style="background:#ffffff14;color:#e9d5ff;border-color:#ffffff22;">TypeScript</span>
+    <span class="chip" style="background:#ffffff14;color:#e9d5ff;border-color:#ffffff22;">Tailwind CSS</span>
+  </div>
+  <div class="pagenum">CareerHub</div>
+</div>
+
+<!-- 2 SRC MAP -->
+<div class="slide light">
+  <span class="kicker">CHAPTER 0</span>
+  <h2><code>src</code> — the whole front-end</h2>
+  <p class="sub">One container, six rooms. Each has a single clear job.</p>
+  <div class="row">
+    <div class="col">
+      <div class="tree">
+<b>src/</b><br>
+&nbsp;├─ <b>app/</b> <span>— pages &amp; routes</span><br>
+&nbsp;├─ <b>components/</b> <span>— reusable UI blocks</span><br>
+&nbsp;├─ <b>context/</b> <span>— shared memory (login, toasts)</span><br>
+&nbsp;├─ <b>fonts/</b> <span>— the typefaces</span><br>
+&nbsp;├─ <b>lib/</b> <span>— logic, data, formatting</span><br>
+&nbsp;└─ <b>types/</b> <span>— the data contract</span>
+      </div>
+    </div>
+    <div class="col big">
+      A website is like a house. <b>src</b> is the whole house; each folder is a
+      <b>room</b> with one responsibility. Good organisation is what lets a team build something
+      large without chaos.
+    </div>
+  </div>
+  <div class="pagenum">2</div>
+</div>
+
+<!-- 3 APP -->
+<div class="slide white">
+  <span class="kicker">CHAPTER 1 · app</span>
+  <h2>Folders become web pages</h2>
+  <div class="row">
+    <div class="col">
+      <img class="shot" src="shots/home-light.png" alt="home">
+      <p class="cap">REAL SCREENSHOT — the home page, drawn by <code>app/page.tsx</code></p>
+    </div>
+    <div class="col">
+      <ul>
+        <li><b>File-based routing:</b> a folder = a URL</li>
+        <li><code>page.tsx</code> is the screen at that address</li>
+        <li><code>layout.tsx</code> is the frame around every page (navbar + footer)</li>
+        <li>The page shows <b>loading → error → success</b> states</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pagenum">3</div>
+</div>
+
+<!-- 4 APP dark + selected -->
+<div class="slide light">
+  <span class="kicker">CHAPTER 1 · app</span>
+  <h2>Same page, live states</h2>
+  <div class="row">
+    <div class="col">
+      <img class="shot" src="shots/home-dark.png" alt="dark">
+      <p class="cap">Dark mode — only colours change, code is identical</p>
+    </div>
+    <div class="col">
+      <img class="shot" src="shots/home-selected.png" alt="selected">
+      <p class="cap">Selecting a card opens the live <b>SummaryPanel</b></p>
+    </div>
+  </div>
+  <div class="pagenum">4</div>
+</div>
+
+<!-- 5 COMPONENTS -->
+<div class="slide white">
+  <span class="kicker">CHAPTER 2 · components</span>
+  <h2>Reusable building blocks</h2>
+  <div class="row">
+    <div class="col">
+      <img class="shot" src="shots/navbar.png" alt="navbar" style="margin-bottom:24px;">
+      <img class="shot" src="shots/jobcard.png" alt="card" style="width:62%;">
+      <p class="cap">REAL — <code>Navbar.tsx</code> &amp; <code>JobCard.tsx</code></p>
+    </div>
+    <div class="col">
+      <ul>
+        <li>A <b>component</b> is a LEGO brick — write once, reuse everywhere</li>
+        <li><b>Props</b> are its inputs (which job, is it selected?)</li>
+        <li>It <b>delegates</b>: salary &amp; dates from <code>lib/format.ts</code></li>
+        <li>Fix the brick once → every copy updates</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pagenum">5</div>
+</div>
+
+<!-- 6 CONTEXT -->
+<div class="slide light">
+  <span class="kicker">CHAPTER 3 · context</span>
+  <h2>Shared memory for the whole app</h2>
+  <div class="row">
+    <div class="col">
+      <img class="shot" src="shots/toast.png" alt="toast">
+      <p class="cap">REAL — a live "Saved to your list." toast; navbar shows "Sign out"</p>
+    </div>
+    <div class="col">
+      <ul>
+        <li><code>useAuth()</code> — who is logged in, everywhere</li>
+        <li><code>useToast()</code> — pop-up messages from anywhere</li>
+        <li>No "prop drilling" through every layer</li>
+        <li><b>Swap-ready:</b> mock login today, real C# server later — UI unchanged</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pagenum">6</div>
+</div>
+
+<!-- 7 FONTS -->
+<div class="slide white center">
+  <span class="kicker">CHAPTER 4 · fonts</span>
+  <h2>The typefaces</h2>
+  <div style="margin-top:24px;">
+    <div style="font-size:60px;font-weight:800;color:#140a24;">Find your next role</div>
+    <p class="cap" style="font-size:20px;">↑ Plus Jakarta Sans — headings &amp; logo</p>
+    <div style="font-size:30px;color:#334155;margin-top:30px;max-width:980px;">Browse curated job
+      listings across South Africa. Save the ones you like and apply in a click.</div>
+    <p class="cap" style="font-size:20px;">↑ Inter — body text</p>
+  </div>
+  <p class="big" style="margin-top:36px;">Self-hosted <code>.woff2</code> files →
+    <b>private, fast, offline-safe</b>. Loaded by <code>app/layout.tsx</code>.</p>
+  <div class="pagenum">7</div>
+</div>
+
+<!-- 8 LIB -->
+<div class="slide light">
+  <span class="kicker">CHAPTER 5 · lib</span>
+  <h2>The engine room</h2>
+  <div class="row"><div class="col" style="flex:1.1;">
+    <table>
+      <tr><td><code>api.ts</code></td><td>fetches jobs over the network (door to the back-end)</td></tr>
+      <tr><td><code>format.ts</code></td><td><code>45000</code> → <b>"R45 000 pm"</b>; dates → "2 days ago"</td></tr>
+      <tr><td><code>careerhub-store.ts</code></td><td>saves applications in the browser (swap-ready)</td></tr>
+      <tr><td><code>employmentType.ts</code></td><td>one place mapping <code>"FullTime"</code> → "Full-time"</td></tr>
+      <tr><td><code>utils.ts</code></td><td><code>cn()</code> — safely merges styling classes</td></tr>
+    </table>
+  </div></div>
+  <p class="big"><code>lib</code> = how things <b>work</b>. <code>components</code> = how things <b>look</b>.</p>
+  <div class="pagenum">8</div>
+</div>
+
+<!-- 9 TYPES -->
+<div class="slide white">
+  <span class="kicker">CHAPTER 6 · types</span>
+  <h2>The data contract</h2>
+  <div class="flow">
+    <div class="node n-be">C# Back-End<small>JobListingResponse.cs</small></div>
+    <div style="text-align:center;"><div class="arrow">↔</div></div>
+    <div class="node n-api" style="border-color:#10b981;color:#065f46;">The Contract<small>same fields, same names</small></div>
+    <div style="text-align:center;"><div class="arrow">↔</div></div>
+    <div class="node n-fe">Front-End<small>types/index.ts</small></div>
+  </div>
+  <p class="big" style="text-align:center;margin:0 auto;">If the back-end renames a field, the
+    front-end <b>stops compiling</b> until it's fixed — a bug caught on the developer's screen,
+    never on the user's.</p>
+  <div class="pagenum">9</div>
+</div>
+
+<!-- 10 BACKEND -->
+<div class="slide light">
+  <span class="kicker">CHAPTER 7</span>
+  <h2>Front-End → C# Back-End</h2>
+  <div class="flow">
+    <div class="node n-fe">Component<small>page.tsx</small></div>
+    <div><div class="arrow">→</div></div>
+    <div class="node n-api">fetchJobs()<small>lib/api.ts</small></div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+      <div class="arrow">→</div><div class="arrowlbl">HTTP request</div>
+      <div class="arrow" style="color:#10b981;">←</div><div class="arrowlbl">JSON reply</div>
+    </div>
+    <div class="node n-be">C# Back-End<small>ASP.NET + database</small></div>
+  </div>
+  <ul style="margin-top:0;">
+    <li>They never share code — they swap <b>HTTP + JSON</b> messages</li>
+    <li>JSON is text both C# and TypeScript understand → the language doesn't matter</li>
+    <li>Going live = change <b>one address</b>: <code>NEXT_PUBLIC_API_URL</code></li>
+  </ul>
+  <div class="pagenum">10</div>
+</div>
+
+<!-- 11 SUMMARY 1 -->
+<div class="slide white">
+  <span class="kicker">SUMMARY · PART 1</span>
+  <h2>The front-end folders</h2>
+  <div class="row"><div class="col">
+    <ul>
+      <li><b>Separation of concerns</b> — looks, logic, data shape &amp; shared state each kept apart</li>
+      <li><b>Reuse</b> — write a card once, draw it many times</li>
+      <li><b>Swap-readiness</b> — demo data → real server with tiny changes</li>
+    </ul>
+  </div><div class="col big">
+    Click a card → page reads it (app) → drawn by bricks (components) → formatted by
+    <code>lib</code> → shape guaranteed by <code>types</code> → login from <code>context</code> →
+    in the right <code>fonts</code>. Every room plays its part.
+  </div></div>
+  <div class="pagenum">11</div>
+</div>
+
+<!-- 12 SUMMARY 2 -->
+<div class="slide dark">
+  <span class="kicker" style="background:#a855f7;">SUMMARY · PART 2</span>
+  <h2 style="color:#fff;">Connecting to the C# back-end</h2>
+  <ul>
+    <li><b>HTTP</b> carries the request &amp; response</li>
+    <li><b>JSON</b> is the shared language both sides read</li>
+    <li>The <b>contract</b> (<code>types</code> ↔ <code>JobListingResponse.cs</code>) keeps them in step</li>
+    <li>One seam — <code>fetchJobs()</code> — is the only door to the server</li>
+    <li>Back-end handles <b>CORS</b> + <b>auth tokens</b> for a secure, live connection</li>
+  </ul>
+  <p class="sub" style="margin-top:20px;">The UI was finished with mock data before the back-end
+  existed — then flipped to live with a one-line change. That's the pay-off of clean separation.</p>
+  <div class="pagenum">12</div>
+</div>
+
+<!-- 13 CLOSE -->
+<div class="slide dark center">
+  <h1 style="color:#fff;">Thank you.</h1>
+  <p class="sub">CareerHub · the <code style="color:#f0abfc;background:transparent;">src</code> folder,
+  explained for beginners.<br>Full written guide + 40 interview Q&amp;A in the companion PDF.</p>
+  <div class="pagenum">13</div>
+</div>
+
+</body>
+</html>

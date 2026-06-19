@@ -121,6 +121,29 @@ export function getLatestApplication(email: string): Application | null {
   return getApplicationsByEmail(email)[0] ?? null;
 }
 
+/**
+ * Has this person already applied to a given job? Matched by jobId AND email
+ * (case-insensitive), so the same account cannot submit the same role twice.
+ * The apply page calls this to block duplicate applications.
+ */
+export function hasApplied(jobId: string, email: string): boolean {
+  const target = email.trim().toLowerCase();
+  return getApplications().some(
+    (a) => a.jobId === jobId && a.email.toLowerCase() === target,
+  );
+}
+
+/**
+ * Withdraw (delete) one application by its id. We read the full list, drop the
+ * matching record, and write the rest back. It is a no-op if the id is not
+ * found, so calling it twice is safe. Used by the "Withdraw application" flow
+ * on the tracking page.
+ */
+export function withdrawApplication(id: string): void {
+  const remaining = getApplications().filter((a) => a.id !== id);
+  write(APPS_KEY, remaining);
+}
+
 // ---------- Jobs posted by recruiters ----------
 export function getJobs(): Job[] {
   return read<Job[]>(JOBS_KEY, []);
