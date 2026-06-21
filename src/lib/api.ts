@@ -8,7 +8,12 @@ import type { JobListing } from "@/types";
  * touching a single component.
  */
 export async function fetchJobs(): Promise<JobListing[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  // The mock API route (`/api/jobs`) is served by this same Next.js app, so a
+  // relative URL is all that's needed in the browser. `NEXT_PUBLIC_API_URL` is
+  // honored when set (e.g. pointing at a real backend), but we fall back to the
+  // local route instead of fetching `undefined/api/jobs` — which 404s — when the
+  // env var is absent.
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
   const res = await fetch(`${baseUrl}/api/jobs`);
 
   // `fetch` only REJECTS on a network-level failure (DNS, offline, CORS, etc.).

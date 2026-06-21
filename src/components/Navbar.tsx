@@ -14,7 +14,6 @@ import {
   Menu as MenuIcon,
   X,
   Search,
-  Building2,
   Users,
   Info,
   Mail,
@@ -28,7 +27,6 @@ import { useAuth } from "@/context/AuthContext";
 
 const menuItems = [
   { label: "Find a Job", href: "/", icon: Search },
-  { label: "Companies", href: "/companies", icon: Building2 },
   { label: "Employers and Recruiters", href: "/recruiter", icon: Users },
   { label: "About Us", href: "/about", icon: Info },
   { label: "Contact Us", href: "/contact", icon: Mail },
