@@ -122,9 +122,83 @@ export interface JobListing {
   closingDate: string;
 }
 
-/** A signed-in user. Auth is mocked locally for the frontend-only milestone. */
+/**
+ * A signed-in user — the safe projection the auth API returns (never the
+ * password). Mirrors `SafeUser` in the server-side store.
+ */
 export interface User {
   id: string;
   name: string;
   email: string;
+}
+
+/** Body POSTed to `POST /api/auth/signup`. */
+export interface SignupRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+/** Body POSTed to `POST /api/auth/login`. */
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+/** The success payload both auth endpoints return: just the safe user. */
+export interface AuthResponse {
+  user: User;
+}
+
+/**
+ * The body POSTed to `/api/applications` when a candidate applies for a role.
+ * This is the wire contract the `ApplicationForm` produces (via `z.infer` of the
+ * Zod schema, plus the `jobId` injected from the selected listing) and the
+ * route handler consumes. Optional fields (`phone`, `linkedInUrl`) are omitted
+ * entirely when the candidate leaves them blank — see the empty-string pattern
+ * in the form schema.
+ */
+export interface ApplicationRequest {
+  jobId: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  yearsOfExperience: number;
+  coverLetter: string;
+  linkedInUrl?: string;
+  availableImmediately: boolean;
+  noticePeriodWeeks: number;
+}
+
+/**
+ * The 201 payload the `/api/applications` route returns on a successful submit.
+ * It is intentionally lean: a server-generated `id`, the `jobId`/`email` echoed
+ * back for confirmation, and the server's `submittedAt` timestamp. The form
+ * renders its success panel from this; the recruiter views read the full record
+ * (see `RecruiterApplication`) from the server store separately.
+ */
+export interface ApplicationResponse {
+  id: string;
+  jobId: string;
+  email: string;
+  submittedAt: string;
+}
+
+/**
+ * One stored application as the server-side store keeps it — the full submitted
+ * body plus server-owned fields (`id`, `submittedAt`, and the recruiter-managed
+ * `status`). This is what the recruiter applicant-review screens read and what a
+ * status decision (accept/reject) mutates. It is NOT part of the assignment's
+ * minimal contract; it backs the extra recruiter requirements.
+ */
+export type RecruiterDecisionStatus =
+  | "Submitted"
+  | "Under review"
+  | "Accepted"
+  | "Rejected";
+
+export interface RecruiterApplication extends ApplicationRequest {
+  id: string;
+  submittedAt: string;
+  status: RecruiterDecisionStatus;
 }

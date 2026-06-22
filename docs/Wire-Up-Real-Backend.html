@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CareerHub — Wiring the UI to the Real Backend</title>
+<style>
+  :root { --brand:#2563eb; --ink:#0f172a; --muted:#475569; --line:#e2e8f0; --ok:#16a34a; --warn:#b45309; --bg:#f8fafc; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); margin: 0; padding: 40px 48px; line-height: 1.5; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--line); color: var(--brand); }
+  h3 { font-size: 14px; margin: 16px 0 6px; }
+  p, li { font-size: 13px; color: var(--ink); }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+  code { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 12px; overflow-x: auto; font-family: "Cascadia Code", Consolas, monospace; }
+  pre .c { color: #94a3b8; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; }
+  th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; font-size: 12px; vertical-align: top; }
+  th { background: var(--bg); }
+  .ok { color: var(--ok); font-weight: 600; }
+  .warn { color: var(--warn); font-weight: 600; }
+  .pill { display: inline-block; background: var(--brand); color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight: 600; }
+  .box { border: 1px solid var(--line); border-left: 4px solid var(--brand); background: var(--bg); border-radius: 6px; padding: 10px 14px; margin: 10px 0; }
+  .box.warn { border-left-color: var(--warn); }
+  .box.ok { border-left-color: var(--ok); }
+  ol li, ul li { margin: 4px 0; }
+  .small { font-size: 11px; color: var(--muted); }
+  footer { margin-top: 30px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>CareerHub — Wiring the UI to the Real Backend</h1>
+<p class="sub">Connecting the Next.js frontend job board to the live ASP.NET + Postgres API &middot; Generated 23 June 2026</p>
+
+<div class="box ok">
+  <strong class="ok">STATUS: WIRED UP &amp; VERIFIED.</strong> The homepage at
+  <code>http://localhost:3000</code> now loads <strong>real jobs from Postgres</strong>
+  via the backend at <code>http://localhost:8080</code>. The sections below record what
+  changed and the manual steps you need to know to run, prove, and maintain it.
+</div>
+
+<h2>1 &middot; What was changed (in this repo only)</h2>
+<table>
+  <tr><th>File</th><th>Change</th></tr>
+  <tr><td><code>.env.local</code></td><td>Added <code>NEXT_PUBLIC_API_BASE_URL=http://localhost:8080</code> — the live backend. Left <code>NEXT_PUBLIC_API_URL</code> unset on purpose (keeps applications / recruiter / auth on the in-app routes).</td></tr>
+  <tr><td><code>src/lib/api.ts</code></td><td>Added a single <code>JOBS_API_BASE</code> constant that reads the new env var. <code>fetchJobs</code> and <code>fetchJobById</code> now call the real backend; every other function is untouched. No hardcoded URLs.</td></tr>
+</table>
+<p><strong>Not changed (and why):</strong> the TypeScript types in <code>src/types/index.ts</code> already
+match the backend's DTO <em>exactly</em> (same fields, same camelCase, same nullable salaries), so no type
+edits were needed. <code>page.tsx</code>, <code>providers.tsx</code>, the skeleton loader, React Query
+Devtools and the error UI were all left intact.</p>
+
+<h2>2 &middot; Contract check — backend is the source of truth</h2>
+<p>Pulled live from <code>http://localhost:8080/openapi/v1.json</code> and a real <code>GET /api/jobs</code> response:</p>
+<table>
+  <tr><th>Aspect</th><th>Backend (live)</th><th>Your TS type</th><th>Verdict</th></tr>
+  <tr><td>List item fields</td><td>id, title, location, type, salaryMin, salaryMax, status, createdAt, expiresAt, companyId, companyName, companyCity, minimumExperienceYears, responsibilities, skills, applicantCount</td><td><code>JobListingResponse</code></td><td class="ok">Identical</td></tr>
+  <tr><td>Casing</td><td>camelCase</td><td>camelCase</td><td class="ok">Match — no transform needed</td></tr>
+  <tr><td>Envelope</td><td>data, page, pageSize, totalCount, totalPages, hasNextPage, hasPreviousPage, links</td><td><code>PagedResponse&lt;T&gt;</code></td><td class="ok">Identical</td></tr>
+  <tr><td>Detail extras</td><td>description, minimumRequirements, companyProvince, companyWebsite</td><td><code>JobListingDetailResponse</code></td><td class="ok">Identical</td></tr>
+</table>
+
+<h2>3 &middot; Why direct calls (not a proxy)</h2>
+<p>The browser calls the backend straight from TanStack Query's <code>queryFn</code>, because the backend
+already returns CORS headers for the frontend origin (verified: an <code>OPTIONS</code> preflight returns
+<code>204</code> with <code>Access-Control-Allow-Origin: http://localhost:3000</code>). The env var is
+<code>NEXT_PUBLIC_</code>-prefixed, i.e. intended for the browser. No proxy route was needed, so nothing
+forwards or hides the URL — simplest correct choice for local dev.</p>
+
+<h2 class="warn">4 &middot; Manual steps YOU need to do / know</h2>
+
+<h3>A. Prove the data is real (the acceptance test)</h3>
+<ol>
+  <li>Open the API docs UI: <code>http://localhost:8080/scalar/v1</code></li>
+  <li>Find <code>POST /api/Jobs</code>, fill in a new job (title, company, etc.) and send it.</li>
+  <li>Refresh <code>http://localhost:3000</code> — your new job appears in the grid. That round trip through Postgres is the proof it is not mock data.</li>
+</ol>
+
+<h3>B. Starting everything from cold (after a reboot)</h3>
+<pre><span class="c"># 1. Backend (API + Postgres) — from the backend repo folder:</span>
+cd C:\Users\Xolisa\assignment-3.2
+docker compose up -d
+
+<span class="c"># 2. Frontend — from this repo:</span>
+cd C:\Users\Xolisa\careerhub-1.3
+npm run dev</pre>
+<p class="small">The backend image takes a few minutes to build the first time (.NET 10 publish). After that it starts in seconds.</p>
+
+<div class="box warn">
+  <strong class="warn">C. If the board shows the error panel / 500s:</strong> the Postgres container can drop into
+  <em>"recovery mode"</em> when the machine is under heavy load (it happened once during the .NET build).
+  The API's connection pool then holds dead connections. Fix:
+  <pre><span class="c"># wait for Postgres to report healthy, then bounce the API:</span>
+docker restart careerhub24-api</pre>
+  Give it ~30&ndash;60 s to re-run migrations and start listening, then refresh the page.
+</div>
+
+<h3>D. Known limitation — pagination</h3>
+<p>The backend holds <strong>~600 jobs</strong> and paginates 20 at a time. The board currently requests
+<code>?page=1&amp;pageSize=50</code>, so it shows the first 50 and the search/sort/filter operate on those 50.
+Wiring real page navigation (using the <code>links.next</code> the API already returns) is a clean follow-up
+but was out of scope for "show live jobs".</p>
+
+<h3>E. Application &amp; recruiter flows still use the in-app store</h3>
+<p>Submitting an application and posting jobs from the recruiter screens still write to this Next.js app's own
+<code>/api</code> routes, <em>not</em> the real backend — the live API exposes those under a different shape
+(e.g. <code>POST /api/v1/jobs/&#123;id&#125;/applications</code>). This is deliberate: only the job board was in
+scope. Wiring those to the real backend is a separate task.</p>
+
+<h2>5 &middot; Verification performed</h2>
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td>Backend URL the browser hits</td><td><code>GET http://localhost:8080/api/jobs?page=1&amp;pageSize=50</code></td></tr>
+  <tr><td>Backend response</td><td class="ok">HTTP 200 &middot; 50 items &middot; totalCount 600 &middot; real SA employers (Standard Bank, Discovery, Capitec)</td></tr>
+  <tr><td>CORS for localhost:3000</td><td class="ok">Allowed (preflight 204 + Access-Control-Allow-Origin)</td></tr>
+  <tr><td>Frontend homepage</td><td class="ok">HTTP 200, renders and hydrates the grid from the API</td></tr>
+  <tr><td>TanStack Query / skeleton / devtools / error UI</td><td class="ok">Preserved (queryKey <code>["jobs"]</code>, default staleTime)</td></tr>
+</table>
+
+<footer>
+  CareerHub &middot; Backend: <code>C:\Users\Xolisa\assignment-3.2</code> (containers <code>careerhub24-api</code> :8080, <code>careerhub24-pg</code> :5544).
+  Frontend: <code>C:\Users\Xolisa\careerhub-1.3</code> (<code>npm run dev</code> :3000).
+</footer>
+
+</body>
+</html>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import AuthShell from "@/components/AuthShell";
-import { Field, FormError, SubmitButton } from "@/components/AuthFields";
+import { Field, PasswordField, FormError, SubmitButton } from "@/components/AuthFields";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 
@@ -57,28 +57,22 @@ export default function LoginPage() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <div>
-          <div className="flex items-center justify-between">
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-              Password
-            </label>
+        <PasswordField
+          id="password"
+          label="Password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          labelAccessory={
             <Link
               href="/forgot-password"
               className="text-xs font-medium text-brand-700 hover:underline"
             >
               Forgot password?
             </Link>
-          </div>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/30"
-          />
-        </div>
+          }
+        />
         <SubmitButton pending={pending}>Sign in</SubmitButton>
       </form>
     </AuthShell>

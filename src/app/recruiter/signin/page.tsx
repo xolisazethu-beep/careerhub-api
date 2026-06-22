@@ -7,7 +7,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Building2 } from "lucide-react";
+import { Building2, Eye, EyeOff } from "lucide-react";
 import { signInRecruiter } from "@/lib/careerhub-store";
 
 const inputClass =
@@ -18,6 +18,7 @@ export default function RecruiterSignInPage() {
   const [company, setCompany] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(event: FormEvent) {
@@ -80,14 +81,30 @@ export default function RecruiterSignInPage() {
             <label htmlFor="password" className="block text-sm font-medium">
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              className={inputClass}
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                className={`${inputClass} pr-11`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+                className="absolute inset-y-0 right-0 mt-1.5 flex items-center px-3 text-slate-400 transition hover:text-slate-600 focus:outline-none dark:hover:text-slate-200"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
           <button
             type="submit"

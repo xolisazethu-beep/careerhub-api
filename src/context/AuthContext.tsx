@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * Mock authentication for the frontend-only milestone.
+ * Real, API-backed authentication.
  *
- * There is no auth API yet, so accounts live in localStorage. The PUBLIC SHAPE
- * of this context (user, signIn, signUp, signOut, requestPasswordReset) is the
- * same shape a real API-backed provider will expose in a later assignment.
- * When the live endpoints land, only the bodies of these functions change —
- * every screen that consumes `useAuth()` stays exactly the same. That is the
- * data-source-agnostic principle applied to auth.
+ * Accounts are persisted server-side in the file-based store (via the
+ * `/api/auth/*` routes) — exactly like the job and application data. This
+ * context only keeps the *session* (the currently signed-in safe user) in
+ * localStorage so a reload doesn't sign the user out; it never stores
+ * passwords or the account list in the browser.
+ *
+ * The PUBLIC SHAPE (user, signIn, signUp, signOut, requestPasswordReset) is
+ * unchanged, so every screen that consumes `useAuth()` keeps working.
  */
 
 import {
@@ -21,10 +23,7 @@ import {
   type ReactNode,
 } from "react";
 import type { User } from "@/types";
-
-interface StoredAccount extends User {
-  password: string;
-}
+import { signupRequest, loginRequest } from "@/lib/api";
 
 interface AuthContextValue {
   user: User | null;
@@ -35,28 +34,9 @@ interface AuthContextValue {
   requestPasswordReset: (email: string) => Promise<void>;
 }
 
-const ACCOUNTS_KEY = "careerhub.accounts";
 const SESSION_KEY = "careerhub.session";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-function readAccounts(): StoredAccount[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(ACCOUNTS_KEY);
-    return raw ? (JSON.parse(raw) as StoredAccount[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeAccounts(accounts: StoredAccount[]): void {
-  window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -85,50 +65,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      await delay(450);
-      const normalised = email.trim().toLowerCase();
-      const account = readAccounts().find((a) => a.email === normalised);
-      if (!account || account.password !== password) {
-        throw new Error("Email or password is incorrect.");
-      }
-      const { password: _password, ...safe } = account;
-      void _password;
-      persistSession(safe);
+      // Verify against the real API; the route throws on bad credentials.
+      const { user: authed } = await loginRequest({ email, password });
+      persistSession(authed);
     },
     [persistSession],
   );
 
   const signUp = useCallback(
     async (name: string, email: string, password: string) => {
-      await delay(450);
-      const normalised = email.trim().toLowerCase();
-      const accounts = readAccounts();
-      if (accounts.some((a) => a.email === normalised)) {
-        throw new Error("An account with this email already exists.");
-      }
-      const account: StoredAccount = {
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        email: normalised,
-        password,
-      };
-      writeAccounts([...accounts, account]);
-      const { password: _password, ...safe } = account;
-      void _password;
-      persistSession(safe);
+      // Create the account in the real server store, then start the session.
+      const { user: created } = await signupRequest({ name, email, password });
+      persistSession(created);
     },
     [persistSession],
   );
 
-  const requestPasswordReset = useCallback(async (email: string) => {
-    await delay(450);
-    const normalised = email.trim().toLowerCase();
-    const exists = readAccounts().some((a) => a.email === normalised);
-    // Deliberately do not reveal whether the address exists — same response
-    // either way, mirroring how a real reset endpoint avoids account discovery.
-    if (!exists) {
-      // no-op on purpose
-    }
+  const requestPasswordReset = useCallback(async (_email: string) => {
+    // Password reset is out of scope for this milestone; the endpoint isn't
+    // built yet. Resolve silently either way so the screen never reveals
+    // whether an address is registered (avoids account discovery).
+    void _email;
   }, []);
 
   const signOut = useCallback(() => {

@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Step-by-step mastering 1.4</title>
+<style>
+  :root{
+    --ink:#0f1222; --muted:#5b6478; --line:#e4e7ee; --brand:#6d28d9; --brand2:#8b5cf6;
+    --code-bg:#0f0a1e; --code-fg:#e9e6f5; --ok:#059669; --warn:#d97706; --err:#dc2626; --sky:#0284c7;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  body{font-family:'Segoe UI',system-ui,Arial,sans-serif; color:var(--ink); margin:0; line-height:1.55; font-size:12.5px;}
+  .page{padding:46px 52px;}
+  h1{font-size:32px; margin:0 0 4px; letter-spacing:-.5px;}
+  h2{font-size:21px; margin:0 0 12px; color:#fff; background:var(--brand); padding:10px 16px; border-radius:10px;}
+  h3{font-size:16px; margin:18px 0 6px; color:var(--brand);}
+  h4{font-size:12px; margin:14px 0 5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--line); padding-bottom:3px;}
+  p{margin:7px 0;}
+  code{font-family:'Cascadia Code','Consolas',monospace; background:#f1eefc; color:#5b21b6; padding:1px 5px; border-radius:4px; font-size:11.5px;}
+  pre{background:var(--code-bg); color:var(--code-fg); padding:14px 16px; border-radius:10px; overflow:auto; font-size:10.7px; line-height:1.5; font-family:'Cascadia Code','Consolas',monospace; margin:9px 0;}
+  pre code{background:none; color:inherit; padding:0;}
+  pre .c{color:#9a8cc7;} /* comment */
+  .lead{font-size:14px; color:var(--muted); margin-top:2px;}
+  .tag{display:inline-block; background:var(--brand); color:#fff; font-size:11px; font-weight:600; padding:3px 10px; border-radius:999px; margin-bottom:14px;}
+  .cmd{background:#06241b; color:#aef5d2; padding:11px 14px; border-radius:8px; font-family:'Cascadia Code','Consolas',monospace; font-size:11px; margin:8px 0; border-left:4px solid #10b981;}
+  .cmd b{color:#fff;}
+  .where{background:#fff7ed; border-left:4px solid #f59e0b; padding:8px 13px; border-radius:0 8px 8px 0; font-size:11.5px; margin:8px 0;}
+  .where code{background:#fde68a55;}
+  .note{border-left:4px solid var(--brand2); background:#f7f5ff; padding:9px 14px; border-radius:0 8px 8px 0; margin:11px 0;}
+  .why{border-left:4px solid var(--sky); background:#eff8ff; padding:9px 14px; border-radius:0 8px 8px 0; margin:11px 0;}
+  .why b, .scn b{color:#075985;}
+  .scn{border:1px dashed #7dd3fc; background:#f0f9ff; padding:9px 14px; border-radius:8px; margin:11px 0;}
+  .sum{background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:11px 14px; margin:13px 0;}
+  .sum b{color:#15803d;}
+  .ok{color:var(--ok);font-weight:600;} .err{color:var(--err);font-weight:600;} .warn{color:var(--warn);font-weight:600;}
+  table{border-collapse:collapse; width:100%; margin:10px 0; font-size:11.3px;}
+  th,td{border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top;}
+  th{background:#f6f4fd; color:var(--brand);}
+  .pagebreak{page-break-before:always;}
+  .ui{border:1px solid var(--line); border-radius:14px; overflow:hidden; margin:11px 0; box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .ui-bar{background:#1a1133; color:#fff; padding:7px 13px; font-size:10.5px; display:flex; align-items:center; gap:7px;}
+  .ui-dot{width:8px;height:8px;border-radius:50%;}
+  .ui-body{padding:14px; background:#faf9fe;}
+  .field{margin:7px 0;}
+  .field label{display:block; font-size:10.5px; font-weight:600; color:#374151; margin-bottom:3px;}
+  .field .inp{border:1px solid #cbd2e0; border-radius:8px; padding:6px 9px; font-size:10.5px; color:#6b7280; background:#fff;}
+  .field .inp.err{border-color:var(--err);}
+  .fieldhint{color:var(--err); font-size:10px; margin-top:3px;}
+  .btn{background:var(--brand); color:#fff; border:none; border-radius:8px; padding:8px 13px; font-size:11px; font-weight:600; display:inline-block;}
+  .btn.disabled{background:#9aa3b2;} .btn.green{background:var(--ok);} .btn.red{background:var(--err);} .btn.ghost{background:#fff;color:#374151;border:1px solid #cbd2e0;}
+  .badge{display:inline-block; border-radius:999px; padding:2px 10px; font-size:10px; font-weight:700; border:1px solid;}
+  .b-sky{background:#e0f2fe;color:#0369a1;border-color:#7dd3fc;} .b-green{background:#dcfce7;color:#15803d;border-color:#86efac;}
+  .b-red{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;} .b-brand{background:#f3e8ff;color:#7e22ce;border-color:#d8b4fe;}
+  .panel-ok{border:1px solid #86efac;background:#f0fdf4;border-radius:10px;padding:11px;}
+  .panel-err{border:1px solid #fca5a5;background:#fef2f2;border-radius:10px;padding:11px;color:#b91c1c;font-size:11px;}
+  .small{font-size:10.5px;color:var(--muted);}
+  ul.tight{margin:6px 0; padding-left:20px;} ul.tight li{margin:3px 0;}
+  ol.steps{margin:6px 0; padding-left:22px;} ol.steps li{margin:5px 0;}
+  .stepnum{display:inline-block;background:var(--brand);color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-weight:700;font-size:12px;margin-right:6px;}
+  .toc{columns:2; font-size:11.5px;} .toc div{margin:3px 0; break-inside:avoid;}
+  .analogy{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 13px;margin:10px 0;font-size:11.5px;}
+  .analogy b{color:#b45309;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <span class="tag">CareerHub · Assignment 1.4 · Teaching edition</span>
+  <h1>Step-by-step mastering 1.4</h1>
+  <p class="lead">Applications &amp; Mutations — explained so a beginner (or a non-technical person)
+  can follow every step: what to type, which file to open, the exact code, why each important line
+  exists, what it does to the screen, and a real-world scenario for each part.</p>
+
+  <div class="analogy"><b>The big picture in one sentence.</b> We are turning a job board you can only
+  <i>read</i> into one you can <i>write to</i>: a person fills in a form, the app checks it like a
+  bouncer at a club door, and only if everything is correct does it send the application to a
+  "kitchen" (the server) that saves it and replies. A recruiter can then read those applications and
+  say yes or no.</p>
+
+  <h3>What you will build, in plain words</h3>
+  <ul class="tight">
+    <li><b>A form</b> on the job page where a candidate applies.</li>
+    <li><b>A checker (Zod)</b> that catches mistakes <i>before</i> anything is sent.</li>
+    <li><b>A sender (useMutation)</b> that posts the data and shows loading / success / error.</li>
+    <li><b>A mock backend</b> (server routes) that receives, validates again, waits 0.8s, and saves.</li>
+    <li><b>Extra:</b> a recruiter area to post jobs, count applicants, read CVs, and accept/reject.</li>
+  </ul>
+
+  <h3>Map of this guide</h3>
+  <div class="toc">
+    <div><span class="stepnum">0</span> Setup &amp; install</div>
+    <div><span class="stepnum">1</span> Part 1 — The four decisions</div>
+    <div><span class="stepnum">2</span> Part 3 — The Types (the contract)</div>
+    <div><span class="stepnum">3</span> Part 2 — The Route (the backend)</div>
+    <div><span class="stepnum">4</span> Part 4 — The API layer (the sender)</div>
+    <div><span class="stepnum">5</span> Part 5 — The ApplicationForm</div>
+    <div><span class="stepnum">6</span> Part 6 — Wiring it into the page</div>
+    <div><span class="stepnum">7</span> Extra A — Recruiter database (API)</div>
+    <div><span class="stepnum">8</span> Extra B — Recruiter UI &amp; decisions</div>
+    <div><span class="stepnum">9</span> Proving it works</div>
+  </div>
+
+  <!-- ===================== STEP 0 ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">0</span> Setup &amp; install</h2>
+
+  <h4>Commands you should run</h4>
+  <div class="cmd"><b>cd</b> careerhub-1.3<br><b>npm install</b> react-hook-form @hookform/resolvers zod</div>
+  <p>This adds three libraries:</p>
+  <table>
+    <tr><th>Library</th><th>In one sentence</th></tr>
+    <tr><td><code>react-hook-form</code> (RHF)</td><td>Manages the form's typing/values without re-drawing the screen on every keystroke.</td></tr>
+    <tr><td><code>zod</code></td><td>The "rule book" + bouncer: you describe what valid data looks like and it checks it.</td></tr>
+    <tr><td><code>@hookform/resolvers</code></td><td>The little translator that lets RHF use Zod's rule book.</td></tr>
+  </table>
+  <h4>Then, to run the project</h4>
+  <div class="cmd"><b>npm run dev</b> &nbsp;<span class="c"># opens http://localhost:3000</span><br><b>npm run build</b> &nbsp;<span class="c"># the marking gate: must show 0 errors</span></div>
+  <div class="why"><b>Why a separate install?</b> The starter project only knew how to <i>read</i> jobs.
+  These three packages are the tools for <i>writing</i> data safely. We install them once, up front.</div>
+
+  <!-- ===================== STEP 1 ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">1</span> Part 1 — The four written decisions</h2>
+  <div class="where">These are <b>answers you write in</b> <code>README.md</code> — no code to run. They prove you understand <i>why</i>, not just <i>how</i>.</div>
+
+  <h3>Decision 1 — Why <code>@hookform/resolvers</code> is its own package</h3>
+  <div class="analogy"><b>Analogy.</b> RHF speaks English, Zod speaks French. Instead of forcing one to
+  learn the other, there is a small <b>interpreter</b> in the middle. The interpreter is
+  <code>@hookform/resolvers</code>.</div>
+  <p>Keeping them separate means each library can update on its own and support many partners (RHF
+  works with Zod, Yup, Joi…; Zod is used far beyond forms). At runtime <code>zodResolver(schema)</code>
+  returns a function RHF calls on submit. It <b>receives</b> the form values, <b>calls</b>
+  <code>schema.safeParseAsync(values)</code>, and <b>returns</b> either <code>{ values }</code> (clean,
+  parsed data) or <code>{ errors }</code> (mistakes keyed by field name).</p>
+
+  <h3>Decision 2 — The number-input problem</h3>
+  <p>An <code>&lt;input type="number"&gt;</code> gives back the text <code>"5"</code>, not the number
+  <code>5</code>. Zod's <code>z.number()</code> refuses text. Two fixes: <b>(A)</b>
+  <code>register("x",{valueAsNumber:true})</code> converts in the form; <b>(B)</b>
+  <code>z.coerce.number()</code> converts in the schema. Both end up as a real <code>number</code>, so
+  <code>z.infer</code> is identical. <b>We chose B</b> so every rule lives in one place — the schema.</p>
+
+  <h3>Decision 3 — <code>mutate</code> vs <code>mutateAsync</code> (the sneaky bug)</h3>
+  <div class="analogy"><b>Analogy.</b> <code>mutate</code> is posting a letter and walking away — you
+  don't wait for a reply. <code>mutateAsync</code> is posting it and <i>waiting at the postbox</i>
+  until the reply comes.</div>
+  <p>The form's "is it busy?" flag (<code>isSubmitting</code>) stays true only while the submit
+  function is still running. <code>mutate</code> finishes instantly, so the button would wrongly
+  re-enable during the 0.8s wait. <code>mutateAsync</code> returns a promise we <code>await</code>, so
+  the button stays disabled until the server actually replies. <b>We use <code>mutateAsync</code>.</b></p>
+
+  <h3>Decision 4 — Where to put <code>onSuccess</code></h3>
+  <p><b>Option A</b> (inside <code>useMutation</code>) runs after <i>every</i> successful submit.
+  <b>Option B</b> (passed to one <code>mutate</code> call) runs for that one call only. We use
+  <b>Option A</b> to refresh the job list (<code>["jobs"]</code>) and clear the form, because that
+  should always happen on success, no matter who triggered it.</p>
+
+  <div class="sum"><b>Summary of Part 1.</b> Four short essays in the README explaining the
+  <i>reasoning</i>: separation of libraries, string-vs-number, the timing bug, and callback placement.
+  No UI change — this is the "why" behind everything that follows.</div>
+
+  <!-- ===================== STEP 2 (Part 3 types) ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">2</span> Part 3 — The Types (the contract)</h2>
+  <div class="where">Open the folder <code>src/types/</code> → file <code>index.ts</code>. Add these to the bottom (don't change existing types).</div>
+  <p>We do types first because everything else (the route, the sender, the form) refers to them. A
+  "type" is just a <b>shape</b> — a promise about which fields exist and what kind of value each one is.</p>
+
+<pre><code>export interface ApplicationRequest {
+  jobId: string;
+  fullName: string;
+  email: string;
+  phone?: string;            <span class="c">// the ? means optional</span>
+  yearsOfExperience: number;
+  coverLetter: string;
+  linkedInUrl?: string;      <span class="c">// optional</span>
+  availableImmediately: boolean;
+  noticePeriodWeeks: number;
+}
+
+export interface ApplicationResponse {
+  id: string;                <span class="c">// the server makes this</span>
+  jobId: string;
+  email: string;
+  submittedAt: string;       <span class="c">// when it was saved</span>
+}</code></pre>
+
+  <h4>Important lines explained</h4>
+  <ul class="tight">
+    <li><code>ApplicationRequest</code> = what the browser <b>sends</b>. <code>ApplicationResponse</code> = what the server <b>sends back</b>.</li>
+    <li><code>phone?</code> and <code>linkedInUrl?</code> — the <b>?</b> says "you may leave this out".</li>
+    <li><code>number</code> vs <code>string</code> vs <code>boolean</code> — TypeScript will refuse to build if we ever put the wrong kind of value in a field. That is a <i>good</i> failure: it stops bugs before users see them.</li>
+  </ul>
+  <div class="why"><b>How it affects the UI?</b> Indirectly but powerfully: because the form's data is
+  typed, your editor auto-completes field names and the build <i>fails loudly</i> if the form and the
+  server ever disagree — so the UI never silently sends broken data.</div>
+  <div class="scn"><b>Scenario.</b> Six months from now a teammate renames <code>email</code> to
+  <code>emailAddress</code> on the server but forgets the form. With these types, the project
+  <b>won't build</b> — you find the mismatch in seconds instead of from an angry user.</div>
+  <div class="sum"><b>Summary of Part 3.</b> Two shapes describe the application going out and the
+  confirmation coming back. They are the single agreement every other file trusts.</div>
+
+  <!-- ===================== STEP 3 (Part 2 route) ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">3</span> Part 2 — The Route (the backend "kitchen")</h2>
+  <div class="where">Create the folders/file: <code>src/app/api/applications/route.ts</code>. In Next.js, a
+  file called <code>route.ts</code> inside <code>app/api/...</code> automatically becomes a web address.</div>
+  <div class="analogy"><b>Analogy.</b> This file is the restaurant kitchen. The form is a customer
+  handing in an order (POST). The kitchen checks the order is complete, takes a realistic amount of
+  time to cook (0.8s), then serves the dish (201) or sends the order back if it's wrong (400).</div>
+
+<pre><code>import { NextResponse } from "next/server";
+import { addApplication } from "@/lib/server-store";
+import type { ApplicationRequest } from "@/types";
+
+<span class="c">// helper: an error in a tidy, standard shape</span>
+function problem(title: string, detail: string, status: number) {
+  return NextResponse.json({ title, detail, status }, { status });
+}
+
+export async function POST(request: Request) {
+  <span class="c">// 1) read the order (the JSON the form sent)</span>
+  let body: Partial&lt;ApplicationRequest&gt;;
+  try { body = await request.json(); }
+  catch { return problem("Invalid request body", "Body is not valid JSON.", 400); }
+
+  <span class="c">// 2) the two fields the server insists on</span>
+  if (!body.jobId || !body.email) {
+    return problem("Missing required fields",
+      "Both 'jobId' and 'email' are required to submit an application.", 400);
+  }
+
+  <span class="c">// 3) wait 800ms so the loading state is visible in the browser</span>
+  await new Promise&lt;void&gt;((resolve) =&gt; setTimeout(resolve, 800));
+
+  <span class="c">// 4) save it, then reply 201 (Created) with a small confirmation</span>
+  const saved = await addApplication(body as ApplicationRequest);
+  return NextResponse.json(
+    { id: saved.id, jobId: saved.jobId, email: saved.email, submittedAt: saved.submittedAt },
+    { status: 201 });
+}
+
+export async function GET() {   <span class="c">// only POST is allowed → GET gets 405</span>
+  return NextResponse.json(
+    { title:"Method Not Allowed", detail:"This endpoint only accepts POST requests.", status:405 },
+    { status:405, headers:{ Allow:"POST" } });
+}</code></pre>
+
+  <h4>Important lines explained</h4>
+  <ul class="tight">
+    <li><code>export async function POST</code> — the name <b>POST</b> is what makes this run only for "send me data" requests.</li>
+    <li><code>if (!body.jobId || !body.email)</code> → <code>400</code> — the server double-checks, even though the form already checked. <b>Never trust the client alone.</b></li>
+    <li><code>setTimeout(resolve, 800)</code> — a deliberate 0.8-second pause. Without it the request is so fast you'd never see the "Submitting…" state.</li>
+    <li><code>status: 201</code> — the official "Created" code. <code>200</code> means OK; <code>201</code> specifically means "I made a new thing".</li>
+    <li>The separate <code>GET()</code> returning <code>405</code> — politely says "wrong door, use POST".</li>
+  </ul>
+  <div class="why"><b>How it affects the UI?</b> The 0.8s pause is what lets the button show
+  <i>"Submitting…"</i>. A 400 makes the red error panel appear. A 201 makes the green success panel
+  appear. The backend's replies literally drive what the user sees.</div>
+  <div class="scn"><b>Scenario.</b> A hacker bypasses your form and posts <code>{}</code> directly. The
+  server still answers <code>400</code> and saves nothing — your data stays clean because validation
+  lives on the server too, not only in the browser.</div>
+  <div class="sum"><b>Summary of Part 2.</b> One file becomes the <code>/api/applications</code> address.
+  It accepts POST, rejects GET (405), rejects incomplete orders (400), waits 0.8s, saves, and returns
+  201 with a confirmation.</div>
+
+  <!-- ===================== STEP 4 (Part 4 api) ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">4</span> Part 4 — The API layer (the "sender")</h2>
+  <div class="where">Open <code>src/lib/api.ts</code> and add <code>submitApplication</code> next to the existing <code>fetchJobs</code>.</div>
+  <div class="analogy"><b>Analogy.</b> If the route is the kitchen, this is the <b>waiter</b>: it carries
+  the order to the kitchen, and if the kitchen says "no", it brings the exact complaint back to you.</div>
+
+<pre><code>const BASE_URL = () =&gt; process.env.NEXT_PUBLIC_API_URL ?? "";
+
+export async function submitApplication(
+  body: ApplicationRequest,
+): Promise&lt;ApplicationResponse&gt; {
+  const res = await fetch(`${BASE_URL()}/api/applications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {                       <span class="c">// not a 2xx? turn it into an error</span>
+    const problem = await res.json().catch(() =&gt; ({}));
+    throw new Error(problem.detail ?? problem.title ?? `Request failed with ${res.status}`);
+  }
+
+  return await res.json() as ApplicationResponse;
+}</code></pre>
+
+  <h4>Important lines explained</h4>
+  <ul class="tight">
+    <li><code>method: "POST"</code> + <code>Content-Type: application/json</code> + <code>JSON.stringify(body)</code> — "I'm sending you data, and it's in JSON format."</li>
+    <li><code>if (!res.ok)</code> — <code>fetch</code> does <b>not</b> throw on a 400/500; it quietly returns them. This line is what turns a server "no" into a real error our form can react to.</li>
+    <li><code>throw new Error(problem.detail ?? problem.title …)</code> — we surface the <i>server's own words</i> ("Both jobId and email are required") instead of a generic message.</li>
+    <li>No React here on purpose — this is pure logic, easy to test and reuse.</li>
+  </ul>
+  <div class="why"><b>How it affects the UI?</b> When this function <i>throws</i>, the form's mutation
+  flips to "error" and shows the red panel with that exact message. When it returns normally, the
+  green success panel shows.</div>
+  <div class="scn"><b>Scenario.</b> The server is down. <code>res.ok</code> is false, we throw a clear
+  message, and the candidate sees "couldn't submit" instead of a frozen button or a blank page.</div>
+  <div class="sum"><b>Summary of Part 4.</b> A tiny, pure function that POSTs the application and either
+  returns the confirmation or throws the server's error message. This is the <code>mutationFn</code>
+  the form will hand to TanStack Query.</div>
+
+  <!-- ===================== STEP 5 (Part 5 form) ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">5</span> Part 5 — The ApplicationForm</h2>
+  <div class="where">Create <code>src/components/ApplicationForm.tsx</code>. This is the biggest piece — the actual screen the candidate uses.</div>
+
+  <h3>5a. The rule book (Zod schema)</h3>
+  <div class="analogy"><b>Analogy.</b> The schema is the <b>bouncer's checklist</b> at the door. Each
+  line is one rule. If any rule fails, the bouncer turns the data away <i>before</i> it reaches the street (the network).</div>
+<pre><code>const phoneRegex = /^\+?[\d\s\-()]{8,15}$/;
+
+const applicationSchema = z.object({
+  fullName: z.string().min(2, "...at least 2 characters.").max(100, "..."),
+  email: z.email("Enter a valid email address."),
+
+  <span class="c">// optional: a valid phone OR a blank box ("") — blank is allowed</span>
+  phone: z.string().regex(phoneRegex, "Enter a valid phone number.")
+           .or(z.literal("")).optional(),
+
+  <span class="c">// the box gives "5" (text); coerce turns it into the number 5</span>
+  yearsOfExperience: z.coerce.number().int().min(0).max(50),
+
+  coverLetter: z.string()
+    .min(50, "Cover letter must be at least 50 characters — tell us why you're a strong fit.")
+    .max(2000, "..."),
+
+  linkedInUrl: z.url("Enter a valid URL.")
+    .refine(v =&gt; v.includes("linkedin.com"), "Must be a LinkedIn URL.")
+    .or(z.literal("")).optional(),
+
+  availableImmediately: z.boolean(),
+  noticePeriodWeeks: z.coerce.number().int().min(0),
+})
+<span class="c">// a rule that looks at TWO fields at once:</span>
+.refine((data) =&gt; data.availableImmediately || data.noticePeriodWeeks &gt; 0, {
+  message: "If you're not available immediately, your notice period must be at least 1 week.",
+  path: ["noticePeriodWeeks"],   <span class="c">// show the error on this field</span>
+});
+
+type ApplicationFormData  = z.infer&lt;typeof applicationSchema&gt;;   <span class="c">// the validated shape</span>
+type ApplicationFormInput = z.input&lt;typeof applicationSchema&gt;;   <span class="c">// the raw-typed shape</span></code></pre>
+
+  <h4>The important ideas</h4>
+  <ul class="tight">
+    <li><b><code>.or(z.literal(""))</code></b> — the magic for optional boxes. An empty text box sends
+      <code>""</code> (not "nothing"), which would normally fail the phone/URL rule. This says "a valid
+      value <i>or</i> an empty box is fine". Without it, leaving phone blank would show a false error.</li>
+    <li><b><code>z.coerce.number()</code></b> — converts the text from a number box into a real number,
+      so the rules <code>.int().min().max()</code> work.</li>
+    <li><b><code>.refine(...)</code> with <code>path</code></b> — a cross-field rule: if you are
+      <i>not</i> available now, you must give a notice period. <code>path:["noticePeriodWeeks"]</code>
+      makes the red message appear on that exact box. A normal <code>.min(1)</code> couldn't do this,
+      because it would force a notice period on <i>everyone</i>, even people available immediately.</li>
+    <li><b><code>z.infer</code></b> — we never hand-write the data type; we derive it from the rules so
+      the two can never disagree.</li>
+  </ul>
+
+  <h3 class="pagebreak">5b. The form logic (RHF + the mutation)</h3>
+<pre><code>const { register, handleSubmit, reset, formState:{ errors, isSubmitting } } =
+  useForm&lt;ApplicationFormInput, unknown, ApplicationFormData&gt;({
+    resolver: zodResolver(applicationSchema),
+    defaultValues: { availableImmediately:true, noticePeriodWeeks:0, yearsOfExperience:0 },
+  });
+
+const mutation = useMutation({
+  mutationFn: submitApplication,
+  onSuccess: () =&gt; {                                  <span class="c">// Option A — runs on every success</span>
+    queryClient.invalidateQueries({ queryKey:["jobs"] });   <span class="c">// refresh the board</span>
+    reset();                                          <span class="c">// clear the form</span>
+  },
+});
+
+const onValid = async (data) =&gt; {
+  const request = { jobId, ...data,
+    ...(data.phone ? { phone: data.phone } : {}),       <span class="c">// drop empty optionals</span>
+    ...(data.linkedInUrl ? { linkedInUrl: data.linkedInUrl } : {}) };
+  try { await mutation.mutateAsync(request); }          <span class="c">// WAIT for the reply</span>
+  catch { /* shown via mutation.isError */ }
+};
+
+const isBusy = isSubmitting || mutation.isPending;     <span class="c">// two flags, one guard</span></code></pre>
+
+  <h4>Important lines explained</h4>
+  <ul class="tight">
+    <li><code>register</code> connects each input to the form. <code>handleSubmit(onValid)</code> runs
+      Zod first and only calls <code>onValid</code> if <b>every</b> rule passes.</li>
+    <li><code>defaultValues</code> — the checkbox starts ticked (available now), numbers start at 0, so
+      the form is valid-by-default and friendly.</li>
+    <li><code>await mutation.mutateAsync(...)</code> — the fix from Decision 3: we <i>wait</i>, so the
+      button stays disabled for the whole 0.8s.</li>
+    <li><code>isBusy = isSubmitting || mutation.isPending</code> — two "busy" signals OR-ed together so
+      the button is disabled from the first click until the reply, with no gap in the middle.</li>
+  </ul>
+
+  <h3>5c. The screen (the JSX) — one field, the pattern repeats</h3>
+<pre><code>&lt;form onSubmit={handleSubmit(onValid)} noValidate&gt;     <span class="c">// noValidate: Zod is the only judge</span>
+  ...
+  &lt;label htmlFor="fullName"&gt;Full name&lt;/label&gt;
+  &lt;input id="fullName"
+         aria-invalid={!!errors.fullName}              <span class="c">// tells screen-readers it's wrong</span>
+         className={cn(baseInput, errors.fullName ? errBorder : okBorder)}  <span class="c">// red on error</span>
+         {...register("fullName")} /&gt;                  <span class="c">// no rules here — all rules in schema</span>
+  {errors.fullName &amp;&amp; &lt;p&gt;{errors.fullName.message}&lt;/p&gt;}  <span class="c">// the message under the box</span>
+  ...
+  &lt;button type="submit" disabled={isBusy}
+    className={cn(base, isBusy ? "bg-slate-400 cursor-not-allowed" : "bg-brand-600")}&gt;
+    {isBusy ? "Submitting…" : "Submit Application"}
+  &lt;/button&gt;
+&lt;/form&gt;</code></pre>
+  <ul class="tight">
+    <li><code>noValidate</code> — turns off the browser's own pop-up checks so we get <b>one</b>
+      consistent set of rules and messages (ours), not two competing ones.</li>
+    <li><code>aria-invalid</code> + red border via <code>cn</code> — the error is shown three ways:
+      colour, a message, and for screen-readers. That's accessibility.</li>
+    <li>The button shows <b>"Submitting…"</b> and turns grey while busy — visible, not just faded.</li>
+  </ul>
+
+  <h3>What the user sees</h3>
+  <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="ui"><div class="ui-bar"><span class="ui-dot" style="background:#ff5f57"></span><span class="ui-dot" style="background:#febc2e"></span><span class="ui-dot" style="background:#28c840"></span> Errors shown, nothing sent</div>
+      <div class="ui-body"><div class="field"><label>Cover letter</label><div class="inp err">too short</div><div class="fieldhint">Cover letter must be at least 50 characters…</div></div><button class="btn">Submit Application</button><p class="small"><span class="ok">No</span> network request fired.</p></div></div>
+    <div class="ui"><div class="ui-bar"><span class="ui-dot" style="background:#ff5f57"></span><span class="ui-dot" style="background:#febc2e"></span><span class="ui-dot" style="background:#28c840"></span> Sending… then done</div>
+      <div class="ui-body"><button class="btn disabled">Submitting…</button><div style="height:8px"></div><div class="panel-ok"><b>✓ Application submitted</b><br><span class="small">Your application for <b>Senior Frontend Engineer</b> has been received.</span></div></div></div>
+  </div>
+  <div class="scn"><b>Scenario.</b> A nervous applicant clicks Submit twice. Because the button is
+  <code>disabled={isBusy}</code> during the wait, the second click does nothing — no duplicate
+  application is created.</div>
+  <div class="sum"><b>Summary of Part 5.</b> One component holds the rule book (Zod), the form brain
+  (RHF), and the sender (useMutation). It blocks bad data, shows red field errors, disables + relabels
+  the button while sending, and ends in a green success panel or a red server-error panel.</div>
+
+  <!-- ===================== STEP 6 (Part 6 wire) ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">6</span> Part 6 — Wiring it into the page</h2>
+  <div class="where">Open <code>src/app/page.tsx</code>. Import the form and render it under the selection panel.</div>
+<pre><code>import ApplicationForm from "@/components/ApplicationForm";
+...
+{selectedJob !== null ? (
+  &lt;div className="mb-6"&gt;
+    &lt;ApplicationForm jobId={selectedJob.id} jobTitle={selectedJob.title} /&gt;
+  &lt;/div&gt;
+) : null}</code></pre>
+  <ul class="tight">
+    <li>This sits inside the "data loaded successfully" branch, so the rule is exactly
+      <code>!isPending &amp;&amp; !isError &amp;&amp; selectedJob !== null</code>.</li>
+    <li>We pass the selected job's <code>id</code> and <code>title</code> down as props, so the form
+      knows which job is being applied for.</li>
+    <li>The original selection panel stays — the form is <b>added below</b> it, not a replacement.</li>
+  </ul>
+  <div class="why"><b>How it affects the UI?</b> Click a job → the form appears underneath it. Click the
+  same job again (deselect) → the form disappears. No page reload, ever.</div>
+  <div class="sum"><b>Summary of Part 6.</b> Three lines connect the new form to the existing page so it
+  shows up for the selected job, with the job's id/title handed in as props.</div>
+
+  <!-- ===================== STEP 7 (Extra A) ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">7</span> Extra A — The recruiter database (API)</h2>
+  <div class="where">New file <code>src/lib/server-store.ts</code> + new routes under <code>src/app/api/</code>.</div>
+  <div class="analogy"><b>Analogy.</b> So far the kitchen cooked and forgot. Now we add a
+  <b>filing cabinet</b> (a small database saved to a file) so applications and recruiter-posted jobs are
+  remembered, counted, and can be updated later.</div>
+
+  <h3>7a. The store — the filing cabinet</h3>
+<pre><code>export type RecruiterDecisionStatus = "Submitted" | "Under review" | "Accepted" | "Rejected";
+export interface RecruiterApplication extends ApplicationRequest {
+  id: string; submittedAt: string; status: RecruiterDecisionStatus;
+}
+
+export async function addApplication(body) {                  <span class="c">// candidate applies</span>
+  const record = { ...body, id: randomUUID(),
+                   submittedAt: new Date().toISOString(), status: "Submitted" };
+  store.applications.unshift(record); await persist(store); return record;
+}
+
+export async function updateApplicationStatus(id, status) {   <span class="c">// recruiter decides</span>
+  const app = store.applications.find(a =&gt; a.id === id);
+  if (!app) return null;
+  app.status = status; await persist(store); return app;      <span class="c">// saved → durable</span>
+}</code></pre>
+  <ul class="tight">
+    <li><code>status</code> starts at <b>"Submitted"</b>. The recruiter later changes it to Accepted/Rejected.</li>
+    <li><code>persist(store)</code> writes to a JSON file (<code>/.data</code>), so a refresh doesn't lose anything.</li>
+    <li>Every application gets a unique <code>id</code> (from <code>randomUUID()</code>) so it can be found and updated.</li>
+  </ul>
+
+  <h3>7b. The recruiter routes</h3>
+  <table>
+    <tr><th>File (folder)</th><th>Address</th><th>What it does</th></tr>
+    <tr><td><code>api/recruiter/jobs/route.ts</code></td><td>POST / GET</td><td>Recruiter creates a job / lists their jobs.</td></tr>
+    <tr><td><code>api/jobs/route.ts</code></td><td>GET</td><td>The public board = recruiter jobs <b>+</b> seed jobs, each with a live applicant count.</td></tr>
+    <tr><td><code>api/applications/list/route.ts</code></td><td>GET</td><td>All applicants for one job (<code>?jobId=…</code>).</td></tr>
+    <tr><td><code>api/applications/[id]/route.ts</code></td><td>PATCH</td><td>Change one application's status — the Accept/Reject decision.</td></tr>
+  </table>
+<pre><code><span class="c">// PATCH /api/applications/[id] — the decision endpoint</span>
+export async function PATCH(request, { params }) {
+  const { id } = await params;
+  const { status } = await request.json();
+  if (!VALID.includes(status)) return problem("Invalid status", "...", 400);
+  const updated = await updateApplicationStatus(id, status);
+  if (!updated) return problem("Application not found", "...", 404);
+  return NextResponse.json(updated);     <span class="c">// the change is now permanent</span>
+}</code></pre>
+  <div class="why"><b>How it affects the UI?</b> Posting a recruiter job makes it show up on the home
+  board immediately. The live count is what the candidate's success (which refreshes
+  <code>["jobs"]</code>) makes tick upward.</div>
+  <div class="scn"><b>Scenario.</b> A recruiter posts "QA Engineer". A candidate applies. The recruiter
+  refreshes and sees "1 applicant", opens it, clicks Accept — and that decision is saved so it's still
+  "Accepted" tomorrow.</div>
+  <div class="sum"><b>Summary of Extra A.</b> A file-based database plus four routes give the project a
+  real memory: jobs are stored and shown on the board, applications are counted, listed, and their
+  status can be updated and stays updated.</div>
+
+  <!-- ===================== STEP 8 (Extra B) ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">8</span> Extra B — The recruiter UI &amp; decisions</h2>
+  <div class="where">Files: <code>src/app/recruiter/page.tsx</code> (dashboard) and
+  <code>src/app/recruiter/jobs/[jobId]/page.tsx</code> (applicant review).</div>
+
+  <h3>8a. Post a job &amp; see live counts</h3>
+  <p>The dashboard uses a mutation to POST the job, then refreshes both the recruiter list and the
+  public board. Each job shows a count badge and a "Review applicants" link.</p>
+<pre><code>const postJob = useMutation({
+  mutationFn: postRecruiterJob,
+  onSuccess: () =&gt; {
+    queryClient.invalidateQueries({ queryKey:["recruiter-jobs"] });  <span class="c">// my list</span>
+    queryClient.invalidateQueries({ queryKey:["jobs"] });            <span class="c">// public board</span>
+  },
+});</code></pre>
+  <div class="ui"><div class="ui-bar"><span class="ui-dot" style="background:#ff5f57"></span><span class="ui-dot" style="background:#febc2e"></span><span class="ui-dot" style="background:#28c840"></span> /recruiter — Acme · Jobs you've posted (2)</div>
+    <div class="ui-body">
+      <div class="card" style="border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin:6px 0;background:#fff"><div><b>QA Engineer</b><div class="small">Durban · Contract</div></div><div><span class="badge b-brand">👥 3 applicants</span> &nbsp; <span class="btn ghost">Review applicants</span></div></div>
+    </div></div>
+
+  <h3>8b. Read the CV/details &amp; accept or reject</h3>
+<pre><code>const decide = useMutation({
+  mutationFn: ({ id, status }) =&gt; decideApplication(id, status),
+  onSuccess: () =&gt; {
+    queryClient.invalidateQueries({ queryKey:["applicants", jobId] });  <span class="c">// re-read truth</span>
+    queryClient.invalidateQueries({ queryKey:["all-applications"] });
+  },
+});
+...
+&lt;button onClick={() =&gt; decide.mutate({ id: app.id, status:"Accepted" })}&gt;Accept&lt;/button&gt;
+&lt;button onClick={() =&gt; decide.mutate({ id: app.id, status:"Rejected" })}&gt;Reject&lt;/button&gt;</code></pre>
+  <div class="ui"><div class="ui-bar"><span class="ui-dot" style="background:#ff5f57"></span><span class="ui-dot" style="background:#febc2e"></span><span class="ui-dot" style="background:#28c840"></span> Applicants — QA Engineer (3 applied)</div>
+    <div class="ui-body">
+      <div class="card" style="border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff">
+        <div style="display:flex;justify-content:space-between"><div><b>Lee Candidate</b><div class="small">Applied 22 Jun 2026</div></div><span class="badge b-sky">Submitted</span></div>
+        <div class="small" style="margin-top:6px">✉ lee@example.com &nbsp; ☎ +27 11 555 1234 &nbsp; 💼 5 years &nbsp; ⏱ 4-week notice &nbsp; 🔗 LinkedIn</div>
+        <div class="card" style="border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px;background:#faf9fe"><span class="small" style="text-transform:uppercase;font-weight:700">Cover letter</span><br><span class="small">I am a strong fit because I have shipped production React apps…</span></div>
+        <div style="margin-top:10px"><span class="btn green">✓ Accept</span> &nbsp; <span class="btn red">✕ Reject</span> &nbsp; <span class="btn ghost">Move to review</span></div>
+      </div>
+    </div></div>
+  <ul class="tight">
+    <li>The recruiter sees the full person: contact, experience, availability, LinkedIn, and the cover
+      letter (their pitch / CV).</li>
+    <li>Accept/Reject sends a PATCH; on success we <b>re-read</b> the list from the server so the badge
+      shows the new status — the screen always matches the database.</li>
+  </ul>
+  <div class="scn"><b>Scenario (the full loop).</b> Candidate applies on the home page → it's saved →
+  recruiter opens the job, reads the CV, clicks <b>Accept</b> → the status becomes "Accepted" in the
+  database → anyone who looks again sees "Accepted". The two sides of the marketplace are connected.</div>
+  <div class="sum"><b>Summary of Extra B.</b> Two recruiter screens: one to post jobs and watch counts,
+  one to read each applicant and accept/reject. Every decision is saved through the API, so the UI and
+  the database always agree.</div>
+
+  <!-- ===================== STEP 9 ===================== -->
+  <h2 class="pagebreak"><span class="stepnum" style="background:#fff;color:var(--brand)">9</span> Proving it works</h2>
+  <h4>Commands</h4>
+  <div class="cmd"><b>npm run build</b> &nbsp;<span class="c"># must say 0 errors — this is the grade gate</span><br><b>npm run dev</b> &nbsp;<span class="c"># then click around at localhost:3000</span></div>
+  <h4>Checklist (all confirmed on the running app)</h4>
+  <table>
+    <tr><th>Test</th><th>Expected</th><th>Result</th></tr>
+    <tr><td>Click Submit on an empty form</td><td>Red field errors, <b>no</b> network request</td><td class="ok">Pass</td></tr>
+    <tr><td>Not available + notice 0</td><td>Cross-field error on notice period</td><td class="ok">Pass</td></tr>
+    <tr><td>Valid submit</td><td>"Submitting…" ~0.8s → green success with job title</td><td class="ok">Pass</td></tr>
+    <tr><td><code>GET /api/applications</code></td><td>405</td><td class="ok">405 (57 ms)</td></tr>
+    <tr><td>POST missing email</td><td>400 with a <code>detail</code></td><td class="ok">Pass</td></tr>
+    <tr><td>POST valid body</td><td>201 after ~800 ms</td><td class="ok">1.13 s incl. overhead</td></tr>
+    <tr><td>Recruiter Accept</td><td>Status becomes "Accepted" and stays</td><td class="ok">Pass</td></tr>
+    <tr><td><code>npm run build</code></td><td>0 TS + 0 ESLint errors</td><td class="ok">Clean</td></tr>
+  </table>
+
+  <div class="sum"><b>You have mastered 1.4 when you can explain:</b> why validation runs in the browser
+  <i>and</i> the server, why we wait for the reply (<code>mutateAsync</code>), why two busy-flags guard
+  one button, how an empty box (<code>""</code>) is handled, and how a recruiter's Accept travels all
+  the way to the database and back to the screen.</div>
+
+  <p class="small" style="margin-top:18px;text-align:center;color:#9aa3b2">CareerHub · Assignment 1.4 ·
+  Step-by-step mastering edition · self-contained Next.js app · build verified clean.</p>
+
+</div>
+</body>
+</html>

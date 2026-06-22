@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import JobList from "@/components/JobList";
 import { JobListSkeleton } from "@/components/JobCardSkeleton";
 import SummaryPanel from "@/components/SummaryPanel";
+import ApplicationForm from "@/components/ApplicationForm";
 import FilterBar, { type SortOption } from "@/components/FilterBar";
 import { fetchJobs } from "@/lib/api";
 import {
@@ -239,6 +240,21 @@ export default function Home() {
                 job={selectedJob}
                 onClear={() => setSelectedId(null)}
                 onApply={handleApply}
+              />
+            </div>
+          ) : null}
+
+          {/* Inline application form. It renders ONLY once the query has loaded
+              successfully and a job is selected — the same guard the spec
+              requires (`!isPending && !isError && selectedJob !== null`). The
+              first two are already guaranteed inside this success branch; the
+              third is the explicit check here. The selection panel above stays
+              in place — the form is an addition below it, not a replacement. */}
+          {selectedJob !== null ? (
+            <div className="mb-6">
+              <ApplicationForm
+                jobId={selectedJob.id}
+                jobTitle={selectedJob.title}
               />
             </div>
           ) : null}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import AuthShell from "@/components/AuthShell";
-import { Field, FormError, SubmitButton } from "@/components/AuthFields";
+import { Field, PasswordField, FormError, SubmitButton } from "@/components/AuthFields";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 
@@ -18,6 +18,10 @@ export default function SignupPage() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // Live mismatch flag: true only once the user has typed something to confirm
+  // AND it differs from the password. Drives the red helper text below the field.
+  const mismatch = confirm.length > 0 && password !== confirm;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -79,24 +83,30 @@ export default function SignupPage() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <Field
+        <PasswordField
           id="password"
           label="Password"
-          type="password"
           autoComplete="new-password"
           required
           placeholder="At least 8 characters"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <Field
+        <PasswordField
           id="confirm"
           label="Confirm password"
-          type="password"
           autoComplete="new-password"
           required
           value={confirm}
           onChange={(event) => setConfirm(event.target.value)}
+          aria-invalid={mismatch}
+          hint={
+            mismatch ? (
+              <p role="alert" className="mt-1.5 text-sm font-medium text-red-600">
+                Passwords do not match.
+              </p>
+            ) : null
+          }
         />
         <SubmitButton pending={pending}>Create account</SubmitButton>
       </form>
