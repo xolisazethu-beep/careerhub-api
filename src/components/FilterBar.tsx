@@ -22,6 +22,7 @@ const TYPE_OPTIONS: Array<EmploymentType | "All"> = [
   "PartTime",
   "Contract",
   "Internship",
+  "Learnership",
 ];
 
 export default function FilterBar({

@@ -11,7 +11,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CheckCircle2, FileText, ArrowLeft, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, FileText, ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import {
   getJobById,
   saveApplication,
@@ -19,7 +20,24 @@ import {
   uid,
   type Application,
 } from "@/lib/careerhub-store";
+import { fetchJobById } from "@/lib/api";
+import { EMPLOYMENT_TYPE_LABELS } from "@/lib/employmentType";
 import { useAuth } from "@/context/AuthContext";
+
+/**
+ * The minimal, source-agnostic view of a job the apply form needs. A job can
+ * come from two places: the real API (the public board, by GUID) or the local
+ * recruiter-posted demo store. Both are normalised into this one shape so the
+ * form below never has to care which it was.
+ */
+interface ApplyJob {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  typeLabel: string;
+  requiredSkill: string;
+}
 
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-white/10 dark:bg-[#0f0a1e] dark:text-white dark:placeholder:text-slate-500";
@@ -31,10 +49,55 @@ export default function ApplyPage() {
   const jobId = params.jobId;
   const { user } = useAuth();
 
-  // Resolve the job once per id. getJobById reads localStorage, so this is a
-  // client-only lookup; on the first render before hydration it simply returns
-  // whatever the store has (or null).
-  const job = useMemo(() => getJobById(jobId), [jobId]);
+  // Primary source: the real API, by GUID. Shares the ["job", id] cache with
+  // the home-page SummaryPanel, so selecting then applying reuses one fetch.
+  // `retry: false` so a genuine 404 (bad/removed id) fails fast instead of
+  // retrying three times before we fall back to the local store.
+  const {
+    data: apiJob,
+    isPending: apiPending,
+    isError: apiError,
+  } = useQuery({
+    queryKey: ["job", jobId],
+    queryFn: () => fetchJobById(jobId),
+    retry: false,
+  });
+
+  // Fallback source: recruiter-posted demo jobs live only in localStorage and
+  // were never in the API, so their ids 404 above. This keeps that demo flow working.
+  const localJob = useMemo(() => getJobById(jobId), [jobId]);
+
+  // Normalise whichever source resolved into the single ApplyJob shape.
+  const job = useMemo<ApplyJob | null>(() => {
+    if (apiJob) {
+      return {
+        id: apiJob.id,
+        title: apiJob.title,
+        company: apiJob.company,
+        location: apiJob.location,
+        typeLabel: EMPLOYMENT_TYPE_LABELS[apiJob.employmentType],
+        requiredSkill:
+          apiJob.skills[0] ??
+          (apiJob.minimumQualification.trim() || "the listed requirements"),
+      };
+    }
+    if (localJob) {
+      return {
+        id: localJob.id,
+        title: localJob.title,
+        company: localJob.company,
+        location: localJob.location,
+        typeLabel: localJob.type,
+        requiredSkill: localJob.requiredSkill,
+      };
+    }
+    return null;
+  }, [apiJob, localJob]);
+
+  // Still waiting on the API and no local match to show yet.
+  const isLoading = apiPending && !localJob;
+  // The API failed AND there is no local fallback → genuinely not found.
+  const notFound = apiError && !localJob;
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -67,13 +130,27 @@ export default function ApplyPage() {
     }
   }, [user, job]);
 
+  // Loading — the API lookup is in flight and there is no local job to show yet.
+  if (isLoading) {
+    return (
+      <main className="flex min-h-[70vh] items-center justify-center bg-white px-4 py-16 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
+        <div className="flex flex-col items-center gap-3 text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+          <p className="text-sm">Loading this role…</p>
+        </div>
+      </main>
+    );
+  }
+
   if (!job) {
     return (
       <main className="min-h-[70vh] bg-white px-4 py-16 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
         <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-white/10 dark:bg-[#1a1133]">
           <h1 className="text-xl font-bold">Job not found</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            This listing may have been removed or the link is incorrect.
+            {notFound
+              ? "This listing may have been removed or the link is incorrect."
+              : "We couldn't load this listing. Please try again."}
           </p>
           <Link
             href="/"
@@ -228,7 +305,7 @@ export default function ApplyPage() {
           Apply for {job.title} at {job.company}
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {job.location} · {job.type}
+          {job.location} · {job.typeLabel}
         </p>
 
         <form

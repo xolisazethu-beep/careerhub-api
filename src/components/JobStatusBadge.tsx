@@ -32,6 +32,8 @@ const EMPLOYMENT_TYPE_BADGE: Record<EmploymentType, string> = {
     "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
   Internship:
     "border-transparent bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300",
+  Learnership:
+    "border-transparent bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300",
 };
 
 interface EmploymentTypeBadgeProps {

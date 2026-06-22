@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CareerHub — Connecting the Next.js UI to the C# API</title>
+<style>
+  :root {
+    --ink: #0f172a; --muted: #475569; --line: #e2e8f0;
+    --accent: #2563eb; --accent2: #0891b2;
+    --ok: #16a34a; --warn: #b45309; --bad: #dc2626;
+    --code-bg: #0f172a; --code-ink: #e2e8f0; --chip: #eff6ff;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font: 15px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink); margin: 0; padding: 0;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 48px 56px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 20px; margin: 38px 0 12px; padding-top: 14px;
+    border-top: 2px solid var(--line); letter-spacing: -0.01em;
+  }
+  h3 { font-size: 16px; margin: 22px 0 8px; }
+  p { margin: 10px 0; }
+  code {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    background: var(--chip); color: #1e3a8a; padding: 1px 6px; border-radius: 5px;
+    font-size: 0.86em;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px;
+    border-radius: 10px; overflow-x: auto; font-size: 12.5px; line-height: 1.55;
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  .subtitle { color: var(--muted); font-size: 15px; margin: 0 0 4px; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .lead {
+    background: linear-gradient(120deg, #eff6ff, #ecfeff);
+    border: 1px solid #bfdbfe; border-radius: 12px; padding: 18px 22px; margin: 22px 0;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 13.5px; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f8fafc; font-weight: 600; }
+  .callout { border-left: 4px solid var(--accent); background: #f8fafc; padding: 10px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .callout.warn { border-color: var(--warn); background: #fffbeb; }
+  .callout.ok { border-color: var(--ok); background: #f0fdf4; }
+  .callout.bad { border-color: var(--bad); background: #fef2f2; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; padding: 2px 9px; border-radius: 999px; vertical-align: middle; }
+  .badge.ok { background: #dcfce7; color: #166534; }
+  .badge.changed { background: #dbeafe; color: #1e40af; }
+  .badge.nochange { background: #f1f5f9; color: #475569; }
+  .step-num { display:inline-flex; align-items:center; justify-content:center;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color:#fff;
+    font-size: 14px; font-weight: 700; margin-right: 8px; }
+  ul, ol { margin: 8px 0; padding-left: 24px; }
+  li { margin: 4px 0; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 28px 0; }
+  .filepath { color: var(--accent2); font-weight: 600; }
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 12px; }
+  @media print {
+    h2 { break-after: avoid; }
+    pre, table, .callout, .lead { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Connecting the CareerHub UI to the real C# API</h1>
+  <p class="subtitle">Swapping the Next.js mock route for the live ASP.NET Core + PostgreSQL backend.</p>
+  <p class="meta">Generated 22 June 2026 &middot; Frontend branch <code>CAREERHUB-UI-1.3</code> &middot; API branch <code>assignment-3.2</code></p>
+
+  <div class="lead">
+    <strong>What this achieves.</strong> The UI was reading 7 hard-coded jobs from an in-app mock
+    route (<code>/api/jobs</code>). After these steps it reads <strong>491 real listings</strong> from
+    PostgreSQL via the C# API at <code>http://localhost:5080</code>, with no changes to any React
+    component — only the network layer and a type definition changed.
+  </div>
+
+  <h2>0 &middot; Where the projects actually live</h2>
+  <p>The paths differed from what was assumed. The real, working copies on this machine are:</p>
+  <table>
+    <tr><th>Project</th><th>Path</th><th>Branch</th></tr>
+    <tr><td>Frontend (Next.js 15 / React 19)</td><td class="filepath">C:\Users\Xolisa\careerhub-1.3</td><td><code>CAREERHUB-UI-1.3</code></td></tr>
+    <tr><td>Backend (ASP.NET Core / EF Core)</td><td class="filepath">C:\Users\Xolisa\assignment-3.2</td><td><code>assignment-3.2</code></td></tr>
+  </table>
+  <div class="callout warn">
+    The folder <code>C:\Users\Xolisa\careerhub-api</code> is a <strong>stray duplicate clone</strong> of the
+    same GitHub repo sitting on the UI branch — it is <em>not</em> the API and was ignored.
+  </div>
+
+  <h2>Key facts that differed from the original plan</h2>
+  <table>
+    <tr><th>Assumption</th><th>Reality</th></tr>
+    <tr><td>Envelope field is <code>items</code></td><td>It is <code>data</code> (<code>PagedResponse.Data</code> → camelCase)</td></tr>
+    <tr><td>CORS may need <code>localhost:3000</code> added</td><td><span class="badge nochange">No change</span> already present in <code>Program.cs</code></td></tr>
+    <tr><td>Type fields roughly match</td><td>Big mismatch — list API returns far fewer fields</td></tr>
+    <tr><td>Stack is .NET 8</td><td>Project targets <code>net10.0</code> (runtime 10.0.8 installed)</td></tr>
+    <tr><td>API port</td><td><code>5080</code> (from <code>launchSettings.json</code>)</td></tr>
+  </table>
+
+  <h2><span class="step-num">1</span>Database — PostgreSQL via Docker <span class="badge changed">done</span></h2>
+  <p>Docker Desktop was installed but the daemon was not running. After starting it, the existing
+     <code>docker-compose.yml</code> brings up Postgres 17 on host port <strong>5544</strong>, database
+     <strong>CareerHub24</strong>, password <code>password123</code> — exactly matching
+     <span class="filepath">appsettings.Development.json</span>.</p>
+<pre><code># From the API folder (only the db service — the API itself runs via dotnet run)
+docker compose -f "C:\Users\Xolisa\assignment-3.2\docker-compose.yml" up -d db
+
+# Confirm it is healthy
+docker ps --filter "name=careerhub24-pg"
+# careerhub24-pg   Up (healthy)   0.0.0.0:5544->5432/tcp</code></pre>
+  <div class="callout">
+    <strong>No Docker?</strong> Install PostgreSQL 17 for Windows, then during setup use port
+    <code>5544</code>, set the <code>postgres</code> password to <code>password123</code>, and create a
+    database named <code>CareerHub24</code> — the connection string then matches with zero edits.
+  </div>
+
+  <h2><span class="step-num">2</span>API — run &amp; verify <span class="badge changed">done</span></h2>
+  <p>The API auto-applies EF Core migrations and seeds sample South-African data on startup.</p>
+<pre><code>$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project "C:\Users\Xolisa\assignment-3.2\CareerHub.Api.csproj" --launch-profile http
+# → Now listening on: http://localhost:5080</code></pre>
+  <p>Verify it returns the real envelope:</p>
+<pre><code>Invoke-RestMethod "http://localhost:5080/api/jobs?pageSize=2"
+# envelope keys: data, page, pageSize, totalCount, totalPages, hasNextPage, hasPreviousPage, links
+# totalCount: 491
+# data[0]: { id, title, location, type:"FullTime", salaryMin, salaryMax,
+#            status:"Active", createdAt, expiresAt, companyId, companyName, companyCity }</code></pre>
+
+  <h2><span class="step-num">3</span>CORS <span class="badge nochange">no change needed</span></h2>
+  <p><code>Program.cs</code> already lists the SPA origin, so a browser at <code>localhost:3000</code> is allowed:</p>
+<pre><code>// Program.cs — already present
+builder.Services.AddCors(options =>
+    options.AddPolicy(CorsPolicy, policy => policy
+        .WithOrigins("http://localhost:3000", "https://careerhub.example.com")
+        .AllowAnyHeader().AllowAnyMethod().AllowCredentials()
+        .WithExposedHeaders("X-Total-Count", "ETag", "api-supported-versions", "Retry-After")));</code></pre>
+  <p>Confirmed live — a request carrying <code>Origin: http://localhost:3000</code> comes back with
+     <code>Access-Control-Allow-Origin: http://localhost:3000</code> and <code>X-Total-Count: 491</code>.</p>
+
+  <h2><span class="step-num">4</span>Frontend — point at the API, unwrap the envelope, fix the types <span class="badge changed">done</span></h2>
+
+  <h3>4a &middot; <span class="filepath">.env.local</span> (created)</h3>
+<pre><code>NEXT_PUBLIC_API_URL=http://localhost:5080</code></pre>
+  <div class="callout warn">Restart <code>npm run dev</code> after creating this — Next.js inlines <code>NEXT_PUBLIC_*</code> at start time.</div>
+
+  <h3>4b &middot; Field mapping (API list item → UI <code>JobListing</code>)</h3>
+  <p>The lean list projection (<code>JobListingResponse</code>) does <strong>not</strong> carry the long-form
+     fields the UI model expects. We map what exists and default the rest; a detail page can later hydrate
+     the heavy fields from <code>GET /api/jobs/{id}</code>.</p>
+  <table>
+    <tr><th>UI field</th><th>Source from API</th></tr>
+    <tr><td><code>company</code></td><td><code>companyName</code></td></tr>
+    <tr><td><code>employmentType</code></td><td><code>type</code> (enum name; <code>Learnership</code> added to the union)</td></tr>
+    <tr><td><code>postedAt</code></td><td><code>createdAt</code></td></tr>
+    <tr><td><code>closingDate</code></td><td><code>expiresAt</code></td></tr>
+    <tr><td><code>isActive</code></td><td><code>status === "Active"</code></td></tr>
+    <tr><td><code>salaryMin</code> / <code>salaryMax</code></td><td>same, with <code>?? 0</code> (API nullable → UI non-null)</td></tr>
+    <tr><td><code>description, responsibilities, skills,<br>minimumQualification, minimumExperienceYears, applicantCount</code></td><td><span class="badge nochange">not in list API</span> defaulted to <code>""</code> / <code>[]</code> / <code>0</code></td></tr>
+  </table>
+
+  <h3>4c &middot; <span class="filepath">src/types/index.ts</span></h3>
+  <p>Added an accurate <code>JobListingResponse</code> + <code>PagedResponse&lt;T&gt;</code> interface and the
+     missing <code>"Learnership"</code> enum value. The original <code>JobListing</code> view-model is kept
+     unchanged so all 8 consuming components keep compiling.</p>
+
+  <h3>4d &middot; <span class="filepath">src/lib/api.ts</span> — the adapter</h3>
+<pre><code>const payload = (await res.json()) as PagedResponse&lt;JobListingResponse&gt;;
+return payload.data.map(toJobListing);   // unwrap .data, adapt each record</code></pre>
+
+  <h2><span class="step-num">5</span>Run both &amp; verify end-to-end <span class="badge changed">done</span></h2>
+<pre><code># Terminal 1 — API
+dotnet run --project "C:\Users\Xolisa\assignment-3.2\CareerHub.Api.csproj" --launch-profile http
+
+# Terminal 2 — UI
+cd C:\Users\Xolisa\careerhub-1.3
+npm run dev          # → http://localhost:3000 (Environments: .env.local)</code></pre>
+  <div class="callout ok">
+    <strong>Verified:</strong> UI serves <code>200</code>; API returns <code>491</code> listings; CORS header is correct.
+    Open <strong>http://localhost:3000</strong> — you should now see hundreds of real listings from companies
+    like <em>Capitec Bank</em>, not the 7 mock seeds.
+  </div>
+
+  <h2><span class="step-num">6</span>Cleanup — disable the mock route <span class="badge changed">done</span></h2>
+  <p>Renamed so Next.js no longer treats it as a route handler:</p>
+<pre><code>src/app/api/jobs/route.ts  →  src/app/api/jobs/route.ts.bak</code></pre>
+  <p>(With <code>NEXT_PUBLIC_API_URL</code> set, requests already go straight to <code>:5080</code>; this just
+     removes any chance of the mock silently taking over if the env var is ever unset.)</p>
+
+  <h2><span class="step-num">7</span>Completing the integration — detail endpoint &amp; the apply flow <span class="badge changed">done</span></h2>
+  <p>Connecting the list endpoint exposed two gaps the lean list projection left behind. Both are now closed.</p>
+
+  <h3>7a &middot; The <code>Learnership</code> enum value (compile fix)</h3>
+  <p>The API's <code>JobType</code> enum has a value the UI union lacked: <code>Learnership</code>. Adding it to
+     <code>EmploymentType</code> broke three <em>exhaustive</em> <code>Record&lt;EmploymentType, …&gt;</code> maps
+     (by design — they fail the build until the new key is supplied). All were updated:</p>
+  <ul>
+    <li><span class="filepath">src/lib/employmentType.ts</span> — label <code>"Learnership"</code></li>
+    <li><span class="filepath">src/components/JobStatusBadge.tsx</span> — a rose badge colour</li>
+    <li><span class="filepath">src/lib/careerhub-store.ts</span> — store label</li>
+    <li><span class="filepath">src/components/FilterBar.tsx</span> — a "Learnership" filter chip</li>
+  </ul>
+
+  <h3>7b &middot; Detail endpoint — <code>fetchJobById</code></h3>
+  <p>Added <code>JobListingDetailResponse</code> (the API's detail DTO: it is the list shape plus
+     <code>description</code>, <code>minimumRequirements</code>, <code>companyProvince</code>,
+     <code>companyWebsite</code>) and a <code>fetchJobById(id)</code> in <span class="filepath">src/lib/api.ts</span>
+     that calls <code>GET /api/jobs/{id}</code> and hydrates the long-form fields the list could not supply.</p>
+<pre><code>GET http://localhost:5080/api/jobs/{id}
+// → { ..., description: "…", minimumRequirements: "Matric.", companyProvince, companyWebsite }</code></pre>
+
+  <h3>7c &middot; Live description in the SummaryPanel</h3>
+  <p>When a job is selected on the home page, <code>SummaryPanel</code> now fetches its detail (same
+     <code>["job", id]</code> cache the apply page uses) and shows the real <strong>description</strong> and
+     <strong>minimum requirements</strong>. Sections the API genuinely has no data for (responsibilities,
+     a structured skills list, experience years) render <em>only</em> when populated — no empty headers.</p>
+
+  <h3>7d &middot; The apply flow now works with real jobs <span class="badge bad" style="background:#fee2e2;color:#991b1b">bug fixed</span></h3>
+  <div class="callout bad">
+    <strong>The bug:</strong> <code>/apply/[jobId]</code> previously resolved jobs only from the mock
+    <code>careerhub-store</code> (old seed ids). With real API GUIDs on the board, <em>every</em> "Apply"
+    click would have shown <em>"Job not found."</em>
+  </div>
+  <p>The page now loads the job from the API via TanStack Query, with a graceful fallback to the local
+     store for recruiter-posted demo jobs:</p>
+<pre><code>const { data: apiJob, isPending, isError } = useQuery({
+  queryKey: ["job", jobId],          // shares SummaryPanel's cache
+  queryFn: () => fetchJobById(jobId),
+  retry: false,                      // a 404 fails fast → local fallback
+});
+const localJob = getJobById(jobId);  // recruiter-posted demo jobs
+// → normalised into one ApplyJob shape; spinner while loading, "not found" only when both miss</code></pre>
+
+  <h3>Verified</h3>
+  <ul>
+    <li><code>npx tsc --noEmit</code> → exit 0 (all exhaustive maps satisfied).</li>
+    <li><code>GET /api/jobs/{id}</code> returns <code>description</code> + <code>minimumRequirements</code>.</li>
+    <li><code>/apply/{realGuid}</code> renders <code>200</code> (was the "not found" path before).</li>
+  </ul>
+
+  <h2><span class="step-num">8</span>Full schema alignment — backend now matches the frontend <span class="badge changed">done</span></h2>
+  <p>Four fields the UI model expected had no home anywhere in the API. Rather than leave them as
+     permanent empty defaults, they were <strong>added to the C# side</strong> so the contract is honest
+     end-to-end.</p>
+  <table>
+    <tr><th>Field</th><th>Backend change</th></tr>
+    <tr><td><code>responsibilities</code></td><td>New <code>List&lt;string&gt;</code> → PostgreSQL <code>text[]</code> column</td></tr>
+    <tr><td><code>skills</code></td><td>New <code>List&lt;string&gt;</code> → PostgreSQL <code>text[]</code> column</td></tr>
+    <tr><td><code>minimumExperienceYears</code></td><td>New <code>int</code> column (+ <code>&gt;= 0</code> check constraint)</td></tr>
+    <tr><td><code>applicantCount</code></td><td>Derived — server-side <code>COUNT</code> over the Applications navigation (not stored)</td></tr>
+  </table>
+
+  <h3>Files changed on the API (<span class="filepath">assignment-3.2</span>)</h3>
+  <ul>
+    <li><code>Models/JobListing.cs</code> — three new properties</li>
+    <li><code>Data/CareerHubDbContext.cs</code> — <code>text[]</code> column mapping, SQL defaults (so existing rows backfill), experience check constraint</li>
+    <li><code>DTOs/Dtos.cs</code> — appended the fields to <code>JobListingResponse</code> &amp; <code>JobListingDetailResponse</code>; added optional inputs to the create/update requests</li>
+    <li><code>Repositories/JobListingRepository.cs</code> — all three projections + <code>PatchAsync</code></li>
+    <li><code>Services/JobService.cs</code> — <code>CreateAsync</code> persists + validates the new fields</li>
+    <li><code>Data/SeedData.cs</code> — generators populate every seeded listing with realistic values</li>
+  </ul>
+
+  <h3>Migration &amp; reseed</h3>
+<pre><code>dotnet ef migrations add AddJobListingStructuredFields --project CareerHub.Api.csproj
+# Wipe the dev volume so the updated seed regenerates listings WITH the new fields:
+docker compose down -v &amp;&amp; docker compose up -d db
+dotnet run --project CareerHub.Api.csproj   # auto-migrates + reseeds on startup</code></pre>
+  <div class="callout warn">
+    <strong>Gotcha:</strong> run with a build, <em>not</em> <code>--no-build</code>, right after creating a
+    migration. <code>--no-build</code> runs the previously-compiled assembly, which lacks the just-generated
+    migration + model snapshot, and EF Core 10 then throws <code>PendingModelChangesWarning</code> at startup.
+  </div>
+
+  <h3>Frontend follow-up</h3>
+  <p><span class="filepath">src/types/index.ts</span> and <code>toJobListing</code> in
+     <span class="filepath">src/lib/api.ts</span> now read the real values straight off the list response
+     (no more empty defaults). Only <code>description</code> and <code>minimumQualification</code> are still
+     hydrated from the detail endpoint, since they are the heavy text fields the list projection omits.</p>
+
+  <div class="callout ok">
+    <strong>Verified:</strong> <code>npx tsc --noEmit</code> → exit 0; API build → 0 errors;
+    <code>GET /api/jobs</code> and <code>/api/jobs/{id}</code> both return populated
+    <code>responsibilities</code>, <code>skills</code>, <code>minimumExperienceYears</code> and
+    <code>applicantCount</code>; UI serves 200 with CORS intact.
+  </div>
+
+  <h2>Daily startup checklist</h2>
+  <ol>
+    <li>Start Docker Desktop → <code>docker compose ... up -d db</code> (or just confirm <code>careerhub24-pg</code> is healthy).</li>
+    <li><code>dotnet run</code> in <span class="filepath">assignment-3.2</span> → wait for <em>Now listening on http://localhost:5080</em>.</li>
+    <li><code>npm run dev</code> in <span class="filepath">careerhub-1.3</span> → open <code>http://localhost:3000</code>.</li>
+  </ol>
+
+  <footer>
+    CareerHub integration walkthrough &middot; Files touched:
+    <code>.env.local</code> (new), <code>src/lib/api.ts</code>, <code>src/types/index.ts</code>,
+    <code>src/app/api/jobs/route.ts → .bak</code>, <code>src/lib/employmentType.ts</code>,
+    <code>src/lib/careerhub-store.ts</code>, <code>src/components/JobStatusBadge.tsx</code>,
+    <code>src/components/FilterBar.tsx</code>, <code>src/components/SummaryPanel.tsx</code>,
+    <code>src/app/apply/[jobId]/page.tsx</code>.
+  </footer>
+
+</div>
+</body>
+</html>

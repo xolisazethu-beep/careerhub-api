@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CareerHub — TanStack Query: Four Concepts, Explained</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #475569;
+    --faint: #64748b;
+    --brand: #4338ca;
+    --brand-soft: #eef2ff;
+    --line: #e2e8f0;
+    --green: #047857;
+    --red: #b91c1c;
+    --amber: #b45309;
+    --code-bg: #0f172a;
+    --code-fg: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ---------- page layout ---------- */
+  .page {
+    padding: 26mm 18mm;
+    max-width: 210mm;
+    margin: 0 auto;
+  }
+  .page + .page { page-break-before: always; }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  h1, h2, h3 { line-height: 1.25; margin: 0; }
+
+  /* ---------- cover ---------- */
+  .cover {
+    min-height: 247mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .cover .kicker {
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand);
+  }
+  .cover h1 {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin: 14px 0 6px;
+  }
+  .cover .sub {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 520px;
+  }
+  .cover .meta {
+    margin-top: 40px;
+    border-top: 2px solid var(--line);
+    padding-top: 18px;
+    color: var(--faint);
+    font-size: 13px;
+  }
+  .toc {
+    margin-top: 32px;
+    display: grid;
+    gap: 10px;
+  }
+  .toc-item {
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fafafa;
+  }
+  .toc-item .n {
+    font-weight: 800;
+    color: var(--brand);
+    font-size: 18px;
+    min-width: 26px;
+  }
+  .toc-item .t { font-weight: 600; }
+  .toc-item .d { color: var(--faint); font-size: 12px; }
+
+  /* ---------- section headers ---------- */
+  .sec-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 3px solid var(--brand);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+  .sec-head .badge {
+    background: var(--brand);
+    color: #fff;
+    font-weight: 800;
+    font-size: 20px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+  .sec-head h2 { font-size: 23px; font-weight: 800; letter-spacing: -0.5px; }
+  .sec-head .lead { color: var(--muted); font-size: 13px; margin-top: 3px; }
+
+  h3.block {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 26px 0 10px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h3.block::before {
+    content: "";
+    width: 6px; height: 18px;
+    background: var(--brand);
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  p { margin: 10px 0; }
+  .muted { color: var(--muted); }
+
+  /* ---------- code blocks ---------- */
+  .code {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-family: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    font-size: 11px;
+    line-height: 1.65;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 12px 0;
+  }
+  .code .cap {
+    display: block;
+    color: #94a3b8;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 6px;
+  }
+  .ln { display: block; }
+  .ln .g { color: #64748b; user-select: none; display: inline-block; width: 26px; text-align: right; margin-right: 14px; }
+  .kw { color: #c084fc; }
+  .fn { color: #60a5fa; }
+  .str { color: #6ee7b7; }
+  .com { color: #64748b; font-style: italic; }
+  .num { color: #fca5a5; }
+  .ty { color: #fcd34d; }
+
+  /* ---------- line-by-line tables ---------- */
+  .explain { margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .explain .row { display: grid; grid-template-columns: 200px 1fr; border-top: 1px solid var(--line); }
+  .explain .row:first-child { border-top: none; }
+  .explain .c1 {
+    background: #f8fafc;
+    padding: 9px 12px;
+    font-family: "Consolas", monospace;
+    font-size: 10.5px;
+    color: var(--brand);
+    border-right: 1px solid var(--line);
+    word-break: break-word;
+  }
+  .explain .c2 { padding: 9px 12px; font-size: 12px; }
+
+  /* ---------- callouts ---------- */
+  .call {
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 12.5px;
+    border-left: 4px solid;
+  }
+  .call .h { font-weight: 700; display: block; margin-bottom: 2px; }
+  .call.good { background: #ecfdf5; border-color: var(--green); }
+  .call.good .h { color: var(--green); }
+  .call.bad { background: #fef2f2; border-color: var(--red); }
+  .call.bad .h { color: var(--red); }
+  .call.note { background: var(--brand-soft); border-color: var(--brand); }
+  .call.note .h { color: var(--brand); }
+  .call.warn { background: #fffbeb; border-color: var(--amber); }
+  .call.warn .h { color: var(--amber); }
+
+  /* ---------- comparison table ---------- */
+  table.cmp { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; }
+  table.cmp th, table.cmp td { border: 1px solid var(--line); padding: 9px 11px; vertical-align: top; text-align: left; }
+  table.cmp th { background: var(--brand); color: #fff; font-weight: 600; }
+  table.cmp td.free { background: #f0fdf4; width: 40%; }
+  table.cmp td.pain { background: #fff7ed; }
+
+  /* ====================================================== */
+  /* UI MOCKUPS — recreate the real rendered components       */
+  /* ====================================================== */
+  .ui-frame {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 12px 0;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.08);
+  }
+  .ui-bar {
+    background: #f1f5f9;
+    padding: 7px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ui-bar .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .ui-bar .dot.r { background: #f87171; }
+  .ui-bar .dot.y { background: #fbbf24; }
+  .ui-bar .dot.g { background: #34d399; }
+  .ui-bar .url {
+    margin-left: 10px; background: #fff; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 10px; color: var(--faint);
+    padding: 2px 10px; font-family: monospace;
+  }
+  .ui-body { padding: 16px; background: #fff; }
+  .ui-cap { font-size: 11px; color: var(--faint); text-align: center; margin: 6px 0 16px; font-style: italic; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+  /* job card */
+  .jc {
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+    display: flex; flex-direction: column; gap: 6px; background:#fff;
+  }
+  .jc .pill { align-self:flex-start; background: var(--brand-soft); color: var(--brand); font-size: 9px; font-weight:700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing:.5px;}
+  .jc .ti { font-weight: 700; font-size: 12.5px; }
+  .jc .co { font-size: 10.5px; color: var(--muted); }
+  .jc .sal { font-size: 11px; font-weight: 600; color: var(--ink); }
+  .jc .ft { font-size: 9.5px; color: var(--faint); margin-top: 4px; border-top:1px solid var(--line); padding-top:6px; }
+
+  /* skeleton card */
+  .sk { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background:#fff; }
+  .sk .bar { background: #e2e8f0; border-radius: 5px; height: 9px; margin-top: 8px; animation: none; }
+  .sk .bar.b1 { width: 35%; height: 14px; margin-top:0;}
+  .sk .bar.b2 { width: 70%; height: 12px; }
+  .sk .bar.b3 { width: 50%; }
+  .sk .bar.b4 { width: 40%; }
+  .sk .bar.b5 { width: 30%; }
+
+  /* error box */
+  .err {
+    border: 1px solid #fecaca; background: #fef2f2; border-radius: 12px;
+    padding: 22px; text-align: center;
+  }
+  .err h4 { color: #991b1b; font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+  .err p { color: #b91c1c; font-size: 11.5px; margin: 0 auto; max-width: 320px; }
+  .err .btn { display:inline-block; margin-top: 14px; background: #b91c1c; color:#fff; font-size: 11px; font-weight:700; padding: 7px 16px; border-radius: 8px; }
+
+  .flag { display:inline-block; font-family: monospace; font-size:10px; background:#1e293b; color:#67e8f9; padding:1px 7px; border-radius:5px; }
+
+  .seq { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin:14px 0; }
+  .seq .step { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#fafafa;}
+  .seq .step .t { font-weight:700; font-size:11px; color:var(--brand); }
+  .seq .step .d { font-size:10.5px; color:var(--muted); margin-top:3px;}
+
+  .foot { margin-top:30px; padding-top:12px; border-top:1px solid var(--line); color:var(--faint); font-size:10.5px; display:flex; justify-content:space-between;}
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="page">
+  <div class="cover">
+    <div class="kicker">CareerHub · Assignment 1.3</div>
+    <h1>TanStack Query<br/>Four Concepts, Explained</h1>
+    <p class="sub">Server state vs client state, the queryKey contract, why <code>fetch</code> doesn't throw, and stale-while-revalidate — with the real CareerHub code, its rendered UI, and a line-by-line walkthrough.</p>
+
+    <div class="toc">
+      <div class="toc-item"><span class="n">1</span><div><div class="t">Server state vs client state</div><div class="d">The four things <code>useQuery</code> gives you for free</div></div></div>
+      <div class="toc-item"><span class="n">2</span><div><div class="t">The queryKey contract</div><div class="d">Cache identity — share it right, or watch data collide</div></div></div>
+      <div class="toc-item"><span class="n">3</span><div><div class="t">Why fetch does not throw on HTTP errors</div><div class="d">404/500 resolve — the <code>res.ok</code> check is what saves you</div></div></div>
+      <div class="toc-item"><span class="n">4</span><div><div class="t">Stale-while-revalidate</div><div class="d">Freshness on focus, without the loading flash</div></div></div>
+    </div>
+
+    <div class="meta">
+      Prepared by Xolisa Matsila · 21 June 2026 · Next.js 15 · TanStack Query v5 · React 19<br/>
+      Source files: <code>src/lib/api.ts</code> · <code>src/app/page.tsx</code> · <code>src/app/providers.tsx</code>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SECTION 1 ============================ -->
+<section class="page">
+  <div class="sec-head">
+    <div class="badge">1</div>
+    <div>
+      <h2>Server state vs client state</h2>
+      <div class="lead">Four things <code>useQuery</code> gives you for free — and what the user suffers without them.</div>
+    </div>
+  </div>
+
+  <p><strong>Client state</strong> is data your app owns: the search box text, which job is selected, the sort order. <strong>Server state</strong> is data that lives on a server and you only borrow: the job listings. It can be stale, shared across screens, slow to arrive, or fail. <code>useQuery</code> exists because server state needs four behaviours that <code>useState</code>&nbsp;+&nbsp;<code>useEffect</code> never give you.</p>
+
+  <table class="cmp">
+    <tr><th>What useQuery gives you free</th><th>What the user suffers if you hand-roll it</th></tr>
+    <tr>
+      <td class="free"><strong>Loading &amp; error as first-class values</strong><br/><code>isPending</code>, <code>isError</code>, <code>error</code></td>
+      <td class="pain">You wire three state variables and reset them in the right order. Miss one path and the user stares at a blank screen — no spinner, no message — when the request hangs or fails.</td>
+    </tr>
+    <tr>
+      <td class="free"><strong>Request deduplication</strong><br/>via the <code>queryKey</code></td>
+      <td class="pain">Ten components needing jobs fire ten identical requests. The browser hammers the API on every screen, wasting bandwidth and slowing every mount.</td>
+    </tr>
+    <tr>
+      <td class="free"><strong>Caching</strong><br/>(stale-while-revalidate)</td>
+      <td class="pain">A manual <code>useEffect([])</code> re-fetches from scratch each mount, so every navigation flashes a spinner for data the user saw seconds ago.</td>
+    </tr>
+    <tr>
+      <td class="free"><strong>Refetch on focus / reconnect + retries</strong></td>
+      <td class="pain">None of this happens by hand. Leave the tab for an hour → stale listings; one network blip → a permanent error with no self-recovery.</td>
+    </tr>
+  </table>
+
+  <h3 class="block">The code — one hook, three states (src/app/page.tsx)</h3>
+  <div class="code"><span class="cap">src/app/page.tsx — the query</span><span class="ln"><span class="g">32</span>  <span class="kw">const</span> {</span><span class="ln"><span class="g">33</span>    data: jobs,</span><span class="ln"><span class="g">34</span>    isPending,</span><span class="ln"><span class="g">35</span>    isError,</span><span class="ln"><span class="g">36</span>    error,</span><span class="ln"><span class="g">37</span>    refetch,</span><span class="ln"><span class="g">38</span>  } = <span class="fn">useQuery</span>({</span><span class="ln"><span class="g">39</span>    queryKey: [<span class="str">"jobs"</span>],</span><span class="ln"><span class="g">40</span>    queryFn: fetchJobs,</span><span class="ln"><span class="g">41</span>  });</span></div>
+
+  <div class="explain">
+    <div class="row"><div class="c1">data: jobs</div><div class="c2"><code>data</code> renamed to <code>jobs</code>. It is <code>undefined</code> until the fetch resolves, then holds the array. You never set it by hand.</div></div>
+    <div class="row"><div class="c1">isPending</div><div class="c2"><code>true</code> while the first fetch is in flight and no cached data exists yet. Drives the skeleton.</div></div>
+    <div class="row"><div class="c1">isError</div><div class="c2"><code>true</code> if the <code>queryFn</code> threw. Drives the error panel.</div></div>
+    <div class="row"><div class="c1">error</div><div class="c2">The actual <code>Error</code> object that was thrown — its <code>.message</code> is shown to the user.</div></div>
+    <div class="row"><div class="c1">refetch</div><div class="c2">A function that re-runs the same query. Wired to the “Try again” button.</div></div>
+    <div class="row"><div class="c1">queryKey: ["jobs"]</div><div class="c2">The cache identity (see Section 2). Any component using this key shares this one fetch.</div></div>
+    <div class="row"><div class="c1">queryFn: fetchJobs</div><div class="c2">The async function that does the actual HTTP call (see Section 3). TanStack Query calls it for you.</div></div>
+  </div>
+
+  <p class="muted">Those five returned values are the “free” behaviours made visible. The render below picks exactly one of three branches from them — the user can only ever be in one state.</p>
+</section>
+
+<!-- SECTION 1 — render branches + UI -->
+<section class="page">
+  <div class="sec-head"><div class="badge">1</div><div><h2>The three render states</h2><div class="lead">Mutually exclusive — pending, error, or success.</div></div></div>
+
+  <div class="code"><span class="cap">src/app/page.tsx — the render (condensed)</span><span class="ln"><span class="g">192</span>  {isPending ? (</span><span class="ln"><span class="g">193</span>    <span class="com">// PENDING — only the skeleton grid renders.</span></span><span class="ln"><span class="g">195</span>    &lt;<span class="ty">JobListSkeleton</span> /&gt;</span><span class="ln"><span class="g">196</span>  ) : isError ? (</span><span class="ln"><span class="g">197</span>    <span class="com">// ERROR — show the real message + a retry button.</span></span><span class="ln"><span class="g">199</span>    &lt;<span class="ty">div</span> role=<span class="str">"alert"</span>&gt;</span><span class="ln"><span class="g">207</span>      {error.message}</span><span class="ln"><span class="g">211</span>      &lt;<span class="ty">button</span> onClick={() =&gt; <span class="fn">refetch</span>()}&gt;Try again&lt;/button&gt;</span><span class="ln"><span class="g">216</span>    &lt;/div&gt;</span><span class="ln"><span class="g">217</span>  ) : (</span><span class="ln"><span class="g">218</span>    <span class="com">// SUCCESS — jobs is defined; render filter bar + grid.</span></span><span class="ln"><span class="g">246</span>    &lt;<span class="ty">JobList</span> jobs={visibleJobs} ... /&gt;</span><span class="ln"><span class="g">255</span>  )}</span></div>
+
+  <div class="explain">
+    <div class="row"><div class="c1">isPending ? …</div><div class="c2">First branch. While the very first fetch runs, render <strong>only</strong> the skeleton — no empty grid, no “0 jobs”.</div></div>
+    <div class="row"><div class="c1">: isError ? …</div><div class="c2">Second branch. If the fetch threw, show the diagnostic message from <code>error.message</code> and a retry control.</div></div>
+    <div class="row"><div class="c1">onClick={() =&gt; refetch()}</div><div class="c2">Re-runs the same query. On success the component re-renders straight into the grid — self-recovery, no page reload.</div></div>
+    <div class="row"><div class="c1">: ( … )</div><div class="c2">Success branch. Reached only when not pending and not errored, so <code>jobs</code> is guaranteed defined here.</div></div>
+  </div>
+
+  <h3 class="block">The UI — what each branch looks like</h3>
+
+  <div class="ui-frame">
+    <div class="ui-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">careerhub.app/</span></div>
+    <div class="ui-body">
+      <div class="grid3">
+        <div class="sk"><div class="bar b1"></div><div class="bar b2"></div><div class="bar b3"></div><div class="bar b4"></div><div class="bar b5"></div></div>
+        <div class="sk"><div class="bar b1"></div><div class="bar b2"></div><div class="bar b3"></div><div class="bar b4"></div><div class="bar b5"></div></div>
+        <div class="sk"><div class="bar b1"></div><div class="bar b2"></div><div class="bar b3"></div><div class="bar b4"></div><div class="bar b5"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="ui-cap"><span class="flag">isPending === true</span> — <code>&lt;JobListSkeleton /&gt;</code> grey bars hold the exact layout the real cards will occupy (no layout shift).</div>
+
+  <div class="ui-frame">
+    <div class="ui-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">careerhub.app/</span></div>
+    <div class="ui-body">
+      <div class="err">
+        <h4>We couldn't load the job listings</h4>
+        <p>Failed to load jobs — server responded with 500 Internal Server Error</p>
+        <span class="btn">Try again</span>
+      </div>
+    </div>
+  </div>
+  <div class="ui-cap"><span class="flag">isError === true</span> — <code>error.message</code> is shown verbatim; “Try again” calls <code>refetch()</code>.</div>
+
+  <div class="ui-frame">
+    <div class="ui-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">careerhub.app/</span></div>
+    <div class="ui-body">
+      <div class="grid3">
+        <div class="jc"><span class="pill">Full Time</span><div class="ti">Frontend Engineer</div><div class="co">Yoco · Cape Town</div><div class="sal">R720k – R960k</div><div class="ft">Posted 2d ago · 34 applicants</div></div>
+        <div class="jc"><span class="pill">Contract</span><div class="ti">Data Analyst</div><div class="co">Takealot · Johannesburg</div><div class="sal">R540k – R660k</div><div class="ft">Posted 5d ago · 12 applicants</div></div>
+        <div class="jc"><span class="pill">Internship</span><div class="ti">UX Intern</div><div class="co">Standard Bank · Remote</div><div class="sal">R180k – R220k</div><div class="ft">Posted 1d ago · 58 applicants</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="ui-cap"><span class="flag">isPending === false &amp;&amp; isError === false</span> — the success branch renders the live grid from <code>jobs</code>.</div>
+
+  <div class="call good"><span class="h">The payoff</span>The user is always in exactly one clear state. No blank screen on a hung request, no silent failure — the three booleans guarantee it.</div>
+</section>
+
+<!-- ============================ SECTION 2 ============================ -->
+<section class="page">
+  <div class="sec-head"><div class="badge">2</div><div><h2>The queryKey contract</h2><div class="lead">The cache identity: how results are stored, looked up, deduplicated and invalidated.</div></div></div>
+
+  <p>The <code>queryKey</code> is an array that acts as a <strong>primary key for the cache</strong>. The rule is simple:</p>
+  <div class="call note"><span class="h">Same key ⇒ same data &nbsp;·&nbsp; changed key ⇒ a new query and a new fetch</span>Every component that calls <code>useQuery</code> with <code>["jobs"]</code> reads from the one cached entry. The first one fetches; the rest get the cached array instantly. That is request deduplication and caching, both keyed off this array.</div>
+
+  <div class="code"><span class="cap">src/app/page.tsx — the key in context</span><span class="ln"><span class="g">38</span>  } = <span class="fn">useQuery</span>({</span><span class="ln"><span class="g">39</span>    queryKey: [<span class="str">"jobs"</span>],   <span class="com">// ← cache identity for the listings</span></span><span class="ln"><span class="g">40</span>    queryFn: fetchJobs,</span><span class="ln"><span class="g">41</span>  });</span></div>
+
+  <h3 class="block">Two ways to get the key wrong</h3>
+
+  <div class="call bad"><span class="h">✗ Accidentally sharing a key</span>A jobs <em>list</em> and a single job <em>detail</em> both keyed <code>["jobs"]</code> overwrite each other — whichever request resolves last wins.<br/><strong>Symptom:</strong> the list page shows one job (or crashes on <code>.map</code>), or the detail page renders a whole array of garbage.</div>
+
+  <div class="code"><span class="cap">Right vs wrong — sharing</span><span class="ln"><span class="com">// ✗ WRONG — collision: both write the same cache slot</span></span><span class="ln"><span class="fn">useQuery</span>({ queryKey: [<span class="str">"jobs"</span>], queryFn: fetchJobs });</span><span class="ln"><span class="fn">useQuery</span>({ queryKey: [<span class="str">"jobs"</span>], queryFn: () =&gt; <span class="fn">fetchJob</span>(id) });</span><span class="ln"></span><span class="ln"><span class="com">// ✓ RIGHT — distinct, hierarchical keys</span></span><span class="ln"><span class="fn">useQuery</span>({ queryKey: [<span class="str">"jobs"</span>], queryFn: fetchJobs });</span><span class="ln"><span class="fn">useQuery</span>({ queryKey: [<span class="str">"jobs"</span>, id], queryFn: () =&gt; <span class="fn">fetchJob</span>(id) });</span></div>
+
+  <div class="call bad"><span class="h">✗ Using a unique key when it should be shared</span><code>["jobs", Math.random()]</code> never matches a previous key, so every mount is treated as a brand-new query.<br/><strong>Symptom:</strong> a skeleton flashes on every navigation and the cache never warms up — the exact problem TanStack Query was meant to solve.</div>
+
+  <div class="code"><span class="cap">The unstable-key trap</span><span class="ln"><span class="com">// ✗ WRONG — new key every render, cache can never hit</span></span><span class="ln"><span class="fn">useQuery</span>({ queryKey: [<span class="str">"jobs"</span>, <span class="fn">Math</span>.<span class="fn">random</span>()], queryFn: fetchJobs });</span><span class="ln"></span><span class="ln"><span class="com">// ✓ RIGHT — stable key, cache hits across mounts</span></span><span class="ln"><span class="fn">useQuery</span>({ queryKey: [<span class="str">"jobs"</span>], queryFn: fetchJobs });</span></div>
+
+  <h3 class="block">The mental model</h3>
+  <div class="seq">
+    <div class="step"><div class="t">1 · Look up</div><div class="d">On mount, TanStack Query hashes the key and checks the cache for an entry.</div></div>
+    <div class="step"><div class="t">2 · Hit or fetch</div><div class="d">Cached &amp; fresh → return it instantly. Missing/stale → run <code>queryFn</code> once.</div></div>
+    <div class="step"><div class="t">3 · Dedupe</div><div class="d">Other components with the same key in flight? They wait on the one request.</div></div>
+  </div>
+
+  <div class="call good"><span class="h">Rule of thumb</span>Put <strong>everything the data depends on</strong> into the key — and nothing that changes randomly. <code>["jobs"]</code> for the list, <code>["jobs", id]</code> for a detail, <code>["jobs", { type, sort }]</code> if the server filters. Stable, descriptive, and as granular as the data.</div>
+</section>
+
+<!-- ============================ SECTION 3 ============================ -->
+<section class="page">
+  <div class="sec-head"><div class="badge">3</div><div><h2>Why <code>fetch</code> does not throw on HTTP errors</h2><div class="lead">A 404 or 500 is a <em>successful</em> round-trip — so you must throw yourself.</div></div></div>
+
+  <p><code>fetch</code> only <strong>rejects</strong> on a network-level failure: DNS lookup fails, the device is offline, CORS blocks it, or the request is aborted. A <strong>404 or 500 still resolves</strong> — the server was reached and answered, which from <code>fetch</code>'s point of view is success. The status lives on <code>res.ok</code> (<code>true</code> only for 200–299).</p>
+
+  <div class="call warn"><span class="h">The trap</span>Remove the <code>res.ok</code> check and TanStack Query sees a resolved <code>queryFn</code>, so it stores the <em>error body</em> as <strong>success data</strong>. The UI leaves loading and renders the success branch against junk — an empty grid, blank fields, or <code>jobs.map is not a function</code> crashing the page. The error state never shows.</div>
+
+  <h3 class="block">The code (src/lib/api.ts)</h3>
+  <div class="code"><span class="cap">src/lib/api.ts — the network layer</span><span class="ln"><span class="g">10</span> <span class="kw">export async function</span> <span class="fn">fetchJobs</span>(): <span class="ty">Promise</span>&lt;<span class="ty">JobListing</span>[]&gt; {</span><span class="ln"><span class="g">16</span>   <span class="kw">const</span> baseUrl = process.env.NEXT_PUBLIC_API_URL ?? <span class="str">""</span>;</span><span class="ln"><span class="g">17</span>   <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">`${baseUrl}/api/jobs`</span>);</span><span class="ln"><span class="g">18</span></span><span class="ln"><span class="g">25</span>   <span class="kw">if</span> (!res.ok) {</span><span class="ln"><span class="g">26</span>     <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">`Failed to load jobs — server responded with ${res.status} ${res.statusText}`</span>);</span><span class="ln"><span class="g">27</span>   }</span><span class="ln"><span class="g">28</span></span><span class="ln"><span class="g">29</span>   <span class="kw">return</span> (<span class="kw">await</span> res.<span class="fn">json</span>()) <span class="kw">as</span> <span class="ty">JobListing</span>[];</span><span class="ln"><span class="g">30</span> }</span></div>
+
+  <div class="explain">
+    <div class="row"><div class="c1">: Promise&lt;JobListing[]&gt;</div><div class="c2">The return type is the contract: this resolves to an array of jobs, or it throws. TanStack Query relies on exactly that shape.</div></div>
+    <div class="row"><div class="c1">baseUrl … ?? ""</div><div class="c2">Honour <code>NEXT_PUBLIC_API_URL</code> when set (a real backend); otherwise fall back to <code>""</code> so the relative <code>/api/jobs</code> route is used — instead of fetching <code>undefined/api/jobs</code>, which 404s.</div></div>
+    <div class="row"><div class="c1">await fetch(...)</div><div class="c2">Fires the request. This line only rejects on a network-level failure — never on a 4xx/5xx.</div></div>
+    <div class="row"><div class="c1">if (!res.ok)</div><div class="c2"><strong>The critical line.</strong> <code>res.ok</code> is <code>false</code> for any non-2xx status. This is the only place an HTTP error becomes a thrown error.</div></div>
+    <div class="row"><div class="c1">throw new Error(... ${res.status} ...)</div><div class="c2">Throwing rejects the <code>queryFn</code> promise → TanStack Query flips <code>isError</code> and stores this <code>Error</code>. Including the status makes the message diagnostic, not generic.</div></div>
+    <div class="row"><div class="c1">return (await res.json())</div><div class="c2">Reached only on a 2xx. Parse the body and hand the typed array back as <code>data</code>.</div></div>
+  </div>
+
+  <div class="call good"><span class="h">With the check</span>HTTP errors are routed into the <code>isError</code> / <code>error</code> path → the user sees the red panel with a real message and a retry button (the Section&nbsp;1 error UI).</div>
+  <div class="call bad"><span class="h">Without the check</span>The error body (e.g. <code>{"error":"DB down"}</code>) is treated as <em>data</em>. <code>jobs.map(...)</code> runs on a non-array → <strong>page crash</strong>, and the carefully-built error UI never appears.</div>
+
+  <h3 class="block">Where the data comes from (src/app/api/jobs/route.ts)</h3>
+  <div class="code"><span class="cap">src/app/api/jobs/route.ts — the mock backend</span><span class="ln"><span class="g">21</span> <span class="kw">export async function</span> <span class="fn">GET</span>() {</span><span class="ln"><span class="g">22</span>   <span class="kw">const</span> jobs: <span class="ty">JobListing</span>[] = JOBS;</span><span class="ln"><span class="g">23</span>   <span class="kw">return</span> <span class="ty">NextResponse</span>.<span class="fn">json</span>(jobs);</span><span class="ln"><span class="g">24</span> }</span></div>
+  <p class="muted">Only <code>GET</code> is handled, so any other method gets Next.js's default 405 — which <code>fetchJobs</code> would correctly turn into an <code>isError</code> state via the same <code>res.ok</code> guard.</p>
+</section>
+
+<!-- ============================ SECTION 4 ============================ -->
+<section class="page">
+  <div class="sec-head"><div class="badge">4</div><div><h2>Stale-while-revalidate</h2><div class="lead">Refresh in the background; keep the old data on screen until the new arrives.</div></div></div>
+
+  <p>The default <code>staleTime</code> is <code>0</code>, meaning data is considered stale the moment it arrives. When you return to the tab, TanStack Query triggers a <strong>background refetch</strong> — but the data already on screen <strong>stays rendered</strong>. The user sees the existing grid, not a spinner; only the background <code>isFetching</code> flag flips, and new data swaps in seamlessly when it lands.</p>
+
+  <div class="code"><span class="cap">src/app/providers.tsx — one client for the whole app</span><span class="ln"><span class="g">21</span> <span class="kw">export default function</span> <span class="fn">Providers</span>({ children }) {</span><span class="ln"><span class="g">22</span>   <span class="kw">const</span> [queryClient] = <span class="fn">useState</span>(() =&gt; <span class="kw">new</span> <span class="fn">QueryClient</span>());</span><span class="ln"><span class="g">23</span></span><span class="ln"><span class="g">24</span>   <span class="kw">return</span> (</span><span class="ln"><span class="g">25</span>     &lt;<span class="ty">QueryClientProvider</span> client={queryClient}&gt;</span><span class="ln"><span class="g">26</span>       {children}</span><span class="ln"><span class="g">27</span>       &lt;<span class="ty">ReactQueryDevtools</span> initialIsOpen={false} /&gt;</span><span class="ln"><span class="g">28</span>     &lt;/<span class="ty">QueryClientProvider</span>&gt;</span><span class="ln"><span class="g">29</span>   );</span><span class="ln"><span class="g">30</span> }</span></div>
+
+  <div class="explain">
+    <div class="row"><div class="c1">useState(() =&gt; new QueryClient())</div><div class="c2">Creates the cache <strong>once per browser session</strong>. The initialiser never re-runs on re-render, and it isn't module-level — so one user's cache can't leak into another's server response.</div></div>
+    <div class="row"><div class="c1">QueryClientProvider</div><div class="c2">Makes that single client (and its cache) available to every <code>useQuery</code> below it. This is what lets <code>["jobs"]</code> be shared app-wide.</div></div>
+    <div class="row"><div class="c1">ReactQueryDevtools</div><div class="c2">Dev-only overlay to watch queries flip between <em>fresh</em>, <em>stale</em>, and <em>fetching</em> — the SWR cycle made visible.</div></div>
+  </div>
+
+  <h3 class="block">SWR vs the naive approaches</h3>
+  <table class="cmp">
+    <tr><th>Approach</th><th>What the user sees on return to the tab</th></tr>
+    <tr><td class="free"><strong>useQuery (SWR, default)</strong></td><td class="pain">Existing grid stays on screen. A background refetch runs (<code>isFetching</code> flips); fresh data swaps in with <strong>no flash</strong>.</td></tr>
+    <tr><td class="free"><code>useEffect(…, [])</code></td><td class="pain">Runs once on mount and never again — <strong>never refreshes on focus</strong>. Stale data forever until a full reload.</td></tr>
+    <tr><td class="free">Naive manual fix<br/>(clear data, show spinner)</td><td class="pain">Flashes a loading state <strong>over content the user is reading</strong>. Jarring, and it throws away good data to show a spinner.</td></tr>
+  </table>
+
+  <h3 class="block">The SWR cycle, step by step</h3>
+  <div class="seq">
+    <div class="step"><div class="t">1 · Cached render</div><div class="d">Return to tab → the previously fetched grid renders immediately from cache.</div></div>
+    <div class="step"><div class="t">2 · Revalidate</div><div class="d">Because <code>staleTime: 0</code>, a background refetch starts. <code>isFetching</code> → <code>true</code>. UI unchanged.</div></div>
+    <div class="step"><div class="t">3 · Swap</div><div class="d">Fresh data resolves and replaces the old seamlessly. <code>isFetching</code> → <code>false</code>. No spinner shown.</div></div>
+  </div>
+
+  <h3 class="block">The UI — stale-while-revalidate vs the naive flash</h3>
+  <div class="ui-frame">
+    <div class="ui-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">careerhub.app/ &nbsp; ⟳ refetching…</span></div>
+    <div class="ui-body">
+      <div class="grid3">
+        <div class="jc"><span class="pill">Full Time</span><div class="ti">Frontend Engineer</div><div class="co">Yoco · Cape Town</div><div class="sal">R720k – R960k</div><div class="ft">Posted 2d ago · 34 applicants</div></div>
+        <div class="jc"><span class="pill">Contract</span><div class="ti">Data Analyst</div><div class="co">Takealot · Johannesburg</div><div class="sal">R540k – R660k</div><div class="ft">Posted 5d ago · 12 applicants</div></div>
+        <div class="jc"><span class="pill">Internship</span><div class="ti">UX Intern</div><div class="co">Standard Bank · Remote</div><div class="sal">R180k – R220k</div><div class="ft">Posted 1d ago · 58 applicants</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="ui-cap"><span class="flag">SWR</span> — grid stays fully readable while <code>isFetching === true</code> revalidates in the background. Contrast with the <em>naive</em> path, which would replace all three cards with the grey skeleton from Section&nbsp;1.</div>
+
+  <div class="call good"><span class="h">The payoff</span>Freshness without the flash. The user keeps reading current data; the app quietly updates it. That single behaviour — impossible with a one-shot <code>useEffect</code> — is the whole reason server state belongs in TanStack Query.</div>
+
+  <div class="foot"><span>CareerHub · TanStack Query — Four Concepts</span><span>Xolisa Matsila · 2026</span></div>
+</section>
+
+</body>
+</html>

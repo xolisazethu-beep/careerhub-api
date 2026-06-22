@@ -59,6 +59,7 @@ const TYPE_LABEL: Record<JobListing["employmentType"], string> = {
   PartTime: "Part-time",
   Contract: "Contract",
   Internship: "Internship",
+  Learnership: "Learnership",
 };
 
 /**
