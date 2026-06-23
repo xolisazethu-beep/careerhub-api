@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { JOBS_API_BASE, toSummaryView } from "@/lib/jobs-api";
+import { fetchJobsApi, toSummaryView } from "@/lib/jobs-api";
 import type { JobListingResponse, PagedResponse } from "@/types";
 
 export const metadata: Metadata = {
@@ -18,17 +18,37 @@ export const dynamic = "force-dynamic";
  * — there is no browser-side API call when this page loads.
  */
 export default async function DashboardListingsPage() {
-  const res = await fetch(`${JOBS_API_BASE}/api/jobs?page=1&pageSize=50`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(
-      `Failed to load listings — the API responded ${res.status} ${res.statusText}`,
+  // Resilient fetch (cold-start tolerant). pageSize is kept modest because the
+  // backend computes a per-row applicant count, so a smaller page is much faster
+  // — the total count in the subheading still reflects every listing.
+  let payload: PagedResponse<JobListingResponse>;
+  try {
+    const res = await fetchJobsApi(`/api/jobs?page=1&pageSize=25`);
+    if (!res.ok) {
+      throw new Error(`The API responded ${res.status} ${res.statusText}`);
+    }
+    payload = (await res.json()) as PagedResponse<JobListingResponse>;
+  } catch {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-12 text-center dark:border-amber-900/50 dark:bg-amber-950/20">
+        <h1 className="font-display text-xl font-bold text-ink dark:text-slate-100">
+          Listings are warming up
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
+          We couldn&apos;t reach the jobs service just now. Please refresh in a
+          moment — the backend can take a few seconds to wake on a cold start.
+        </p>
+        <Link
+          href="/dashboard/listings"
+          prefetch={false}
+          className="mt-5 inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+        >
+          Refresh
+        </Link>
+      </div>
     );
   }
 
-  const payload = (await res.json()) as PagedResponse<JobListingResponse>;
   const jobs = payload.data.map(toSummaryView);
 
   return (

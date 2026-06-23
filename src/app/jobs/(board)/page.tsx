@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import JobLinkCard from "@/components/JobLinkCard";
-import { JOBS_API_BASE, toSummaryView } from "@/lib/jobs-api";
+import { fetchJobsApi, toSummaryView } from "@/lib/jobs-api";
 import type { JobListingResponse, PagedResponse } from "@/types";
 
 export const metadata: Metadata = {
@@ -27,19 +28,23 @@ const PAGE_SIZE = 12;
  * Next streams `loading.tsx` via Suspense.
  */
 export default async function JobsPage() {
-  const res = await fetch(
-    `${JOBS_API_BASE}/api/jobs?page=1&pageSize=${PAGE_SIZE}`,
-    { cache: "no-store" },
-  );
-
-  // Do not swallow errors: a non-2xx surfaces to the nearest error boundary.
-  if (!res.ok) {
-    throw new Error(
-      `Failed to load jobs — the API responded ${res.status} ${res.statusText}`,
-    );
+  // Resilient fetch: keeps `cache: "no-store"` but tolerates the backend's
+  // cold-start (retries on 5xx/network with a timeout). If it STILL fails, we
+  // render a calm inline "try again" panel rather than crashing the route — the
+  // error is surfaced clearly (not swallowed silently), just not as a stack trace.
+  let payload: PagedResponse<JobListingResponse>;
+  try {
+    const res = await fetchJobsApi(`/api/jobs?page=1&pageSize=${PAGE_SIZE}`);
+    if (!res.ok) {
+      throw new Error(
+        `The API responded ${res.status} ${res.statusText}`,
+      );
+    }
+    payload = (await res.json()) as PagedResponse<JobListingResponse>;
+  } catch {
+    return <BoardUnavailable />;
   }
 
-  const payload = (await res.json()) as PagedResponse<JobListingResponse>;
   const jobs = payload.data.map(toSummaryView);
 
   return (
@@ -71,6 +76,35 @@ export default async function JobsPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Friendly fallback when the jobs API can't be reached even after retries.
+ * A Server Component (no client JS): the "Refresh" link is a plain anchor that
+ * reloads /jobs, which re-runs the server fetch — by then the backend is usually
+ * warm. This guarantees the route degrades calmly instead of crashing.
+ */
+function BoardUnavailable() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-12 text-center dark:border-amber-900/50 dark:bg-amber-950/20">
+        <h1 className="font-display text-xl font-bold text-ink dark:text-slate-100">
+          The job board is warming up
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
+          We couldn&apos;t reach the jobs service just now. The backend can take a
+          few seconds to wake on a cold start — please refresh in a moment.
+        </p>
+        <Link
+          href="/jobs"
+          prefetch={false}
+          className="mt-5 inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+        >
+          Refresh
+        </Link>
+      </div>
     </div>
   );
 }

@@ -24,6 +24,56 @@ import type { JobListingResponse, JobListingDetailResponse } from "@/types";
 export const JOBS_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Resilient server-side fetch against the jobs backend.
+ *
+ * The Dockerised API has a real cold-start: the first query after idle can take
+ * 15–30s and may briefly return a 5xx while the connection pool / query plan warms.
+ * A bare `fetch` that throws on the first hiccup crashes the whole page. So this:
+ *   • allows a generous per-attempt timeout (a slow-but-valid cold response still
+ *     succeeds rather than being aborted), and
+ *   • retries on network errors and 5xx with a short backoff (the backend is warm
+ *     by the 2nd/3rd try).
+ * It deliberately does NOT retry 4xx (a 404 must reach the page so it can call
+ * `notFound()`); it still keeps `cache: "no-store"`; and it still throws once the
+ * retries are exhausted, so the route's error boundary takes over gracefully.
+ */
+export async function fetchJobsApi(
+  path: string,
+  { retries = 3, timeoutMs = 30_000 } = {},
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${JOBS_API_BASE}${path}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (res.status >= 500 && attempt < retries) {
+        await sleep(Math.min(500 * 2 ** attempt, 2500));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      lastError = err;
+      if (attempt < retries) {
+        await sleep(Math.min(500 * 2 ** attempt, 2500));
+        continue;
+      }
+    }
+  }
+  throw new Error(
+    `Could not reach the jobs API at ${JOBS_API_BASE} after ${retries + 1} attempts` +
+      (lastError instanceof Error ? ` (${lastError.name})` : ""),
+  );
+}
+
 /** The lean shape the listing grid and dashboard table render from. */
 export interface JobSummaryView {
   id: string;

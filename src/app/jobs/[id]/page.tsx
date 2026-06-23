@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
 import ApplicationForm from "@/components/ApplicationForm";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
-import { JOBS_API_BASE, toDetailView } from "@/lib/jobs-api";
+import { fetchJobsApi, toDetailView } from "@/lib/jobs-api";
 import type { JobListingDetailResponse } from "@/types";
 
 /**
@@ -27,9 +27,7 @@ export default async function JobDetailPage({
 }) {
   const { id } = await params;
 
-  const res = await fetch(`${JOBS_API_BASE}/api/jobs/${id}`, {
-    cache: "no-store",
-  });
+  const res = await fetchJobsApi(`/api/jobs/${id}`);
 
   // A genuine "no such job" → render the not-found boundary (HTTP 404), never a
   // half-built page. Any OTHER failure is a real error → throw to error.tsx.
