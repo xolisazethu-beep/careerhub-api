@@ -541,3 +541,206 @@ Route (app)                                 Size  First Load JS
 ```
 
 Zero TypeScript errors, zero ESLint errors.
+
+---
+
+# Assignment 2.1 — App Router: Real Routes, Real Pages
+
+CareerHub is now a multi-route App Router app. The job board, a single job, and
+the employer dashboard each live at their own URL; most of it renders as Server
+Components that fetch on the server and ship **no JavaScript bundle of their own**.
+
+**Data source.** The new Server Component routes read the **real** CareerHub
+backend (ASP.NET + Postgres) at `NEXT_PUBLIC_API_BASE_URL` — the same backend the
+1.4 board used. (`NEXT_PUBLIC_API_URL` stays reserved/unset for this app's
+same-origin mock routes: application submit and recruiter applicant review.) The
+assignment text writes `${NEXT_PUBLIC_API_URL}/api/jobs`; here that role is played
+by `NEXT_PUBLIC_API_BASE_URL`, because a Server Component `fetch` needs an
+absolute URL and this project already names the real backend that way.
+
+**Post a job, end to end.** An employer signs in (`/recruiter/signin`) against the
+real backend (`POST /api/v1/auth/login` -> JWT). Posting a role calls the real
+`POST /api/jobs` with that bearer token; the backend stamps it `Active` and the
+board sorts newest-first, so a newly posted job appears at the top of `/jobs`
+and in `/dashboard/listings` immediately.
+
+## Part 1 — Written Decisions
+
+### 1. `cache: "no-store"` vs the default
+
+`cache: "no-store"` operates on **Next.js's own server-side Data Cache** — not the
+browser cache and not a CDN. Next patches the global `fetch` on the server; by
+default a `fetch` in a Server Component is cached in that server-side store and
+can be replayed for a later request. `no-store` opts a specific call out of that
+store: the server re-runs the HTTP request every render, and the route becomes
+dynamically rendered.
+
+You would keep the **default (cached)** behaviour for data that is stable and
+shared across users and where some staleness is acceptable — a marketing page's
+CMS content, a list of countries, anything you would happily revalidate on a timer
+(`next: { revalidate: 60 }`). Caching there turns N requests into one upstream hit
+and lets the page be statically/edge-rendered.
+
+The **fundamental difference from TanStack Query** is *where the cache lives*.
+TanStack Query's cache is **in the browser, per client** — it has a `staleTime`,
+refetches on window focus/reconnect, and exists to keep an interactive client UI
+in sync after hydration. Next's fetch cache lives **on the server**, shared across
+requests and users, with no concept of "focus" or a client `staleTime` — there is
+no browser to focus and no per-user cache. One is a client runtime cache for a
+live UI; the other is a server cache for rendering HTML.
+
+### 2. The `"use client"` boundary and what crosses it
+
+`"use client"` marks a **module boundary**, not a single component. It says "this
+module, and everything it imports that is not itself a Server Component, is part
+of the client bundle." `ApplicationForm.tsx` has it; `/jobs/[id]/page.tsx` does
+not, so the page stays a Server Component that simply *renders* the client one.
+
+For a request to `/jobs/some-id`:
+- The **Server Component** runs on the server, awaits the job fetch, and emits the
+  **HTML** for the back-link, the job title/company/location/description, and the
+  status badge — already-rendered markup in the initial response. It contributes
+  the static shell and the *data*, serialised as props.
+- The **Client Component** (`ApplicationForm`) contributes the **JavaScript** that
+  hydrates the form: its `useState`, the Zod validation, the submit mutation. Its
+  initial markup is in the HTML too (so it is visible immediately), but it only
+  becomes *interactive* once its JS loads and React hydrates it.
+
+So the browser receives job details as **HTML** (no JS needed to read them) plus a
+**JS chunk** for the form island that hydrates in place. `jobId` and `jobTitle`
+cross the boundary as plain serialisable props.
+
+### 3. Why `params.id` is always a `string`
+
+A URL is text. The `[id]` segment is matched as raw characters from the path —
+Next cannot know whether `42` is meant as a number, `a1b2…` as a GUID, or
+`senior-engineer` as a slug, and it must not guess (is `007` the number 7 or the
+string "007"?). So every dynamic segment is typed `string`, losslessly.
+
+In this assignment **no conversion is needed**: the backend's job ids are string
+GUIDs and the detail route accepts a string id, so `params.id` (after
+`await params` in Next 15) is passed straight into the fetch URL. Converting it
+would only risk corrupting a value that is already in the right form.
+
+### 4. What "layout persists" actually means
+
+Navigating between two routes under `/dashboard` does **not re-render** the sidebar
+in `layout.tsx`: React's reconciler keeps the layout subtree mounted and only swaps
+the `children` slot below it. Concretely — the layout component **function is not
+called again**, its **DOM nodes are not destroyed or recreated**, and any **state
+it held would not reset**. Only the page segment unmounts/mounts.
+
+To show **dynamic data in the layout** (e.g. a live count of active listings)
+*without* making it a Client Component, keep it a Server Component that fetches the
+count itself: `async function DashboardLayout()` doing
+`await fetch(".../api/jobs", { cache: "no-store" })` and reading `totalCount`.
+Layouts re-fetch when the server re-renders them, so the number stays current with
+no client JS. (Alternatives: a small Client Component island that subscribes to the
+count, or `revalidatePath('/dashboard')` after a mutation.)
+
+## README Updates
+
+### 1. The composition pattern in `/jobs/[id]`
+
+`page.tsx` is a Server Component; it runs **first, on the server**, when the
+request arrives. It awaits the single-job fetch and **produces HTML** for the job
+details plus a serialised description of the `<ApplicationForm>` element and its
+two props. That HTML streams to the browser. **Then**, in the browser, React
+hydrates the page: it downloads the client chunk for `ApplicationForm` and runs it,
+attaching state and handlers to the already-present markup. Order: server render
+(data + HTML) -> browser receives HTML -> client hydrates the form island.
+
+If a user **disables JavaScript**, they still see the **full job details and the
+form's fields**, because all of that shipped as server-rendered HTML. What they
+lose is the form's *interactivity* — client-side Zod validation and the async
+submit mutation never hydrate, so the form cannot be submitted as wired. The
+reading experience is intact; only the client behaviour is gone.
+
+### 2. Why `JobLinkCard` has no `"use client"`
+
+`JobLinkCard` renders `<Link>`, and `<Link>` uses `useRouter` internally — but that
+hook call lives inside **`<Link>`'s own client module**, which already carries the
+`"use client"` boundary. `JobLinkCard` only *composes* `<Link>`; it never calls a
+hook itself, holds no state, and wires no event handler, so nothing in *its* module
+needs to run in the browser. The boundary is `<Link>`'s, not its.
+
+`JobCard` is different: it takes an **`onClick` selection handler** (and a save
+toggle). Passing an event handler from a Server Component to a DOM element is not
+allowed — handlers are client-only — so `JobCard` must be a Client Component even
+though the two cards look similar. The distinction is *interactivity*, not
+appearance: navigation via `<Link>` is declarative; selection via `onClick` is not.
+
+### 3. `loading.tsx` vs a manual loading state
+
+With `useQuery`, the component renders **immediately** with `isPending: true`, your
+`if (isPending) return <Skeleton/>` runs, and a re-render swaps in data once the
+client fetch resolves — all in the browser, after hydration.
+
+With `loading.tsx`, Next wraps the route segment in a **`<Suspense>`** boundary
+whose fallback is `loading.tsx`. The **skeleton renders first** — sent as part of
+the streamed server response while the Server Component is still awaiting its data.
+The moment the data resolves, the server streams the real content in to replace the
+fallback. There is no client `isPending` flag; Suspense drives the swap, and the
+skeleton appears before any of the page's own JS is even needed.
+
+> **Why the listing lives in a `(board)` route group.** A `loading.tsx` boundary
+> wraps its segment **and every nested segment**. Putting `loading.tsx` directly at
+> `app/jobs/` would therefore also wrap `app/jobs/[id]` — and because that Suspense
+> starts streaming a `200` before the detail page's `notFound()` runs, a missing job
+> would render the not-found UI but with an HTTP **200**. Scoping the skeleton to
+> `app/jobs/(board)/loading.tsx` keeps it on the listing only; `app/jobs/[id]` sits
+> outside that boundary, so `notFound()` returns a true **404**. Route groups don't
+> change the URL, so `app/jobs/(board)/page.tsx` still serves `/jobs`.
+
+### 4. Gate
+
+`npm run build` completes with **zero TypeScript errors and zero ESLint errors**.
+Final output:
+
+```
+> careerhub-frontend@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.19
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 42s
+   Linting and checking validity of types ...
+   Collecting page data ...
+ ✓ Generating static pages (18/18)
+   Finalizing page optimization ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      821 B         107 kB
+├ ○ /_not-found                            993 B         103 kB
+├ ○ /about                                 821 B         107 kB
+├ ƒ /api/applications                      145 B         103 kB
+├ ƒ /api/applications/[id]                 145 B         103 kB
+├ ƒ /api/applications/list                 145 B         103 kB
+├ ƒ /api/auth/login                        145 B         103 kB
+├ ƒ /api/auth/signup                       145 B         103 kB
+├ ƒ /api/jobs                              145 B         103 kB
+├ ƒ /api/jobs/[id]                         145 B         103 kB
+├ ƒ /api/recruiter/jobs                    145 B         103 kB
+├ ○ /applications                        3.87 kB         114 kB
+├ ƒ /apply/[jobId]                        3.6 kB         123 kB
+├ ○ /contact                               798 B         103 kB
+├ ƒ /dashboard/listings                    164 B         106 kB
+├ ○ /forgot-password                       917 B         111 kB
+├ ƒ /jobs                                  821 B         107 kB
+├ ƒ /jobs/[id]                           32.7 kB         153 kB
+├ ○ /login                               1.48 kB         111 kB
+├ ○ /recruiter                           6.39 kB         122 kB
+├ ƒ /recruiter/jobs/[jobId]              4.53 kB         130 kB
+├ ○ /recruiter/signin                    4.08 kB         107 kB
+└ ○ /signup                              1.65 kB         111 kB
++ First Load JS shared by all             102 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+```
+
+The new routes are `ƒ (Dynamic)` (server-rendered on demand, because of
+`cache: "no-store"`), while the new landing `/` is `○ (Static)` with no
+route-specific JS — exactly the App Router shape the assignment asks for.
