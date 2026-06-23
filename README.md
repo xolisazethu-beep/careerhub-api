@@ -744,3 +744,26 @@ Route (app)                                 Size  First Load JS
 The new routes are `ƒ (Dynamic)` (server-rendered on demand, because of
 `cache: "no-store"`), while the new landing `/` is `○ (Static)` with no
 route-specific JS — exactly the App Router shape the assignment asks for.
+
+## Running it locally — fast & resilient
+
+For day-to-day editing use `npm run dev`. **But `next dev` compiles each route on
+its first visit** (20–60s the first time), which feels slow. For a fast local
+experience that mirrors production, build once and serve the optimised output:
+
+```bash
+npm run build      # one-time, ~40s
+npm start          # serves http://localhost:3000 with pre-compiled routes
+```
+
+In this mode routes are instant: `/` ~20ms, `/jobs` ~0.6s, `/dashboard` ~0.4s
+(the sub-second figures are just the backend query — the page itself is ready).
+
+**Resilience.** The Dockerised backend has a real cold start (the first query
+after idle can take 10–60s and may briefly return a 5xx). The server fetches go
+through `fetchJobsApi()`, which keeps `cache:"no-store"` but **retries on 5xx /
+network errors with a timeout**. If the API is still unreachable after retries,
+`/jobs` and `/dashboard` render a calm **"warming up — Refresh"** panel instead
+of crashing. So a cold or briefly-down backend degrades gracefully; it never
+shows a stack trace. (If the backend container was just (re)started, give it
+~60s to accept connections — that delay is the .NET app booting, not the UI.)
