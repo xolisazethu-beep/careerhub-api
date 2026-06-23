@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CareerHub — Assignment 2.1 Walkthrough</title>
+<style>
+  :root{
+    --ink:#15131f; --muted:#5b5870; --line:#e5e2ee; --brand:#6d28d9; --brand2:#9333ea;
+    --bg:#ffffff; --code-bg:#1e1b2e; --code-ink:#e6e3f5; --ok:#0f8a4d; --warn:#b45309;
+    --chip:#f3effd;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
+       margin:0;line-height:1.5;font-size:12.5px}
+  .page{padding:46px 54px}
+  h1,h2,h3,h4{line-height:1.2;margin:0 0 .35em}
+  h1{font-size:30px;letter-spacing:-.5px}
+  h2{font-size:21px;margin-top:0;color:var(--brand)}
+  h3{font-size:16px;margin-top:1.4em}
+  h4{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4em}
+  p{margin:.5em 0}
+  a{color:var(--brand)}
+  code{font-family:"SF Mono",Consolas,Menlo,monospace;background:var(--chip);padding:1px 5px;border-radius:4px;font-size:.92em;color:#4c1d95}
+  pre{background:var(--code-bg);color:var(--code-ink);padding:14px 16px;border-radius:10px;overflow:auto;
+      font-family:"SF Mono",Consolas,Menlo,monospace;font-size:11px;line-height:1.55;margin:.7em 0}
+  pre code{background:none;color:inherit;padding:0}
+  .muted{color:var(--muted)}
+  .cover{height:980px;display:flex;flex-direction:column;justify-content:center;
+         background:linear-gradient(135deg,#2a1364,#6d28d9 55%,#a21caf);color:#fff;padding:0 64px;border-radius:0}
+  .cover h1{font-size:46px;color:#fff;margin-bottom:8px}
+  .cover .sub{font-size:19px;opacity:.92;font-weight:500}
+  .cover .meta{margin-top:42px;font-size:13px;opacity:.85;line-height:1.9}
+  .pill{display:inline-block;background:#fff2;border:1px solid #ffffff44;border-radius:999px;padding:5px 14px;font-size:12px;margin-bottom:22px;width:max-content}
+  .tag{display:inline-block;background:var(--chip);color:var(--brand);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;margin-right:6px}
+  .req,.how,.beg{border-radius:10px;padding:13px 16px;margin:.7em 0;border:1px solid var(--line)}
+  .req{background:#fbf7ff;border-color:#ead9ff}
+  .how{background:#f7fbff;border-color:#d8ebff}
+  .beg{background:#f1fbf4;border-color:#cdeed8}
+  .req h4{color:var(--brand2)} .how h4{color:#1d6fb8} .beg h4{color:var(--ok)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  figure{margin:.8em 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#faf9fe}
+  figure img{display:block;width:100%}
+  figcaption{font-size:11px;color:var(--muted);padding:8px 12px;background:#fff;border-top:1px solid var(--line)}
+  .browser{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:.8em 0;box-shadow:0 1px 0 #0000000a}
+  .bar{background:#efeaf7;padding:7px 12px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--line)}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .url{margin-left:8px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 10px;font-family:monospace;font-size:10.5px;color:#555;flex:1}
+  .mock{padding:16px;background:#fff}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;margin:.6em 0}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f6f2fd;color:var(--brand)}
+  .ok{color:var(--ok);font-weight:700}
+  .route{font-family:monospace;font-size:11px}
+  .pagebreak{page-break-before:always}
+  .small{font-size:11px}
+  ul{margin:.4em 0 .6em;padding-left:20px} li{margin:.2em 0}
+  .kbd{font-family:monospace;background:#eee;border:1px solid #ccc;border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px}
+  .flow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;margin:.6em 0}
+  .node{background:var(--chip);border:1px solid #e2d4fb;border-radius:8px;padding:7px 11px;text-align:center}
+  .arrow{color:var(--brand);font-weight:700}
+  @page{margin:0;size:A4}
+  @media print{.page{padding:40px 50px}}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="cover">
+  <span class="pill">CareerHub · Frontend Engineering</span>
+  <h1>Assignment 2.1</h1>
+  <div class="sub">App Router: Real Routes, Real Pages — a step-by-step walkthrough</div>
+  <div class="meta">
+    Branch: <b>CAREERHUB-UI-2.1</b><br>
+    Stack: Next.js 15.5 · React 19 · TypeScript · Tailwind · TanStack Query<br>
+    Data: real ASP.NET&nbsp;+&nbsp;PostgreSQL backend (Docker, port 8080)<br>
+    Author: Xolisa Matsila &nbsp;·&nbsp; Generated 2026-06-23
+  </div>
+</section>
+
+<!-- HOW TO READ -->
+<section class="page pagebreak">
+  <h2>How to read this document</h2>
+  <p>This walkthrough explains <b>every part of the assignment</b> — what it asked for, exactly how I built it, the key code, a picture of the result, and a plain-English summary for beginners. Each part uses three coloured boxes:</p>
+  <div class="req"><h4>📋 What it required</h4>The assignment's actual instruction, in short.</div>
+  <div class="how"><h4>🔧 How I did it</h4>The practical steps I took and why.</div>
+  <div class="beg"><h4>🟢 Beginner summary</h4>The same idea in everyday language — no jargon.</div>
+
+  <h3>The one-paragraph overview</h3>
+  <p>CareerHub used to be a <b>single page</b> where everything was drawn in the browser and the web address never changed. This assignment turned it into a <b>proper multi-page app</b>: the job board, each individual job, and the employer dashboard now each live at their own web address (URL). Most pages are now built <b>on the server</b> — the HTML arrives already filled with data, so it is faster, shareable, and ships almost no JavaScript. On top of the assignment, employers can now <b>log in and post a job</b> that is saved in the real database and appears on the board instantly.</p>
+
+  <h3>The architecture (how data flows)</h3>
+  <div class="flow">
+    <div class="node">🌐 Browser</div>
+    <span class="arrow">→ asks for a page →</span>
+    <div class="node">▲ Next.js<br><span class="muted">Server Components</span></div>
+    <span class="arrow">→ fetch (server-to-server) →</span>
+    <div class="node">🟦 ASP.NET + Postgres<br><span class="muted">Docker :8080</span></div>
+  </div>
+  <p class="small muted">Because the fetch happens on the server, the browser never calls the jobs API itself — the job data is already inside the HTML when the page arrives. Job <b>reads</b> and job <b>creation</b> both use this real backend; application submissions still use this app's own built-in mock routes (unchanged from Assignment 1.4).</p>
+
+  <h3>The new map of the site</h3>
+  <table>
+    <tr><th>URL</th><th>What it is</th><th>Rendering</th></tr>
+    <tr><td class="route">/</td><td>Landing page with two buttons</td><td>Server · static · <b>no JS bundle</b></td></tr>
+    <tr><td class="route">/jobs</td><td>The job board (grid of cards)</td><td>Server · dynamic</td></tr>
+    <tr><td class="route">/jobs/[id]</td><td>One job + application form</td><td>Server · dynamic</td></tr>
+    <tr><td class="route">/dashboard/listings</td><td>Employer table with sidebar</td><td>Server · dynamic</td></tr>
+    <tr><td class="route">/recruiter/signin</td><td>Employer login / register</td><td>Client (real JWT auth)</td></tr>
+  </table>
+</section>
+
+<!-- PART 1 -->
+<section class="page pagebreak">
+  <h2>Part 1 — Written Decisions</h2>
+  <p class="muted">Four concept questions. Full answers are in the project <code>README.md</code>; here is the beginner version of each.</p>
+
+  <h3>1. <code>cache: "no-store"</code> vs the default</h3>
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    Next.js can remember (cache) the answer to a <code>fetch</code> <b>on the server</b> and reuse it. <code>cache: "no-store"</code> means "never remember this — always ask the backend fresh." We use it so a job posted seconds ago shows up immediately. This is a <b>server</b> cache shared by all visitors — completely different from TanStack Query, whose cache lives <b>in each person's browser</b> and refetches when you refocus the tab.</div>
+
+  <h3>2. The <code>"use client"</code> boundary</h3>
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    <code>"use client"</code> at the top of a file marks it (and what it imports) as "runs in the browser." A Server Component sends finished <b>HTML</b>; a Client Component sends <b>JavaScript</b> that makes things interactive. On a job page, the job text arrives as HTML you can read instantly, and only the <b>application form</b> ships JavaScript to become clickable.</div>
+
+  <h3>3. Why <code>params.id</code> is always a string</h3>
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    A web address is just text. Next.js can't know if <code>/jobs/42</code> means the number 42 or the text "42", so it always gives you the id as <b>text (a string)</b>. Our backend uses text GUIDs like <code>ddeb52e4-…</code>, so we pass the id straight through — <b>no conversion needed</b>.</div>
+
+  <h3>4. What "layout persists" means</h3>
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    When you move between two dashboard pages, the sidebar <b>doesn't reload</b> — its code isn't re-run, its boxes on screen aren't rebuilt, and anything it remembered stays. Only the area next to it swaps. To show a live number in a sidebar without browser code, the layout (a Server Component) can fetch that number itself.</div>
+</section>
+
+<!-- PART 2 -->
+<section class="page pagebreak">
+  <h2>Part 2 — Single-Job API Route Handler</h2>
+  <span class="tag">file</span><code>src/app/api/jobs/[id]/route.ts</code>
+
+  <div class="req"><h4>📋 What it required</h4>
+    A mock endpoint that handles <b>GET only</b> (a POST must return <b>405</b>), reads the <code>id</code> from the URL, returns <b>404 in Problem Details shape</b> (<code>{title, detail, status}</code>) when the job doesn't exist, and otherwise returns the full job as JSON.</div>
+
+  <div class="how"><h4>🔧 How I did it</h4>
+    This endpoint already existed in the project from 1.4 and meets every rule, so I kept it. It only <code>export</code>s a <code>GET</code> function — Next.js then answers any other method (POST/PUT/…) with an automatic <b>405</b>. A missing id returns the exact Problem Details body with status 404.</div>
+
+<pre><code>export async function GET(_req: Request, { params }: { params: Promise&lt;{ id: string }&gt; }) {
+  const { id } = await params;
+  const job = findJob(id);
+  if (!job) {
+    return NextResponse.json(
+      { title: "Job not found", detail: `No job exists with id '${id}'.`, status: 404 },
+      { status: 404 },
+    );
+  }
+  return NextResponse.json(job);            // 200 with the full job
+}
+// Only GET is exported → a POST to this route gets an automatic 405.</code></pre>
+
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    This is a tiny "mini-server" built into the app. Ask it for a job by id and it hands back that job; ask for one that doesn't exist and it politely says "404 — not found"; try to send (POST) instead of get and it says "405 — wrong method." Proven with: <code>GET …/api/jobs/&lt;real-id&gt;</code> → 200, <code>…/does-not-exist</code> → 404, POST → 405.</div>
+</section>
+
+<!-- PART 3 -->
+<section class="page pagebreak">
+  <h2>Part 3 — The <code>/jobs</code> Listing (Server Component)</h2>
+  <span class="tag">files</span><code>JobLinkCard.tsx</code> · <code>jobs/(board)/page.tsx</code> · <code>jobs/(board)/loading.tsx</code> · <code>lib/jobs-api.ts</code>
+
+  <div class="req"><h4>📋 What it required</h4>
+    A new <b>JobLinkCard</b> (a card wrapped in a <code>&lt;Link&gt;</code>, <b>no</b> <code>"use client"</code>). A <code>/jobs</code> page that is an <code>async</code> Server Component, fetches all jobs with <code>cache:"no-store"</code>, throws on errors, renders a grid of cards (or an empty state). Plus a <code>loading.tsx</code> skeleton matching the grid.</div>
+
+  <div class="how"><h4>🔧 How I did it</h4>
+    <b>JobLinkCard</b> only renders a <code>&lt;Link&gt;</code> with the job's title, company, location and a status badge — no clicks, no state — so it stays a Server Component. The page fetches the board on the server and maps each job to a card. The skeleton shows pulsing grey cards while the data loads.<br>
+    <b>Important twist:</b> I put the listing inside a <code>(board)</code> folder (a "route group"). That keeps the loading skeleton scoped to the list only — explained in the "404 deep-dive" later.</div>
+
+<pre><code>// JobLinkCard.tsx — a Server Component (no "use client")
+export default function JobLinkCard({ job }: { job: JobSummaryView }) {
+  return (
+    &lt;Link href={`/jobs/${job.id}`} className="card"&gt;
+      &lt;EmploymentTypeBadge employmentType={job.employmentType} /&gt;
+      &lt;h2&gt;{job.title}&lt;/h2&gt;
+      &lt;p&gt;{job.company}&lt;/p&gt;
+      &lt;p&gt;{job.location}&lt;/p&gt;
+    &lt;/Link&gt;
+  );
+}
+
+// jobs/(board)/page.tsx — async Server Component
+export default async function JobsPage() {
+  const res = await fetch(`${JOBS_API_BASE}/api/jobs?page=1&amp;pageSize=12`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to load jobs — ${res.status}`);   // don't swallow errors
+  const { data } = await res.json();
+  const jobs = data.map(toSummaryView);
+  return jobs.length === 0 ? &lt;EmptyState/&gt; : &lt;div className="grid"&gt;{jobs.map(j =&gt; &lt;JobLinkCard job={j}/&gt;)}&lt;/div&gt;;
+}</code></pre>
+
+  <figure>
+    <img src="img/jobs.png" alt="The /jobs board rendered with real listings">
+    <figcaption>The live <b>/jobs</b> board — every card is server-rendered from the real backend. Clicking a card navigates to that job's own URL.</figcaption>
+  </figure>
+
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    This is the job board. The server fetches the jobs and sends a ready-made page full of cards, so it appears instantly and search engines can read it. While it's loading, you briefly see grey "skeleton" cards so nothing jumps around. Each card is a link — click it and the address changes to that one job.</div>
+</section>
+
+<!-- PART 4 -->
+<section class="page pagebreak">
+  <h2>Part 4 — The <code>/jobs/[id]</code> Detail Page</h2>
+  <span class="tag">files</span><code>jobs/[id]/page.tsx</code> · <code>not-found.tsx</code> · <code>error.tsx</code>
+
+  <div class="req"><h4>📋 What it required</h4>
+    An <code>async</code> Server Component that fetches one job (<code>cache:"no-store"</code>); on <b>404</b> it calls <code>notFound()</code> (no half-page); on other errors it throws. It renders the job details, a "← Back to jobs" link, and the existing <b>ApplicationForm</b> — but only when the job is <b>not Closed</b>. Plus a <code>not-found.tsx</code> page.</div>
+
+  <div class="how"><h4>🔧 How I did it</h4>
+    The Server Component fetches the job and inspects the HTTP status: <code>404 → notFound()</code>, any other failure <code>→ throw</code> (caught by <code>error.tsx</code>). It renders the details as HTML, then drops in the <b>ApplicationForm</b> Client Component for open roles (or a "no longer accepting applications" message when Closed). <b>This is the composition moment</b>: a Server Component (data + HTML) hands two props to a Client Component (the interactive form).</div>
+
+<pre><code>export default async function JobDetailPage({ params }: { params: Promise&lt;{ id: string }&gt; }) {
+  const { id } = await params;                                  // id is always a string
+  const res = await fetch(`${JOBS_API_BASE}/api/jobs/${id}`, { cache: "no-store" });
+  if (res.status === 404) notFound();                           // → renders not-found.tsx (HTTP 404)
+  if (!res.ok) throw new Error(`Failed to load job ${id}`);     // → renders error.tsx
+  const job = toDetailView(await res.json());
+  return (
+    &lt;&gt;
+      &lt;Link href="/jobs"&gt;← Back to jobs&lt;/Link&gt;
+      &lt;h1&gt;{job.title}&lt;/h1&gt; {/* …company, location, description… server HTML… */}
+      {job.status === "Closed"
+        ? &lt;ClosedMessage/&gt;
+        : &lt;ApplicationForm jobId={job.id} jobTitle={job.title} /&gt;}  {/* Client Component */}
+    &lt;/&gt;
+  );
+}</code></pre>
+
+  <div class="grid2">
+    <figure>
+      <img src="img/notfound.png" alt="The not-found page for a bad job id">
+      <figcaption><b>/jobs/&lt;bad-id&gt;</b> → the not-found page, returned with a real <b>HTTP 404</b>.</figcaption>
+    </figure>
+    <div>
+      <div class="browser">
+        <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span class="url">localhost:3000/jobs/ddeb52e4-…</span></div>
+        <div class="mock">
+          <div style="font-size:11px;color:#6d28d9;font-weight:700">← Back to jobs</div>
+          <div style="display:flex;gap:6px;margin:8px 0"><span style="background:#d1fae5;color:#065f46;border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700">Full-time</span><span style="background:#d1fae5;color:#065f46;border-radius:99px;padding:2px 8px;font-size:10px;font-weight:700">Active</span></div>
+          <div style="font-weight:800;font-size:16px">SMOKE TEST Engineer Z</div>
+          <div style="color:#666;font-size:11px;margin:4px 0">🏢 Takealot &nbsp; 📍 Cape Town</div>
+          <div style="font-weight:700;font-size:11px;margin-top:8px">About the role</div>
+          <div style="color:#444;font-size:11px">Created via the employer dashboard against the real backend.</div>
+          <div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px">
+            <div style="font-weight:700;font-size:12px">Apply for this role</div>
+            <div style="background:#f6f2fd;border:1px dashed #c9b6f3;border-radius:8px;padding:8px;font-size:10px;color:#6d28d9;margin-top:6px">[ ApplicationForm — Client Component: name, email, cover letter, Zod validation, Submit ]</div>
+          </div>
+        </div>
+      </div>
+      <div class="small muted" style="text-align:center">Detail page layout (verified live; rendered here as a mock-up).</div>
+    </div>
+  </div>
+
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    Click a job and you land on its own page with the full description and an application form. If you type a job address that doesn't exist, you get a friendly "Job not found" page <b>and</b> the browser correctly reports error 404 (not a fake "200 OK"). Closed jobs hide the form and show a notice instead. The page text is server-made; only the form carries the browser code that lets you fill it in.</div>
+</section>
+
+<!-- PART 5 -->
+<section class="page pagebreak">
+  <h2>Part 5 — The <code>/dashboard</code> Layout &amp; Listings</h2>
+  <span class="tag">files</span><code>dashboard/layout.tsx</code> · <code>dashboard/listings/page.tsx</code>
+
+  <div class="req"><h4>📋 What it required</h4>
+    A Server Component <b>layout</b> with a fixed sidebar (heading "Employer Dashboard", links "All Listings" and "View as Candidate") that <b>persists</b> across navigation. A <b>listings page</b> that fetches the same jobs and renders a <b>table</b> (Title, Company, Location, Status, View) with a "<code>{count} listings</code>" subheading and an empty state.</div>
+
+  <div class="how"><h4>🔧 How I did it</h4>
+    The layout is a two-column grid: a sticky sidebar on the left, the page on the right. Because it's a layout, React keeps it mounted and only swaps the page beside it. The listings page fetches the board on the server and renders a table; the subheading shows the true total from the API envelope's <code>totalCount</code>.</div>
+
+<pre><code>// dashboard/layout.tsx — Server Component sidebar that persists
+export default function DashboardLayout({ children }) {
+  return (
+    &lt;div className="flex"&gt;
+      &lt;aside&gt;
+        &lt;h2&gt;Employer Dashboard&lt;/h2&gt;
+        &lt;Link href="/dashboard/listings"&gt;All Listings&lt;/Link&gt;
+        &lt;Link href="/jobs"&gt;View as Candidate&lt;/Link&gt;
+      &lt;/aside&gt;
+      &lt;div&gt;{children}&lt;/div&gt;   {/* only THIS swaps on navigation */}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+  <div class="browser">
+    <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span class="url">localhost:3000/dashboard/listings</span></div>
+    <div class="mock" style="display:flex;gap:14px">
+      <div style="width:150px;border:1px solid #eee;border-radius:8px;padding:10px;height:max-content">
+        <div style="font-size:9px;letter-spacing:.08em;color:#888;font-weight:700">EMPLOYER DASHBOARD</div>
+        <div style="background:#f3effd;color:#6d28d9;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:600;margin-top:8px">All Listings</div>
+        <div style="padding:5px 8px;font-size:11px;color:#444">Post a Job</div>
+        <div style="padding:5px 8px;font-size:11px;color:#444">View as Candidate</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:15px">All Listings</div>
+        <div style="color:#888;font-size:11px;margin-bottom:6px">833 listings</div>
+        <table style="font-size:10px"><tr><th>Title</th><th>Company</th><th>Location</th><th>Status</th><th>Action</th></tr>
+          <tr><td>SMOKE TEST Engineer Z</td><td>Takealot</td><td>Cape Town</td><td><span style="color:#065f46">Active</span></td><td style="color:#6d28d9">View</td></tr>
+          <tr><td>Senior Cloud Architect</td><td>Discovery</td><td>Sandton</td><td><span style="color:#065f46">Active</span></td><td style="color:#6d28d9">View</td></tr>
+          <tr><td>Graduate UX Designer</td><td>Takealot</td><td>Cape Town</td><td><span style="color:#065f46">Active</span></td><td style="color:#6d28d9">View</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <p class="small muted">Verified live: sidebar + table both render, subheading shows <b>833 listings</b>, 50 rows with working <b>View</b> links (rendered here as a mock-up).</p>
+
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    This is the employer's view: a sidebar menu that stays put while you move around, next to a neat <b>table</b> of every job (better than cards when you want to scan a lot of rows). The heading tells you how many jobs exist in total.</div>
+</section>
+
+<!-- PART 6 -->
+<section class="page pagebreak">
+  <h2>Part 6 — Navigation &amp; the Home Page</h2>
+  <span class="tag">files</span><code>page.tsx</code> · <code>NavLinks.tsx</code> · <code>Navbar.tsx</code>
+
+  <div class="req"><h4>📋 What it required</h4>
+    Add header navigation (links to Jobs and Dashboard, brand as a link). Replace the home page with a <b>Server Component landing page</b> — remove all <code>"use client"</code>, hooks and queries — showing a heading, a description, and two link-buttons. The home route should ship <b>no JavaScript of its own</b>.</div>
+
+  <div class="how"><h4>🔧 How I did it</h4>
+    I added a small <b>NavLinks</b> component to the header with "Jobs" and "Dashboard" (it also highlights the active link — Stretch&nbsp;A). I rewrote the home page as a plain Server Component: just a heading, a paragraph, and two buttons linking to <code>/jobs</code> and <code>/dashboard/listings</code>. The build confirms it as <code>○ (Static)</code> with no route-specific JavaScript.</div>
+
+<pre><code>// page.tsx — pure Server Component (no "use client", no hooks)
+export default function Home() {
+  return (
+    &lt;section&gt;
+      &lt;h1&gt;Find your next role, or your next hire&lt;/h1&gt;
+      &lt;p&gt;CareerHub is a job board for South African tech…&lt;/p&gt;
+      &lt;Link href="/jobs"&gt;Browse jobs&lt;/Link&gt;
+      &lt;Link href="/dashboard/listings"&gt;Employer dashboard&lt;/Link&gt;
+    &lt;/section&gt;
+  );
+}</code></pre>
+
+  <figure>
+    <img src="img/home.png" alt="The new server-rendered landing page">
+    <figcaption>The new <b>/</b> landing page — a pure Server Component with two link-buttons. In the build it shows as <code>○ (Static)</code> with no JS bundle of its own.</figcaption>
+  </figure>
+
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    The front door of the site is now a simple welcome page with two buttons: one to browse jobs, one for employers. It's the lightest possible page — pure HTML, zero browser code — so it loads instantly. The header always shows "Jobs" and "Dashboard", and the one you're currently on is highlighted.</div>
+</section>
+
+<!-- STRETCH + FEATURE -->
+<section class="page pagebreak">
+  <h2>Stretch Goals + the "Post a Job" Feature</h2>
+
+  <h3>Stretch A — Active link highlighting</h3>
+  <div class="how"><h4>🔧 How I did it</h4><code>NavLinks.tsx</code> is a Client Component that uses the <code>usePathname()</code> hook to know the current URL and adds a highlight class to the matching link. The header and layout stay Server Components — only this tiny piece runs in the browser.</div>
+
+  <h3>Stretch B — <code>error.tsx</code> for the detail route</h3>
+  <div class="how"><h4>🔧 How I did it</h4><code>jobs/[id]/error.tsx</code> is a Client Component (Next requires it) that receives the <code>error</code> and a <code>reset()</code> function. If the job fetch fails for a reason other than 404, it shows the message and a <b>"Try again"</b> button that re-runs the page.</div>
+
+  <h3 class="pagebreak">Extra feature — Employers post real jobs that appear on the board</h3>
+  <span class="tag">files</span><code>employer-api.ts</code> · <code>EmployerAuthContext.tsx</code> · <code>recruiter/signin</code> · <code>recruiter</code>
+  <div class="req"><h4>📋 What you asked for</h4>"If someone adds a job it must appear on the listing… add it on the backend too… full employer login."</div>
+  <div class="how"><h4>🔧 How I did it</h4>
+    The real backend already had an employer-only <code>POST /api/jobs</code> that stamps new jobs <b>Active</b>, and the board sorts <b>newest-first</b> — so a new job lands at the top of <code>/jobs</code> with no backend change needed. I added <b>real authentication</b>: the sign-in page logs in (or registers) against the backend's <code>/api/v1/auth</code> and stores the returned <b>JWT</b>. Posting a job sends that token as a <code>Bearer</code> credential.</div>
+  <div class="flow">
+    <div class="node">Employer signs in<br><span class="muted">/recruiter/signin</span></div><span class="arrow">→</span>
+    <div class="node">Backend returns<br><b>JWT token</b></div><span class="arrow">→</span>
+    <div class="node">Post a job<br><span class="muted">POST /api/jobs + token</span></div><span class="arrow">→</span>
+    <div class="node">Saved as <b>Active</b><br>in Postgres</div><span class="arrow">→</span>
+    <div class="node">Appears on <b>/jobs</b><br>(newest first)</div>
+  </div>
+
+<pre><code>// employer-api.ts — create a job against the REAL backend, with the bearer token
+export async function createJobListing(token: string, body: NewJobListing) {
+  const res = await fetch(`${API_BASE}/api/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json();                          // { id } of the new, live job
+}</code></pre>
+
+  <figure>
+    <img src="img/signin.png" alt="Employer sign-in page">
+    <figcaption>The employer <b>sign-in / register</b> page. It authenticates against the real backend; the demo account is pre-filled at the bottom.</figcaption>
+  </figure>
+
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    Employers can create an account or log in for real. Once signed in, they fill a short form to post a job. That job is saved in the real database and — because the board shows newest first — appears right at the top of the public job list straight away. Sign in with the demo account <code>demo.employer@takealot.co.za</code> / <code>DemoPass123!</code>.</div>
+</section>
+
+<!-- 404 DEEP DIVE -->
+<section class="page pagebreak">
+  <h2>A teaching moment: getting a real 404</h2>
+  <div class="req"><h4>📋 The requirement</h4>"Navigate to a fake job id… confirm the response status is <b>404, not 200</b>."</div>
+  <p><b>The problem I hit:</b> the not-found <i>page</i> showed correctly, but the browser reported <b>HTTP 200</b>. That's wrong — a missing page must report 404 so browsers, search engines and tools know it doesn't exist.</p>
+  <p><b>Why it happened:</b> a <code>loading.tsx</code> file creates a "loading boundary" that wraps its folder <b>and everything inside it</b>. With <code>loading.tsx</code> directly in <code>app/jobs/</code>, it also wrapped <code>app/jobs/[id]</code>. That boundary starts sending the page (status 200) <b>before</b> the detail page can call <code>notFound()</code> — so the status was frozen at 200.</p>
+  <p><b>The fix:</b> I moved the listing into a <code>(board)</code> route group, so the loading skeleton only wraps the list, not the detail page. A "route group" is a folder in brackets that organises files <b>without</b> changing the URL — <code>app/jobs/(board)/page.tsx</code> still serves <code>/jobs</code>.</p>
+  <table>
+    <tr><th>Structure</th><th>/jobs loads?</th><th>Bad id status</th></tr>
+    <tr><td><code>app/jobs/loading.tsx</code> (wraps everything)</td><td class="ok">✓</td><td style="color:#b91c1c">200 ✗</td></tr>
+    <tr><td><code>app/jobs/(board)/loading.tsx</code> (list only)</td><td class="ok">✓</td><td class="ok">404 ✓</td></tr>
+  </table>
+  <div class="beg"><h4>🟢 Beginner summary</h4>
+    A "loading screen" file accidentally covered the job-detail page too, which made "page not found" wrongly report "all good (200)." I tucked the loading screen into a side folder so it only covers the list. Now a bad link correctly reports 404 — proven on the production build.</div>
+</section>
+
+<!-- VERIFICATION + RUN -->
+<section class="page pagebreak">
+  <h2>Does everything work? — Verification</h2>
+  <p>Every route was tested against the running app. Results:</p>
+  <table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td><code>/</code> server landing page, two buttons</td><td class="ok">✓ 200 · static · no route JS</td></tr>
+    <tr><td><code>/jobs</code> renders the board from server data</td><td class="ok">✓ 200 · 24 cards</td></tr>
+    <tr><td><code>/jobs</code> — no browser fetch to the jobs API</td><td class="ok">✓ data is in the HTML</td></tr>
+    <tr><td><code>/jobs</code> — skeleton shows before content</td><td class="ok">✓ loading.tsx (in (board))</td></tr>
+    <tr><td><code>/jobs/[id]</code> shows the correct job + form</td><td class="ok">✓ 200 · 2.5s</td></tr>
+    <tr><td><code>/jobs/&lt;fake&gt;</code> shows not-found</td><td class="ok">✓ Job Not Found</td></tr>
+    <tr><td><code>/jobs/&lt;fake&gt;</code> HTTP status is 404</td><td class="ok">✓ 404 (production)</td></tr>
+    <tr><td><code>/dashboard/listings</code> sidebar + table + count</td><td class="ok">✓ 200 · 833 listings · 50 rows</td></tr>
+    <tr><td>Sidebar persists across navigation</td><td class="ok">✓ layout not re-mounted</td></tr>
+    <tr><td>Employer login → post job → appears on board</td><td class="ok">✓ verified live (201 → top of /jobs)</td></tr>
+    <tr><td><code>npm run build</code> — TypeScript + ESLint</td><td class="ok">✓ zero errors · 18/18 pages</td></tr>
+  </table>
+
+  <h3>The build gate</h3>
+<pre><code> ✓ Compiled successfully
+   Linting and checking validity of types ...
+ ✓ Generating static pages (18/18)
+
+Route (app)                       Size  First Load JS
+┌ ○ /                            821 B        107 kB     ← landing: static, no route JS
+├ ƒ /jobs                        821 B        107 kB     ← dynamic (server-rendered)
+├ ƒ /jobs/[id]                  32.7 kB        153 kB     ← dynamic (+ ApplicationForm)
+├ ƒ /dashboard/listings          164 B        106 kB     ← dynamic
+└ ○ /recruiter/signin           4.08 kB        107 kB
+○ (Static)   ƒ (Dynamic, server-rendered on demand)</code></pre>
+
+  <h3>Run it yourself</h3>
+  <ol class="small">
+    <li>Make sure Docker is up: <code>docker ps</code> shows <b>careerhub24-api</b> (:8080) and <b>careerhub24-pg</b>.</li>
+    <li>Start the app: <span class="kbd">npm run dev</span>, then open <b>http://localhost:3000</b>.</li>
+    <li>Click <b>Browse jobs</b> → click a card → see the detail page + form.</li>
+    <li>Go to <b>/recruiter/signin</b>, sign in with the demo employer, post a job, then refresh <b>/jobs</b> — it's at the top.</li>
+  </ol>
+  <p class="small muted">Note: in development each route compiles on its first visit (it can take 20–60s the first time; afterwards it's instant). The production build renders every route in well under a second.</p>
+
+  <div class="beg" style="margin-top:18px"><h4>🟢 In one sentence</h4>
+    CareerHub is now a real multi-page app where the server does the heavy lifting, every job has its own shareable link, missing pages correctly say 404, and employers can log in and post jobs that appear on the board instantly — and it all builds with zero errors.</div>
+</section>
+
+</body>
+</html>
