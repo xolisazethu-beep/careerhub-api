@@ -119,6 +119,8 @@ export interface EmployerJob {
   type: EmploymentType;
   status: string;
   createdAt: string;
+  /** Real applicant count for this listing, computed by the backend. */
+  applicantCount: number;
 }
 
 /**
@@ -141,6 +143,7 @@ export async function fetchCompanyJobs(
       type: EmploymentType;
       status: string;
       createdAt: string;
+      applicantCount: number;
     }>;
   };
   return payload.data.map((j) => ({
@@ -150,7 +153,84 @@ export async function fetchCompanyJobs(
     type: j.type,
     status: j.status,
     createdAt: j.createdAt,
+    applicantCount: j.applicantCount ?? 0,
   }));
+}
+
+/** One applicant on a job, as the recruiter reviews them (real backend). */
+export interface JobApplication {
+  jobListingId: string;
+  applicantId: string;
+  fullName: string;
+  email: string;
+  city: string;
+  yearsOfExperience: number;
+  coverNote: string;
+  selectedSkills: string[];
+  /** Raw status: Submitted | UnderReview | Shortlisted | Rejected | Offered. */
+  status: string;
+  /** Friendly stage: Applied | Pending | Accepted | Rejected. */
+  stage: string;
+  submittedAt: string;
+  hasCv: boolean;
+}
+
+/** The status values the recruiter can move an application to. */
+export type ReviewStatus = "UnderReview" | "Offered" | "Rejected";
+
+/** Every applicant to one of the employer's listings (Employer JWT required). */
+export async function fetchJobApplications(
+  token: string,
+  jobId: string,
+): Promise<JobApplication[]> {
+  const res = await fetch(`${API_BASE}/api/v1/jobs/${jobId}/applications`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return (await res.json()) as JobApplication[];
+}
+
+/** Move one application to a new status (Employer JWT; enforces the state machine). */
+export async function updateApplicationStatus(
+  token: string,
+  jobId: string,
+  applicantId: string,
+  status: ReviewStatus,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/applications/${jobId}/${applicantId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    },
+  );
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+/**
+ * Fetch an applicant's CV (PDF) as a blob, then open it in a new tab. Done with a
+ * fetch (not a plain link) because the endpoint needs the Authorization header.
+ */
+export async function openApplicantCv(
+  token: string,
+  jobId: string,
+  applicantId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/jobs/${jobId}/applications/${applicantId}/cv`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(await readError(res));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener");
+  // Revoke shortly after so the new tab has time to load it.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /** Publish a listing to the real backend. Requires a valid Employer JWT. */

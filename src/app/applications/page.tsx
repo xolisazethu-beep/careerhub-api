@@ -1,98 +1,102 @@
 // =============================================================
 // src/app/applications/page.tsx
-// Lists the applications this person has submitted. When signed in we
-// show only their applications (matched by email); otherwise we show
-// everything stored on this device. Each card has a status pill and a
-// 4-step progress tracker; "Rejected" is handled separately.
+// Track Applications — reads the signed-in applicant's real history from
+// the backend (GET /api/v1/applications/me). Shows each application's
+// friendly stage (Applied / Pending / Accepted / Rejected) and the raw
+// status the recruiter set, with a progress tracker. Updates whenever a
+// recruiter changes a status.
 // =============================================================
 "use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Inbox, Trash2 } from "lucide-react";
-import {
-  getApplications,
-  getApplicationsByEmail,
-  withdrawApplication,
-  type Application,
-  type ApplicationStatus,
-} from "@/lib/careerhub-store";
-import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/context/ToastContext";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { Inbox, Loader2, RefreshCw } from "lucide-react";
+import { useApplicantAuth } from "@/context/ApplicantAuthContext";
+import { fetchMyApplications, type MyApplication } from "@/lib/applicant-api";
 
-// The happy-path stages, in order. "Rejected" is deliberately not here — it is
-// a terminal state shown on its own, not a step on this track.
-const STEPS: Exclude<ApplicationStatus, "Rejected">[] = [
-  "Submitted",
-  "Under review",
-  "Interview",
-  "Offer",
-];
+// Happy-path friendly stages, in order. "Rejected" is terminal, shown on its own.
+const STEPS = ["Applied", "Pending", "Accepted"] as const;
 
-const PILL_CLASS: Record<ApplicationStatus, string> = {
-  Submitted: "bg-sky-500/15 text-sky-600 dark:text-sky-300 border-sky-500/30",
-  "Under review":
-    "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
-  Interview:
-    "bg-violet-500/15 text-violet-600 dark:text-violet-300 border-violet-500/30",
-  Offer:
-    "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
+const PILL_CLASS: Record<string, string> = {
+  Applied: "bg-sky-500/15 text-sky-600 dark:text-sky-300 border-sky-500/30",
+  Pending: "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
+  Accepted: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
   Rejected: "bg-red-500/15 text-red-600 dark:text-red-300 border-red-500/30",
 };
 
 export default function ApplicationsPage() {
-  const { user } = useAuth();
-  const { notify } = useToast();
+  const { applicant, ready } = useApplicantAuth();
+  const [apps, setApps] = useState<MyApplication[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // localStorage is client-only, so we read after mount to avoid any
-  // server/client hydration mismatch. `ready` distinguishes "still loading"
-  // from "genuinely empty".
-  const [apps, setApps] = useState<Application[]>([]);
-  const [ready, setReady] = useState(false);
-
-  // The application the user is about to withdraw. While this is set, the
-  // confirmation dialog is shown. `null` means no dialog.
-  const [pendingWithdraw, setPendingWithdraw] = useState<Application | null>(
-    null,
-  );
-
-  useEffect(() => {
-    setApps(user ? getApplicationsByEmail(user.email) : getApplications());
-    setReady(true);
-  }, [user]);
-
-  // Runs only after the user confirms in the dialog. We remove it from storage,
-  // drop it from the on-screen list, close the dialog, and confirm with a toast.
-  function confirmWithdraw() {
-    if (!pendingWithdraw) return;
-    withdrawApplication(pendingWithdraw.id);
-    setApps((current) => current.filter((a) => a.id !== pendingWithdraw.id));
-    setPendingWithdraw(null);
-    notify("Your application has been withdrawn.", "success");
+  async function load(token: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      setApps(await fetchMyApplications(token));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't load your applications.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const latest = apps[0] ?? null;
+  useEffect(() => {
+    if (ready && applicant) load(applicant.token);
+  }, [ready, applicant]);
+
+  if (!ready) return null;
+
+  if (!applicant) {
+    return (
+      <main className="grid min-h-[70vh] place-items-center bg-white px-4 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-bold">Sign in to track your applications</h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Your application history lives with your job-seeker account.
+          </p>
+          <Link
+            href="/candidate/signin?next=/applications"
+            className="mt-5 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            Sign in
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-[70vh] bg-white px-4 py-10 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
       <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-bold sm:text-3xl">My applications</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Track the progress of every role you&apos;ve applied for.
-        </p>
-
-        {/* Returning-user greeting: surface their most recent application. */}
-        {ready && user && latest && (
-          <div className="mt-6 rounded-xl border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm">
-            Welcome back, {user.name || user.email}. Your last application was{" "}
-            <span className="font-semibold">{latest.jobTitle}</span> at{" "}
-            <span className="font-semibold">{latest.company}</span> —{" "}
-            {latest.status}.
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold sm:text-3xl">My applications</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Track the progress of every role you&apos;ve applied for.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => applicant && load(applicant.token)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-white/15 dark:hover:bg-white/10"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
+        </div>
+
+        {error && (
+          <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
+            {error}
+          </p>
         )}
 
-        {ready && apps.length === 0 && (
+        {apps === null ? (
+          <div className="mt-12 flex justify-center text-slate-400">
+            <Loader2 className="h-7 w-7 animate-spin text-brand-500" />
+          </div>
+        ) : apps.length === 0 ? (
           <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-white/10 dark:bg-[#1a1133]">
             <Inbox className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-500" />
             <h2 className="mt-4 text-lg font-semibold">No applications yet</h2>
@@ -100,89 +104,65 @@ export default function ApplicationsPage() {
               When you apply for a role it will show up here.
             </p>
             <Link
-              href="/"
+              href="/jobs"
               className="mt-6 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             >
               Browse jobs
             </Link>
           </div>
-        )}
-
-        <ul className="mt-8 space-y-4">
-          {apps.map((app) => (
-            <li
-              key={app.id}
-              className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-[#1a1133]"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">{app.jobTitle}</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {app.company}
-                  </p>
+        ) : (
+          <ul className="mt-8 space-y-4">
+            {apps.map((app) => (
+              <li
+                key={app.jobListingId}
+                className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-[#1a1133]"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Link
+                      href={`/jobs/${app.jobListingId}`}
+                      className="text-lg font-semibold hover:text-brand-700 dark:hover:text-brand-300"
+                    >
+                      {app.jobTitle}
+                    </Link>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {app.companyName} · applied{" "}
+                      {new Date(app.submittedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className={
+                      "rounded-full border px-3 py-1 text-xs font-semibold " +
+                      (PILL_CLASS[app.stage] ?? PILL_CLASS.Applied)
+                    }
+                  >
+                    {app.stage}
+                    {app.status && app.status !== app.stage ? ` · ${app.status}` : ""}
+                  </span>
                 </div>
-                <span
-                  className={
-                    "rounded-full border px-3 py-1 text-xs font-semibold " +
-                    PILL_CLASS[app.status]
-                  }
-                >
-                  {app.status}
-                </span>
-              </div>
 
-              {app.status === "Rejected" ? (
-                <p className="mt-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
-                  Unfortunately this application was not successful. Keep going —
-                  the right role is out there.
-                </p>
-              ) : (
-                <ProgressTracker status={app.status} />
-              )}
-
-              {/* Withdraw — opens the confirmation dialog. It only sets the
-                  "pending" application; nothing is deleted until the user
-                  confirms. */}
-              <div className="mt-6 flex justify-end border-t border-slate-100 pt-4 dark:border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setPendingWithdraw(app)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Withdraw application
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                {app.stage === "Rejected" ? (
+                  <p className="mt-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+                    Unfortunately this application was not successful. Keep going —
+                    the right role is out there.
+                  </p>
+                ) : (
+                  <ProgressTracker stage={app.stage} />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-
-      {/* One dialog for the whole page. It is driven by `pendingWithdraw`:
-          shown when an application is pending, hidden otherwise. */}
-      <ConfirmDialog
-        open={pendingWithdraw !== null}
-        title="Withdraw your application?"
-        message={
-          pendingWithdraw
-            ? `You are about to withdraw your application for ${pendingWithdraw.jobTitle} at ${pendingWithdraw.company}. Are you sure? This cannot be undone.`
-            : ""
-        }
-        confirmLabel="Yes, withdraw"
-        cancelLabel="Cancel"
-        onConfirm={confirmWithdraw}
-        onCancel={() => setPendingWithdraw(null)}
-      />
     </main>
   );
 }
 
-function ProgressTracker({
-  status,
-}: {
-  status: Exclude<ApplicationStatus, "Rejected">;
-}) {
-  const currentIndex = STEPS.indexOf(status);
+function ProgressTracker({ stage }: { stage: string }) {
+  const currentIndex = Math.max(
+    0,
+    STEPS.indexOf(stage as (typeof STEPS)[number]),
+  );
 
   return (
     <ol className="mt-6 flex items-center">
@@ -190,10 +170,7 @@ function ProgressTracker({
         const done = i <= currentIndex;
         const isLast = i === STEPS.length - 1;
         return (
-          <li
-            key={step}
-            className={"flex items-center " + (isLast ? "" : "flex-1")}
-          >
+          <li key={step} className={"flex items-center " + (isLast ? "" : "flex-1")}>
             <div className="flex flex-col items-center">
               <span
                 aria-current={i === currentIndex ? "step" : undefined}
@@ -209,9 +186,7 @@ function ProgressTracker({
               <span
                 className={
                   "mt-2 w-20 text-center text-[11px] leading-tight " +
-                  (done
-                    ? "text-slate-900 dark:text-white"
-                    : "text-slate-400 dark:text-slate-500")
+                  (done ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-slate-500")
                 }
               >
                 {step}
@@ -222,9 +197,7 @@ function ProgressTracker({
                 aria-hidden="true"
                 className={
                   "mx-1 -mt-6 h-0.5 flex-1 " +
-                  (i < currentIndex
-                    ? "bg-brand-600"
-                    : "bg-slate-200 dark:bg-white/15")
+                  (i < currentIndex ? "bg-brand-600" : "bg-slate-200 dark:bg-white/15")
                 }
               />
             )}

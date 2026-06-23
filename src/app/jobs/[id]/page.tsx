@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
-import ApplicationForm from "@/components/ApplicationForm";
+import RealApplyPanel from "@/components/RealApplyPanel";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
 import { fetchJobsApi, toDetailView } from "@/lib/jobs-api";
 import type { JobListingDetailResponse } from "@/types";
@@ -150,7 +150,11 @@ export default async function JobDetailPage({
             </p>
           </div>
         ) : (
-          <ApplicationForm jobId={job.id} jobTitle={job.title} />
+          <RealApplyPanel
+            jobId={job.id}
+            jobTitle={job.title}
+            requiredSkills={job.skills}
+          />
         )}
       </div>
     </div>

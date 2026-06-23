@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavLinks from "@/components/NavLinks";
-import { useAuth } from "@/context/AuthContext";
+import { useApplicantAuth } from "@/context/ApplicantAuthContext";
 
 const menuItems = [
   { label: "Find a Job", href: "/", icon: Search },
@@ -35,13 +35,14 @@ const menuItems = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { applicant, logout } = useApplicantAuth();
+  const user = applicant; // candidate session = real applicant JWT
   const router = useRouter();
 
   const handleSignOut = () => {
-    signOut();
+    logout();
     setOpen(false);
-    router.push("/login");
+    router.push("/jobs");
   };
 
   return (
@@ -90,7 +91,7 @@ export default function Navbar() {
             </button>
           ) : (
             <Link
-              href="/login"
+              href="/candidate/signin"
               className="hidden items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold hover:bg-violet-600 sm:inline-flex"
             >
               <UserCircle className="h-4 w-4" />
@@ -130,7 +131,7 @@ export default function Navbar() {
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <UserCircle className="h-5 w-5 text-brand-600" />
-                    <span className="truncate">{user.name || user.email}</span>
+                    <span className="truncate">{user.email}</span>
                   </span>
                   <button
                     onClick={handleSignOut}
@@ -141,7 +142,7 @@ export default function Navbar() {
                 </div>
               ) : (
                 <Link
-                  href="/login"
+                  href="/candidate/signin"
                   onClick={() => setOpen(false)}
                   className="inline-flex items-center gap-2 font-semibold text-brand-700 hover:underline dark:text-brand-400"
                 >

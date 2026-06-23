@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
 import { EmployerAuthProvider } from "@/context/EmployerAuthContext";
+import { ApplicantAuthProvider } from "@/context/ApplicantAuthContext";
 import { ToastProvider } from "@/context/ToastContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -58,6 +59,7 @@ export default function RootLayout({
         <Providers>
           <AuthProvider>
             <EmployerAuthProvider>
+            <ApplicantAuthProvider>
             <ToastProvider>
               <div className="flex min-h-screen flex-col">
                 <Navbar />
@@ -65,6 +67,7 @@ export default function RootLayout({
                 <Footer />
               </div>
             </ToastProvider>
+            </ApplicantAuthProvider>
             </EmployerAuthProvider>
           </AuthProvider>
         </Providers>

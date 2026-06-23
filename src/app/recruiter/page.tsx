@@ -11,7 +11,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Plus, Users } from "lucide-react";
 import { useEmployerAuth } from "@/context/EmployerAuthContext";
@@ -20,7 +20,6 @@ import {
   fetchCompanyJobs,
   type NewJobListing,
 } from "@/lib/employer-api";
-import { fetchAllApplications } from "@/lib/api";
 import type { EmploymentType } from "@/types";
 
 const JOB_TYPES: { value: EmploymentType; label: string }[] = [
@@ -79,23 +78,6 @@ export default function RecruiterDashboardPage() {
     queryFn: () => fetchCompanyJobs(companyId!),
     enabled: !!companyId,
   });
-
-  // Applications live in this app's store (candidates apply via the same-origin
-  // mock route), so the live applicant count is read from there — matching what
-  // the applicant-review screen shows.
-  const { data: applications } = useQuery({
-    queryKey: ["all-applications"],
-    queryFn: fetchAllApplications,
-    enabled: !!employer,
-  });
-
-  const countByJob = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const a of applications ?? []) {
-      map.set(a.jobId, (map.get(a.jobId) ?? 0) + 1);
-    }
-    return map;
-  }, [applications]);
 
   const postJob = useMutation({
     mutationFn: (body: NewJobListing) =>
@@ -363,7 +345,7 @@ export default function RecruiterDashboardPage() {
           ) : (
             <ul className="mt-3 space-y-3">
               {jobs.map((job) => {
-                const count = countByJob.get(job.id) ?? 0;
+                const count = job.applicantCount;
                 return (
                   <li
                     key={job.id}
