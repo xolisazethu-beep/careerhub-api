@@ -19,7 +19,29 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
  * on re-render).
  */
 export default function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            // The job board reads from a Dockerised API that can take ~30s to
+            // wake on a cold start (JIT + EF model/query-plan compilation), and
+            // may briefly refuse connections while the container boots. With
+            // TanStack's defaults (3 retries over ~7s) that window expires
+            // before the API is ready, leaving the user on the "We couldn't
+            // load the job listings / Failed to fetch" error state. Retry more
+            // times with a capped backoff (~35s total) so a still-warming
+            // backend resolves into real data instead of an error.
+            retry: 6,
+            retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+            // The board doesn't change second-to-second; treat data as fresh
+            // for 30s so navigating back doesn't refire the cold-start fetch.
+            staleTime: 30_000,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
