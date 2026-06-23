@@ -9,7 +9,6 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -22,7 +21,7 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
-import { getRecruiter } from "@/lib/careerhub-store";
+import { useEmployerAuth } from "@/context/EmployerAuthContext";
 import {
   fetchJobById,
   fetchApplicationsByJob,
@@ -48,12 +47,8 @@ export default function RecruiterApplicantsPage() {
   const params = useParams<{ jobId: string }>();
   const jobId = params.jobId;
   const queryClient = useQueryClient();
-  const [ready, setReady] = useState(false);
-
-  // Recruiter auth gate (demo session in localStorage).
-  useEffect(() => {
-    setReady(!!getRecruiter());
-  }, []);
+  const { employer, ready: authReady } = useEmployerAuth();
+  const ready = authReady && !!employer;
 
   const { data: job } = useQuery({
     queryKey: ["job", jobId],

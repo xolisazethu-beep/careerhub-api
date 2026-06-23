@@ -1,10 +1,11 @@
 // =============================================================
 // src/app/recruiter/page.tsx
-// Recruiter dashboard. Requires a recruiter session (redirects to
-// sign-in otherwise). A recruiter can post a job — which is written to
-// the SERVER store (the "database") and immediately appears on the public
-// job board — and review every role they've posted with a LIVE applicant
-// count, linking through to the applicant-review screen.
+// Employer dashboard. Requires a real employer session (JWT from the
+// backend). A signed-in employer posts a job straight to the REAL API
+// (POST /api/jobs) — it is written to Postgres and appears on the public
+// board (/jobs) immediately, newest first. Below, the employer's own
+// postings are listed with a live applicant count, linking to the
+// applicant-review screen.
 // =============================================================
 "use client";
 
@@ -13,68 +14,79 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Plus, Users } from "lucide-react";
+import { useEmployerAuth } from "@/context/EmployerAuthContext";
 import {
-  getRecruiter,
-  signOutRecruiter,
-  type RecruiterSession,
-} from "@/lib/careerhub-store";
-import {
-  fetchRecruiterJobs,
-  fetchAllApplications,
-  postRecruiterJob,
-  type NewRecruiterJob,
-} from "@/lib/api";
+  createJobListing,
+  fetchCompanyJobs,
+  type NewJobListing,
+} from "@/lib/employer-api";
+import { fetchAllApplications } from "@/lib/api";
+import type { EmploymentType } from "@/types";
 
-const JOB_TYPES = [
+const JOB_TYPES: { value: EmploymentType; label: string }[] = [
   { value: "FullTime", label: "Full-time" },
   { value: "PartTime", label: "Part-time" },
   { value: "Contract", label: "Contract" },
   { value: "Internship", label: "Internship" },
   { value: "Learnership", label: "Learnership" },
-] as const;
+];
 
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-white/10 dark:bg-[#0f0a1e] dark:text-white dark:placeholder:text-slate-500";
 
+/** yyyy-mm-dd 30 days from now, for the closing-date input default. */
+function defaultClosingDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function RecruiterDashboardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [session, setSession] = useState<RecruiterSession | null>(null);
-  const [ready, setReady] = useState(false);
+  const { employer, ready, logout } = useEmployerAuth();
 
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
-  const [type, setType] =
-    useState<(typeof JOB_TYPES)[number]["value"]>("FullTime");
+  const [type, setType] = useState<EmploymentType>("FullTime");
   const [skills, setSkills] = useState("");
   const [minExp, setMinExp] = useState("0");
+  const [salaryMin, setSalaryMin] = useState("");
+  const [salaryMax, setSalaryMax] = useState("");
+  const [closingDate, setClosingDate] = useState("");
   const [description, setDescription] = useState("");
   const [requirements, setRequirements] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [posted, setPosted] = useState(false);
 
-  // Auth gate. Runs once after mount: redirect to sign-in if no session.
+  // Set the closing-date default on the client only (avoids an SSR/CSR date
+  // mismatch from computing "today" during the server render).
   useEffect(() => {
-    const current = getRecruiter();
-    if (!current) {
-      router.replace("/recruiter/signin");
-      return;
-    }
-    setSession(current);
-    setReady(true);
-  }, [router]);
+    setClosingDate(defaultClosingDate());
+  }, []);
 
-  // This recruiter's postings, read from the server store.
+  // Auth gate. Once the stored session is read, bounce anyone without an
+  // employer session to sign-in.
+  useEffect(() => {
+    if (ready && !employer) router.replace("/recruiter/signin");
+  }, [ready, employer, router]);
+
+  const companyId = employer?.companyId ?? null;
+
+  // This employer's postings, read from the real backend.
   const { data: jobs } = useQuery({
-    queryKey: ["recruiter-jobs", session?.email],
-    queryFn: () => fetchRecruiterJobs(session!.email),
-    enabled: !!session,
+    queryKey: ["company-jobs", companyId],
+    queryFn: () => fetchCompanyJobs(companyId!),
+    enabled: !!companyId,
   });
 
-  // All applications, so we can show a live applicant count per job.
+  // Applications live in this app's store (candidates apply via the same-origin
+  // mock route), so the live applicant count is read from there — matching what
+  // the applicant-review screen shows.
   const { data: applications } = useQuery({
     queryKey: ["all-applications"],
     queryFn: fetchAllApplications,
-    enabled: !!session,
+    enabled: !!employer,
   });
 
   const countByJob = useMemo(() => {
@@ -86,53 +98,69 @@ export default function RecruiterDashboardPage() {
   }, [applications]);
 
   const postJob = useMutation({
-    mutationFn: postRecruiterJob,
+    mutationFn: (body: NewJobListing) =>
+      createJobListing(employer!.token, body),
     onSuccess: () => {
-      // Refresh the recruiter's list AND the public board so the new job shows
-      // up everywhere immediately.
-      queryClient.invalidateQueries({ queryKey: ["recruiter-jobs"] });
+      // Refresh the employer's list AND the public board cache so the new job
+      // shows up everywhere immediately.
+      queryClient.invalidateQueries({ queryKey: ["company-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       setTitle("");
       setLocation("");
       setType("FullTime");
       setSkills("");
       setMinExp("0");
+      setSalaryMin("");
+      setSalaryMax("");
       setDescription("");
       setRequirements("");
+      setClosingDate(defaultClosingDate());
+      setPosted(true);
     },
   });
 
-  if (!ready || !session) return null;
+  if (!ready || !employer) return null;
 
   function handlePost(event: FormEvent) {
     event.preventDefault();
+    setPosted(false);
     if (!title.trim() || !location.trim() || !description.trim()) {
       setError("Please fill in the title, location and description.");
       return;
     }
+    if (!closingDate || new Date(closingDate) <= new Date()) {
+      setError("Closing date must be in the future.");
+      return;
+    }
+    const min = salaryMin ? Number(salaryMin) : null;
+    const max = salaryMax ? Number(salaryMax) : null;
+    if (min !== null && max !== null && max <= min) {
+      setError("Maximum salary must be greater than the minimum.");
+      return;
+    }
     setError(null);
-    const input: NewRecruiterJob = {
+    const body: NewJobListing = {
       title: title.trim(),
-      company: session!.company,
+      description: description.trim(),
+      minimumRequirements: requirements.trim() || "Not specified.",
       location: location.trim(),
       type,
-      salaryMin: null,
-      salaryMax: null,
-      description: description.trim(),
+      salaryMin: min,
+      salaryMax: max,
+      // Send end-of-day UTC so the date the employer picked is always in the future.
+      expiresAt: new Date(`${closingDate}T23:59:59Z`).toISOString(),
+      minimumExperienceYears: Number(minExp) || 0,
       responsibilities: [],
       skills: skills
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      minimumExperienceYears: Number(minExp) || 0,
-      minimumRequirements: requirements.trim(),
-      postedBy: session!.email,
     };
-    postJob.mutate(input);
+    postJob.mutate(body);
   }
 
   function handleSignOut() {
-    signOutRecruiter();
+    logout();
     router.push("/recruiter/signin");
   }
 
@@ -141,9 +169,9 @@ export default function RecruiterDashboardPage() {
       <div className="mx-auto max-w-3xl">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold sm:text-3xl">{session.company}</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">Employer dashboard</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Signed in as {session.email}
+              Signed in as {employer.email}
             </p>
           </div>
           <button
@@ -164,6 +192,11 @@ export default function RecruiterDashboardPage() {
             {(error || postJob.isError) && (
               <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
                 {error ?? (postJob.error as Error)?.message}
+              </p>
+            )}
+            {posted && !postJob.isError && (
+              <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                Posted! Your role is live on the board now.
               </p>
             )}
             <div>
@@ -196,11 +229,7 @@ export default function RecruiterDashboardPage() {
                 <select
                   id="type"
                   value={type}
-                  onChange={(e) =>
-                    setType(
-                      e.target.value as (typeof JOB_TYPES)[number]["value"],
-                    )
-                  }
+                  onChange={(e) => setType(e.target.value as EmploymentType)}
                   className={inputClass}
                 >
                   {JOB_TYPES.map((t) => (
@@ -209,6 +238,51 @@ export default function RecruiterDashboardPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label htmlFor="salaryMin" className="block text-sm font-medium">
+                  Salary min{" "}
+                  <span className="text-slate-400">(optional)</span>
+                </label>
+                <input
+                  id="salaryMin"
+                  type="number"
+                  min={0}
+                  value={salaryMin}
+                  onChange={(e) => setSalaryMin(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="salaryMax" className="block text-sm font-medium">
+                  Salary max{" "}
+                  <span className="text-slate-400">(optional)</span>
+                </label>
+                <input
+                  id="salaryMax"
+                  type="number"
+                  min={0}
+                  value={salaryMax}
+                  onChange={(e) => setSalaryMax(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="closingDate"
+                  className="block text-sm font-medium"
+                >
+                  Closing date
+                </label>
+                <input
+                  id="closingDate"
+                  type="date"
+                  value={closingDate}
+                  onChange={(e) => setClosingDate(e.target.value)}
+                  className={inputClass}
+                />
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -300,7 +374,8 @@ export default function RecruiterDashboardPage() {
                       <p className="text-sm text-slate-500 dark:text-slate-400">
                         {job.location} ·{" "}
                         {JOB_TYPES.find((t) => t.value === job.type)?.label ??
-                          job.type}
+                          job.type}{" "}
+                        · {job.status}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">

@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Providers from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
+import { EmployerAuthProvider } from "@/context/EmployerAuthContext";
 import { ToastProvider } from "@/context/ToastContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -56,6 +57,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${jakarta.variable} antialiased`}>
         <Providers>
           <AuthProvider>
+            <EmployerAuthProvider>
             <ToastProvider>
               <div className="flex min-h-screen flex-col">
                 <Navbar />
@@ -63,6 +65,7 @@ export default function RootLayout({
                 <Footer />
               </div>
             </ToastProvider>
+            </EmployerAuthProvider>
           </AuthProvider>
         </Providers>
       </body>
