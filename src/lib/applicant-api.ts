@@ -6,6 +6,8 @@
  * GET /api/v1/applications/me.
  */
 
+import { fetchWithRetry } from "@/lib/http";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 interface ProblemDetails {
@@ -56,7 +58,7 @@ export async function applicantLogin(
   email: string,
   password: string,
 ): Promise<ApplicantAuth> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -71,7 +73,7 @@ export async function applicantRegister(input: {
   email: string;
   password: string;
 }): Promise<ApplicantAuth> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/register/applicant`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/auth/register/applicant`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -95,7 +97,7 @@ export async function applyToJob(
   for (const skill of input.selectedSkills) fd.append("selectedSkills", skill);
   if (input.cv) fd.set("cv", input.cv);
 
-  const res = await fetch(`${API_BASE}/api/v1/jobs/${jobId}/applications`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/jobs/${jobId}/applications`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
@@ -107,7 +109,7 @@ export async function applyToJob(
 export async function fetchMyApplications(
   token: string,
 ): Promise<MyApplication[]> {
-  const res = await fetch(`${API_BASE}/api/v1/applications/me`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/applications/me`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });

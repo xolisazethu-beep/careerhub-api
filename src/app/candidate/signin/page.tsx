@@ -39,6 +39,7 @@ function SignInForm() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,6 +57,14 @@ function SignInForm() {
     }
     if (mode === "register" && !fullName.trim()) {
       setError("Please enter your full name.");
+      return;
+    }
+    if (mode === "register" && password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (mode === "register" && password !== confirmPassword) {
+      setError("Passwords don't match. Please re-enter them.");
       return;
     }
 
@@ -155,6 +164,27 @@ function SignInForm() {
               </button>
             </div>
           </div>
+
+          {mode === "register" && (
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium">
+                Confirm password
+              </label>
+              <input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                className={inputClass}
+              />
+              {confirmPassword.length > 0 && confirmPassword !== password && (
+                <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
+                  Passwords don&apos;t match.
+                </p>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"

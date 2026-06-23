@@ -17,6 +17,7 @@
  */
 
 import type { EmploymentType } from "@/types";
+import { fetchWithRetry } from "@/lib/http";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
@@ -74,7 +75,7 @@ export async function employerLogin(
   email: string,
   password: string,
 ): Promise<EmployerAuth> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -90,7 +91,7 @@ export async function employerRegister(input: {
   password: string;
   companyId: string;
 }): Promise<EmployerAuth> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/register/employer`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/auth/register/employer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -101,7 +102,7 @@ export async function employerRegister(input: {
 
 /** Every company, for the registration company picker. */
 export async function fetchCompanies(): Promise<CompanyOption[]> {
-  const res = await fetch(`${API_BASE}/api/v1/companies`, { cache: "no-store" });
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/companies`, { cache: "no-store" });
   if (!res.ok) throw new Error(await readError(res));
   const data = (await res.json()) as Array<{
     id: string;
@@ -130,7 +131,7 @@ export interface EmployerJob {
 export async function fetchCompanyJobs(
   companyId: string,
 ): Promise<EmployerJob[]> {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${API_BASE}/api/jobs/company/${companyId}?page=1&pageSize=100`,
     { cache: "no-store" },
   );
@@ -183,7 +184,7 @@ export async function fetchJobApplications(
   token: string,
   jobId: string,
 ): Promise<JobApplication[]> {
-  const res = await fetch(`${API_BASE}/api/v1/jobs/${jobId}/applications`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/jobs/${jobId}/applications`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
@@ -198,7 +199,7 @@ export async function updateApplicationStatus(
   applicantId: string,
   status: ReviewStatus,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${API_BASE}/api/v1/applications/${jobId}/${applicantId}/status`,
     {
       method: "PATCH",
@@ -221,7 +222,7 @@ export async function openApplicantCv(
   jobId: string,
   applicantId: string,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${API_BASE}/api/v1/jobs/${jobId}/applications/${applicantId}/cv`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
@@ -238,7 +239,7 @@ export async function createJobListing(
   token: string,
   body: NewJobListing,
 ): Promise<{ id: string }> {
-  const res = await fetch(`${API_BASE}/api/jobs`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/jobs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

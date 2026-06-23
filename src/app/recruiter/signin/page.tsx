@@ -26,21 +26,25 @@ export default function RecruiterSignInPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Company picker is only needed for registration; load the list lazily the
-  // first time the user switches into register mode.
+  // Company picker is only needed for registration; load the list (resiliently)
+  // the first time the user switches into register mode.
   useEffect(() => {
     if (mode !== "register" || companies.length > 0) return;
+    setCompaniesLoading(true);
     fetchCompanies()
       .then(setCompanies)
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : "Couldn't load companies."),
-      );
+      )
+      .finally(() => setCompaniesLoading(false));
   }, [mode, companies.length]);
 
   async function handleSubmit(event: FormEvent) {
@@ -57,6 +61,14 @@ export default function RecruiterSignInPage() {
     }
     if (mode === "register" && (!fullName.trim() || !companyId)) {
       setError("Please enter your name and choose your company.");
+      return;
+    }
+    if (mode === "register" && password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (mode === "register" && password !== confirmPassword) {
+      setError("Passwords don't match. Please re-enter them.");
       return;
     }
 
@@ -130,15 +142,25 @@ export default function RecruiterSignInPage() {
                   id="company"
                   value={companyId}
                   onChange={(e) => setCompanyId(e.target.value)}
+                  disabled={companiesLoading}
                   className={inputClass}
                 >
-                  <option value="">Select your company…</option>
+                  <option value="">
+                    {companiesLoading
+                      ? "Loading companies…"
+                      : companies.length === 0
+                        ? "No companies available"
+                        : "Select your company…"}
+                  </option>
                   {companies.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} — {c.city}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  Companies come from the job board&apos;s registered employers.
+                </p>
               </div>
             </>
           )}
@@ -187,6 +209,27 @@ export default function RecruiterSignInPage() {
               </button>
             </div>
           </div>
+
+          {mode === "register" && (
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium">
+                Confirm password
+              </label>
+              <input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                className={inputClass}
+              />
+              {confirmPassword.length > 0 && confirmPassword !== password && (
+                <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-300">
+                  Passwords don&apos;t match.
+                </p>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"
