@@ -23,6 +23,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import NavLinks from "@/components/NavLinks";
 import { useAuth } from "@/context/AuthContext";
 
 const menuItems = [
@@ -62,6 +63,10 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Primary route navigation (Assignment 2.1). Active link is
+              highlighted by NavLinks via usePathname. */}
+          <NavLinks />
+
           {/* The "Track applications" link is only meaningful once you have an
               account, so it is hidden entirely for signed-out visitors. */}
           {user && (
