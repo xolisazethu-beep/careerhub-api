@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import JobLinkCard from "@/components/JobLinkCard";
 import JobSearchBar from "@/components/JobSearchBar";
-import { fetchJobsApi, toSummaryView } from "@/lib/jobs-api";
+import { JOBS_API_BASE, toSummaryView } from "@/lib/jobs-api";
 import type { JobListingResponse, PagedResponse } from "@/types";
 
 export const metadata: Metadata = {
@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   description: "Live job listings, fetched on the server from the CareerHub API.",
 };
 
-// `no-store` already opts this route into dynamic rendering; declaring it
-// explicitly guarantees `next build` never tries to fetch the backend at build
-// time and keeps every request server-fresh.
-export const dynamic = "force-dynamic";
+// Reading `searchParams` already opts this route into dynamic rendering, so we
+// no longer force it. That matters for Assignment 2.2: the jobs fetch below is
+// CACHED (tagged "jobs") in the Data Cache, so refreshing /jobs does NOT re-hit
+// the API — until the close action's revalidateTag("jobs") clears that tag.
 
 /** Matches the page size requested below and the skeleton count in loading.tsx. */
 const PAGE_SIZE = 12;
@@ -69,7 +69,14 @@ export default async function JobsPage({
 
   let payload: PagedResponse<JobListingResponse>;
   try {
-    const res = await fetchJobsApi(query);
+    // CACHE STRATEGY (Part 3): cached + tagged "jobs". `force-cache` opts this
+    // fetch into Next 15's Data Cache (fetches are uncached by default in 15),
+    // and the "jobs" tag is the handle the close Server Action clears with
+    // revalidateTag("jobs") — so a closed listing shows here on the next load.
+    const res = await fetch(`${JOBS_API_BASE}${query}`, {
+      cache: "force-cache",
+      next: { tags: ["jobs"] },
+    });
     if (!res.ok) {
       throw new Error(`The API responded ${res.status} ${res.statusText}`);
     }

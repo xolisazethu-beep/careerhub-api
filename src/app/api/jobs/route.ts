@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { JOBS as SEED } from "@/lib/seed-jobs";
-import { listJobs, countApplicationsByJob } from "@/lib/server-store";
+import {
+  listJobs,
+  countApplicationsByJob,
+  getJobStatusOverrides,
+} from "@/lib/server-store";
 import type {
   JobListing,
   JobListingResponse,
@@ -9,23 +13,26 @@ import type {
 import type { RecruiterJob } from "@/lib/server-store";
 
 /**
- * Mock backend: GET /api/jobs.
+ * Mock backend: GET /api/jobs — the candidate board + employer dashboard source.
  *
  * Returns the page of listings in the real API's `PagedResponse<JobListingResponse>`
- * envelope, so `fetchJobs` adapts it unchanged. The page combines two sources:
- *   1. the built-in seed listings (Assignment 1.1 demo data), and
+ * envelope, so every consumer adapts it unchanged. The page combines two sources:
+ *   1. the built-in seed listings (demo data), and
  *   2. every job a recruiter has posted via POST /api/recruiter/jobs.
  *
- * That second source is what makes a recruiter's own postings appear on the
- * public board (extra requirement). Each listing's `applicantCount` is computed
- * LIVE from the application store, so it climbs as candidates apply — which is
- * what TanStack Query's `["jobs"]` refetch surfaces after a successful submit.
+ * Assignment 2.2 adds two things:
+ *   • the search / location / sort / pagination query params the /jobs board
+ *     sends are honoured here (server-side filtering), and
+ *   • each row's `status` is resolved as `override ?? baseStatus`, where the
+ *     override comes from the persistent store. Closing a job (PATCH
+ *     /api/jobs/[id]) writes that override, so this list reflects the close on
+ *     the very next request after revalidateTag("jobs") clears the cache.
  *
  * Only GET is exported, so any other verb gets Next.js's automatic 405.
  */
 
 /** Adapt a seed `JobListing` (UI model) back into the API's lean wire shape. */
-function seedToResponse(job: JobListing, applicantCount: number): JobListingResponse {
+function seedToResponse(job: JobListing, applicantCount: number, status: string): JobListingResponse {
   return {
     id: job.id,
     title: job.title,
@@ -33,7 +40,7 @@ function seedToResponse(job: JobListing, applicantCount: number): JobListingResp
     type: job.employmentType,
     salaryMin: job.salaryMin || null,
     salaryMax: job.salaryMax || null,
-    status: job.isActive ? "Active" : "Closed",
+    status,
     createdAt: job.postedAt,
     expiresAt: job.closingDate,
     companyId: job.company.toLowerCase().replace(/\s+/g, "-"),
@@ -50,6 +57,7 @@ function seedToResponse(job: JobListing, applicantCount: number): JobListingResp
 function recruiterToResponse(
   job: RecruiterJob,
   applicantCount: number,
+  status: string,
 ): JobListingResponse {
   return {
     id: job.id,
@@ -58,7 +66,7 @@ function recruiterToResponse(
     type: job.type,
     salaryMin: job.salaryMin,
     salaryMax: job.salaryMax,
-    status: "Active",
+    status,
     createdAt: job.createdAt,
     expiresAt: job.expiresAt,
     companyId: job.company.toLowerCase().replace(/\s+/g, "-"),
@@ -71,31 +79,84 @@ function recruiterToResponse(
   };
 }
 
-export async function GET() {
-  const recruiterJobs = await listJobs();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const pageSize = Math.max(1, Number(searchParams.get("pageSize")) || 12);
+  const q = (searchParams.get("q") ?? "").trim().toLowerCase();
+  const location = (searchParams.get("location") ?? "").trim().toLowerCase();
+  const sort = (searchParams.get("sort") ?? "postedat").toLowerCase();
+  const dir = (searchParams.get("dir") ?? "desc").toLowerCase();
 
-  // Recruiter jobs first (newest postings on top), then the seed board.
+  const [recruiterJobs, overrides] = await Promise.all([
+    listJobs(),
+    getJobStatusOverrides(),
+  ]);
+
+  // Recruiter jobs first (newest postings on top), then the seed board. Each
+  // row's status is the override if one exists, otherwise its natural status.
   const recruiterItems = await Promise.all(
     recruiterJobs.map(async (j) =>
-      recruiterToResponse(j, await countApplicationsByJob(j.id)),
+      recruiterToResponse(
+        j,
+        await countApplicationsByJob(j.id),
+        overrides[j.id] ?? "Active",
+      ),
     ),
   );
   const seedItems = await Promise.all(
     SEED.map(async (j) =>
-      seedToResponse(j, j.applicantCount + (await countApplicationsByJob(j.id))),
+      seedToResponse(
+        j,
+        j.applicantCount + (await countApplicationsByJob(j.id)),
+        overrides[j.id] ?? (j.isActive ? "Active" : "Closed"),
+      ),
     ),
   );
 
-  const data = [...recruiterItems, ...seedItems];
+  let all = [...recruiterItems, ...seedItems];
+
+  // Server-side search / filter (Assignment 2.1 feature, now over in-app data).
+  if (q) {
+    all = all.filter((j) =>
+      [j.title, j.companyName, ...j.skills].some((s) =>
+        s.toLowerCase().includes(q),
+      ),
+    );
+  }
+  if (location) {
+    all = all.filter((j) => j.location.toLowerCase().includes(location));
+  }
+
+  // Server-side sort.
+  const factor = dir === "asc" ? 1 : -1;
+  all.sort((a, b) => {
+    switch (sort) {
+      case "salarymax":
+        return ((a.salaryMax ?? 0) - (b.salaryMax ?? 0)) * factor;
+      case "salarymin":
+        return ((a.salaryMin ?? 0) - (b.salaryMin ?? 0)) * factor;
+      default: // postedat
+        return (
+          (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) *
+          factor
+        );
+    }
+  });
+
+  const totalCount = all.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const start = (page - 1) * pageSize;
+  const data = all.slice(start, start + pageSize);
 
   const payload: PagedResponse<JobListingResponse> = {
     data,
-    page: 1,
-    pageSize: data.length,
-    totalCount: data.length,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPreviousPage: false,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
     links: null,
   };
 

@@ -63,6 +63,14 @@ interface StoreShape {
   applications: RecruiterApplication[];
   jobs: RecruiterJob[];
   users: StoredUser[];
+  /**
+   * Demand-based lifecycle overrides keyed by job id (Assignment 2.2).
+   * Closing a job from the dashboard writes `{ [jobId]: "Closed" }` here so the
+   * change persists across requests AND across BOTH job sources (seed + recruiter)
+   * without mutating the seed module. GET /api/jobs and GET /api/jobs/[id] read
+   * the effective status as `override ?? baseStatus`.
+   */
+  jobStatus: Record<string, string>;
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -78,7 +86,12 @@ async function load(): Promise<StoreShape> {
   if (globalForStore.__careerhubLoaded && globalForStore.__careerhubStore) {
     return globalForStore.__careerhubStore;
   }
-  let parsed: StoreShape = { applications: [], jobs: [], users: [] };
+  let parsed: StoreShape = {
+    applications: [],
+    jobs: [],
+    users: [],
+    jobStatus: {},
+  };
   try {
     const raw = await fs.readFile(DATA_FILE, "utf8");
     const json = JSON.parse(raw) as Partial<StoreShape>;
@@ -86,6 +99,7 @@ async function load(): Promise<StoreShape> {
       applications: json.applications ?? [],
       jobs: json.jobs ?? [],
       users: json.users ?? [],
+      jobStatus: json.jobStatus ?? {},
     };
   } catch {
     // No file yet (first run) — start empty. Any malformed file resets cleanly.
@@ -202,6 +216,36 @@ export async function listJobsByRecruiter(
 export async function getJob(id: string): Promise<RecruiterJob | null> {
   const store = await load();
   return store.jobs.find((j) => j.id === id) ?? null;
+}
+
+// ---------- Job lifecycle status (Assignment 2.2) ----------
+
+/**
+ * The full set of lifecycle overrides, keyed by job id. GET /api/jobs reads this
+ * once and applies `override ?? baseStatus` to every row, so a single map lookup
+ * resolves the effective status of both seed and recruiter listings.
+ */
+export async function getJobStatusOverrides(): Promise<Record<string, string>> {
+  const store = await load();
+  return store.jobStatus;
+}
+
+/** The effective override for one job, or null when none has been set. */
+export async function getJobStatusOverride(id: string): Promise<string | null> {
+  const store = await load();
+  return store.jobStatus[id] ?? null;
+}
+
+/**
+ * Persist a lifecycle status for one job (e.g. "Closed"). This is what the
+ * close-listing Server Action's PATCH writes; because it lives in the persistent
+ * store it survives the request and is visible to the very next tagged fetch of
+ * /jobs or /dashboard/listings once revalidateTag("jobs") has cleared the cache.
+ */
+export async function setJobStatus(id: string, status: string): Promise<void> {
+  const store = await load();
+  store.jobStatus[id] = status;
+  await persist(store);
 }
 
 // ---------- Users / authentication ----------

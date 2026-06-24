@@ -4,17 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { CheckCircle2, FileText, UserCircle, Loader2 } from "lucide-react";
-import { useApplicantAuth } from "@/context/ApplicantAuthContext";
-import { applyToJob } from "@/lib/applicant-api";
+import { useAuth } from "@/context/AuthContext";
+import { submitApplication } from "@/lib/api";
 
 /**
- * RealApplyPanel — the apply form on /jobs/[id], wired to the REAL backend.
+ * RealApplyPanel — the apply form on /jobs/[id].
  *
- * Gated on a real Applicant session (the original mock ApplicationForm is left
- * untouched). A signed-in candidate ticks which of the listing's required skills
- * they have, writes a cover note, attaches a CV (PDF), and submits — which POSTs
- * multipart/form-data to /api/v1/jobs/{id}/applications. The recruiter then sees
- * all of this, and the candidate tracks the status on /applications.
+ * Assignment 2.2 makes this self-contained on the IN-APP API: it is gated on the
+ * in-app candidate session (useAuth → /api/auth) and submits to the in-app
+ * POST /api/applications, which persists to the same store the stats endpoint
+ * counts. That removes the dependency on the external Docker backend (whose cold
+ * start used to make this page error out / "not let me apply"), and every
+ * submission bumps the dashboard's Total Applications.
  */
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 
@@ -27,7 +28,7 @@ export default function RealApplyPanel({
   jobTitle: string;
   requiredSkills: string[];
 }) {
-  const { applicant, ready } = useApplicantAuth();
+  const { user, isReady } = useAuth();
   const router = useRouter();
 
   const [coverNote, setCoverNote] = useState("");
@@ -37,10 +38,10 @@ export default function RealApplyPanel({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
-  if (!ready) return null;
+  if (!isReady) return null;
 
   // Signed-out: invite the candidate to sign in, returning to this job after.
-  if (!applicant) {
+  if (!user) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
         <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
@@ -55,7 +56,7 @@ export default function RealApplyPanel({
           applications.
         </p>
         <Link
-          href={`/candidate/signin?next=${encodeURIComponent(`/jobs/${jobId}`)}`}
+          href="/login"
           className="mt-4 inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
         >
           Sign in to apply
@@ -75,13 +76,13 @@ export default function RealApplyPanel({
         </h2>
         <p className="mx-auto mt-1 max-w-sm text-sm text-slate-600 dark:text-slate-400">
           Your application for <span className="font-semibold">{jobTitle}</span>{" "}
-          is in. You can follow its status any time.
+          is in. The employer will see it on their dashboard.
         </p>
         <Link
-          href="/applications"
+          href="/jobs"
           className="mt-4 inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
         >
-          Track applications
+          Browse more roles
         </Link>
       </div>
     );
@@ -124,10 +125,20 @@ export default function RealApplyPanel({
     }
     setBusy(true);
     try {
-      await applyToJob(applicant!.token, jobId, {
-        coverNote: coverNote.trim(),
-        selectedSkills: [...skills],
-        cv,
+      // Submit to the in-app API (server-store). The selected skills are folded
+      // into the cover letter so the recruiter still sees them, since the lean
+      // ApplicationRequest contract has no dedicated skills field.
+      const skillLine =
+        skills.size > 0 ? `\n\nMatched skills: ${[...skills].join(", ")}.` : "";
+      await submitApplication({
+        jobId,
+        fullName: user!.name,
+        email: user!.email,
+        phone: "",
+        yearsOfExperience: 0,
+        coverLetter: coverNote.trim() + skillLine + (cv ? `\n\nCV: ${cv.name}` : ""),
+        availableImmediately: true,
+        noticePeriodWeeks: 0,
       });
       setDone(true);
       // Refresh any server data that depends on application counts.
@@ -147,7 +158,7 @@ export default function RealApplyPanel({
         Apply for this role
       </h2>
       <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-        Signed in as {applicant.email}
+        Signed in as {user.email}
       </p>
 
       {error && (

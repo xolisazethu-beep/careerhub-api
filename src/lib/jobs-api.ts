@@ -20,9 +20,21 @@
 
 import type { JobListingResponse, JobListingDetailResponse } from "@/types";
 
-/** Absolute base of the real CareerHub backend (e.g. http://localhost:8080). */
+/**
+ * Absolute base of THIS app's own API (Assignment 2.2). Server Components need an
+ * absolute url to fetch their own route handlers, so this is the app origin
+ * (NEXT_PUBLIC_API_URL), defaulting to the dev origin. Pointing the job reads
+ * here — rather than at the external Docker backend — is what lets the close
+ * action's revalidateTag("jobs") actually invalidate the data these pages show.
+ */
 export const JOBS_API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+
+/** One row of the per-job application-count stats (GET /api/applications/stats). */
+export interface ApplicationStat {
+  jobId: string;
+  applicationCount: number;
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

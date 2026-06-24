@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
 import RealApplyPanel from "@/components/RealApplyPanel";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
-import { fetchJobsApi, toDetailView } from "@/lib/jobs-api";
+import { JOBS_API_BASE, toDetailView } from "@/lib/jobs-api";
 import type { JobListingDetailResponse } from "@/types";
 
 /**
@@ -27,7 +27,14 @@ export default async function JobDetailPage({
 }) {
   const { id } = await params;
 
-  const res = await fetchJobsApi(`/api/jobs/${id}`);
+  // CACHE STRATEGY (Part 3 + Stretch B): cached + tagged with BOTH "jobs" and a
+  // per-job `job-${id}` tag. The close action clears "jobs" (so closing ANY job
+  // refreshes every listing/detail), and could clear `job-${id}` to refresh just
+  // this one. `force-cache` is what enables Next 15's Data Cache for this fetch.
+  const res = await fetch(`${JOBS_API_BASE}/api/jobs/${id}`, {
+    cache: "force-cache",
+    next: { tags: ["jobs", `job-${id}`] },
+  });
 
   // A genuine "no such job" → render the not-found boundary (HTTP 404), never a
   // half-built page. Any OTHER failure is a real error → throw to error.tsx.

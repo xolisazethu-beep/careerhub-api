@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CareerHub — Connecting the UI to the API & Real Database</title>
+<style>
+  :root{
+    --ink:#15131f; --muted:#5b5870; --line:#e5e2ee; --brand:#6d28d9; --brand2:#9333ea;
+    --code-bg:#1e1b2e; --code-ink:#e6e3f5; --ok:#0f8a4d; --chip:#f3effd; --term-bg:#0b1020; --term-ink:#d7e3ff;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);margin:0;line-height:1.5;font-size:12.5px}
+  .page{padding:44px 52px}
+  h1,h2,h3,h4{line-height:1.2;margin:0 0 .35em}
+  h2{font-size:21px;color:var(--brand);margin-top:0}
+  h3{font-size:15.5px;margin-top:1.3em}
+  h4{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4em}
+  p{margin:.5em 0}
+  code{font-family:"SF Mono",Consolas,Menlo,monospace;background:var(--chip);padding:1px 5px;border-radius:4px;font-size:.92em;color:#4c1d95}
+  pre{background:var(--code-bg);color:var(--code-ink);padding:13px 15px;border-radius:10px;overflow:auto;font-family:"SF Mono",Consolas,Menlo,monospace;font-size:10.6px;line-height:1.55;margin:.6em 0}
+  pre code{background:none;color:inherit;padding:0}
+  pre.term{background:var(--term-bg);color:var(--term-ink)}
+  pre.term .c{color:#7ee787}
+  pre.term .o{color:#9aa7c7}
+  .muted{color:var(--muted)}
+  .cover{height:980px;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(135deg,#0b1020,#2a1364 45%,#6d28d9);color:#fff;padding:0 60px}
+  .cover h1{font-size:42px;color:#fff;margin-bottom:8px}
+  .cover .sub{font-size:18px;opacity:.92;font-weight:500}
+  .cover .meta{margin-top:40px;font-size:13px;opacity:.85;line-height:1.9}
+  .pill{display:inline-block;background:#fff2;border:1px solid #ffffff44;border-radius:999px;padding:5px 14px;font-size:12px;margin-bottom:20px;width:max-content}
+  .tag{display:inline-block;background:var(--chip);color:var(--brand);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;margin-right:6px}
+  .step{border-left:3px solid var(--brand);padding:2px 0 2px 14px;margin:1.1em 0 .3em}
+  .step .n{display:inline-block;background:var(--brand);color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700;margin-right:8px}
+  .note,.beg,.do{border-radius:10px;padding:11px 14px;margin:.6em 0;border:1px solid var(--line)}
+  .note{background:#f7fbff;border-color:#d8ebff}
+  .beg{background:#f1fbf4;border-color:#cdeed8}
+  .do{background:#fff7ed;border-color:#fed7aa}
+  .note h4{color:#1d6fb8} .beg h4{color:var(--ok)} .do h4{color:#b45309}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;margin:.6em 0}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f6f2fd;color:var(--brand)}
+  .flow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;margin:.7em 0}
+  .node{background:var(--chip);border:1px solid #e2d4fb;border-radius:8px;padding:8px 11px;text-align:center;min-width:96px}
+  .node b{display:block} .node small{color:var(--muted)}
+  .arrow{color:var(--brand);font-weight:700;font-size:13px}
+  .pagebreak{page-break-before:always}
+  .small{font-size:11px}
+  ol{margin:.4em 0 .6em;padding-left:20px} li{margin:.25em 0}
+  .ok{color:var(--ok);font-weight:700}
+  @page{margin:0;size:A4}
+  @media print{.page{padding:38px 48px}}
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <span class="pill">CareerHub · Full-stack wiring</span>
+  <h1>Connecting the UI to the API<br>&amp; the Real Database</h1>
+  <div class="sub">A practical, step-by-step guide — Docker, terminal &amp; code</div>
+  <div class="meta">
+    UI: Next.js 15 (React 19, TypeScript) on port 3000<br>
+    API: ASP.NET Core (.NET 10) on port 8080 — in Docker<br>
+    Database: PostgreSQL 17 — in Docker, port 5544<br>
+    Author: Xolisa Matsila
+  </div>
+</section>
+
+<!-- BIG PICTURE -->
+<section class="page pagebreak">
+  <h2>The big picture</h2>
+  <p>CareerHub has <b>three layers</b>. The browser talks to the UI; the UI talks to the API; the API talks to the database. The API and the database run inside <b>Docker</b>; the UI runs with Node.</p>
+  <div class="flow">
+    <div class="node"><b>🌐 Browser</b><small>your laptop</small></div>
+    <span class="arrow">⟷</span>
+    <div class="node"><b>▲ Next.js UI</b><small>:3000 (Node)</small></div>
+    <span class="arrow">⟷</span>
+    <div class="node"><b>🟦 ASP.NET API</b><small>:8080 (Docker)</small></div>
+    <span class="arrow">⟷</span>
+    <div class="node"><b>🐘 PostgreSQL</b><small>:5544 (Docker)</small></div>
+  </div>
+  <table>
+    <tr><th>Layer</th><th>What it is</th><th>How it's reached</th></tr>
+    <tr><td>UI</td><td>Next.js app (this repo)</td><td>http://localhost:3000</td></tr>
+    <tr><td>API</td><td>ASP.NET Core + EF Core</td><td>http://localhost:8080</td></tr>
+    <tr><td>Database</td><td>PostgreSQL 17 (real, persistent)</td><td>localhost:5544 (or <code>db:5432</code> inside Docker)</td></tr>
+  </table>
+  <div class="beg"><h4>🟢 In plain words</h4>
+    Think of a restaurant: the <b>browser</b> is the customer, the <b>UI</b> is the waiter, the <b>API</b> is the kitchen, and the <b>database</b> is the pantry. The customer never walks into the pantry — they ask the waiter, who tells the kitchen, who fetches from the pantry. Each layer only talks to its neighbour.</div>
+
+  <h3>The two connections we had to wire</h3>
+  <ol>
+    <li><b>API → Database:</b> a <i>connection string</i> tells the API where Postgres is and how to log in.</li>
+    <li><b>UI → API:</b> an <i>environment variable</i> tells the UI the API's address, plus a <i>CORS</i> rule on the API so the browser is allowed to call it.</li>
+  </ol>
+</section>
+
+<!-- STEP 1: DATABASE -->
+<section class="page pagebreak">
+  <h2>Step 1 — The database (PostgreSQL in Docker)</h2>
+  <p>Postgres runs as a Docker service. It's defined in the API project's <code>docker-compose.yml</code>:</p>
+<pre><code>services:
+  db:
+    image: postgres:17
+    container_name: careerhub24-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: CareerHub24
+    ports:
+      - "5544:5432"          # host 5544  ->  container 5432
+    volumes:
+      - careerhub24_pgdata:/var/lib/postgresql/data   # data survives restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d CareerHub24"]</code></pre>
+  <div class="note"><h4>ℹ Why a volume?</h4>The named volume <code>careerhub24_pgdata</code> stores the database files on disk, so your jobs, accounts and applications are <b>not lost</b> when the container restarts. This is what makes it a <i>real</i> database, not a throwaway.</div>
+
+  <div class="step"><span class="n">1</span><b>Start the database</b></div>
+<pre class="term"><span class="c">$ cd C:\Users\Xolisa\assignment-3.2</span>
+<span class="c">$ docker compose up -d db</span>
+<span class="o">[+] Running 1/1
+ ✔ Container careerhub24-pg  Healthy</span></pre>
+
+  <div class="step"><span class="n">2</span><b>Verify it's alive</b></div>
+<pre class="term"><span class="c">$ docker ps --format "{{.Names}} | {{.Status}}"</span>
+<span class="o">careerhub24-pg | Up (healthy)</span>
+
+<span class="c"># open a SQL shell inside the container</span>
+<span class="c">$ docker exec -it careerhub24-pg psql -U postgres -d CareerHub24 -c "\dt"</span>
+<span class="o">  job_listings | applicants | employers | applications | companies …</span></pre>
+  <div class="beg"><h4>🟢 What just happened</h4>
+    Docker downloaded Postgres, created a database called <b>CareerHub24</b>, and exposed it on your machine at port <b>5544</b>. The healthcheck means the API won't start until the DB is ready to accept connections.</div>
+</section>
+
+<!-- STEP 2: API -->
+<section class="page pagebreak">
+  <h2>Step 2 — The API (ASP.NET) reaches the database</h2>
+  <p>The API is the <b>only</b> thing that talks to Postgres. It's told where the DB is via a <b>connection string</b>, injected in <code>docker-compose.yml</code>:</p>
+<pre><code>  api:
+    build: { context: ., dockerfile: Dockerfile }
+    container_name: careerhub24-api
+    depends_on:
+      db: { condition: service_healthy }   # wait for Postgres to be ready
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      # Host is the SERVICE NAME "db" and the CONTAINER port 5432 (not 5544) —
+      # containers talk to each other over the compose network by service name.
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=CareerHub24;Username=postgres;Password=password123"
+      Jwt__Key: "dev-only-careerhub-signing-key-...-32+chars"
+    ports:
+      - "8080:8080"</code></pre>
+  <div class="note"><h4>ℹ The key detail beginners miss</h4>
+    Inside Docker, the API reaches Postgres at <code>Host=db;Port=5432</code> — the <b>service name</b> and the <b>internal</b> port. The <code>5544</code> mapping is only for <b>you</b> (tools on your laptop). Two containers on the same compose network find each other by name.</div>
+
+  <h3>How the API uses that connection string (EF Core)</h3>
+<pre><code>// Program.cs — register the DbContext with the connection string
+builder.Services.AddDbContext&lt;CareerHubDbContext&gt;(o =&gt;
+    o.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// ...on startup, create/upgrade the schema and seed sample data:
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService&lt;CareerHubDbContext&gt;();
+    await db.Database.MigrateAsync();   // applies EF migrations to the real DB
+    await SeedData.SeedAsync(db);       // inserts SA companies + jobs if empty
+}</code></pre>
+  <div class="step"><span class="n">3</span><b>Build &amp; start the API</b></div>
+<pre class="term"><span class="c">$ docker compose up -d --build api</span>
+<span class="o">[+] Building … ✔  ✔ Container careerhub24-api  Started</span></pre>
+
+  <div class="step"><span class="n">4</span><b>Verify the API ↔ DB link</b></div>
+<pre class="term"><span class="c"># the API answers, and the data it returns came from Postgres</span>
+<span class="c">$ curl "http://localhost:8080/api/jobs?page=1&amp;pageSize=2"</span>
+<span class="o">{"data":[{"id":"…","title":"Senior Cloud Architect","companyName":"Discovery", …}], "totalCount":900}</span></pre>
+  <div class="beg"><h4>🟢 What just happened</h4>
+    The API container started, waited for Postgres, ran the EF <b>migrations</b> (which create the tables), seeded sample South-African jobs, and is now serving real rows from the database at port 8080.</div>
+</section>
+
+<!-- STEP 3: UI -> API -->
+<section class="page pagebreak">
+  <h2>Step 3 — Point the UI at the API</h2>
+  <p>The UI needs the API's address. We put it in <code>.env.local</code> at the root of this Next.js project:</p>
+<pre><code># .env.local  (loaded by Next.js at build & dev time)
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080</code></pre>
+  <div class="note"><h4>ℹ Why the <code>NEXT_PUBLIC_</code> prefix?</h4>
+    Only variables that start with <code>NEXT_PUBLIC_</code> are sent to the <b>browser</b>. The job board reads on the server, but auth/apply run in the browser — so the API URL must be public. Next.js <i>inlines</i> this value into the JavaScript at build time.</div>
+
+  <h3>Reading jobs — on the SERVER (no browser request)</h3>
+  <p>The <code>/jobs</code> page is a Server Component. It fetches from the API <b>while rendering on the server</b>, so the job data is already inside the HTML the browser receives:</p>
+<pre><code>// src/lib/jobs-api.ts
+export const JOBS_API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+
+// src/app/jobs/(board)/page.tsx  — async Server Component
+const res = await fetchJobsApi(`/api/jobs?page=1&amp;pageSize=12`); // cache:"no-store"
+const payload = await res.json();
+const jobs = payload.data;          // straight from PostgreSQL, via the API</code></pre>
+
+  <h3>Auth &amp; apply — from the BROWSER</h3>
+  <p>Signing in and applying happen in the browser, so they call the API directly with <code>fetch</code> (through a small retry wrapper that rides out the API's cold start):</p>
+<pre><code>// src/lib/applicant-api.ts
+const res = await fetchWithRetry(`${API_BASE}/api/v1/auth/login`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email, password }),
+});
+const { token } = await res.json();   // a real JWT, signed by the API</code></pre>
+
+  <div class="step"><span class="n">5</span><b>Start the UI</b></div>
+<pre class="term"><span class="c">$ cd C:\Users\Xolisa\careerhub-1.3</span>
+<span class="c">$ npm run build  &amp;&amp;  npm start        # fast, pre-compiled</span>
+<span class="o">▲ Next.js — Local: http://localhost:3000   ✓ Ready</span></pre>
+</section>
+
+<!-- STEP 4: CORS -->
+<section class="page pagebreak">
+  <h2>Step 4 — Let the browser call the API (CORS)</h2>
+  <p>A browser will <b>block</b> a page on <code>localhost:3000</code> from calling <code>localhost:8080</code> unless the API explicitly allows that origin. That permission is <b>CORS</b>, configured on the API:</p>
+<pre><code>// Program.cs
+builder.Services.AddCors(o =&gt; o.AddPolicy("CareerHubFrontend", p =&gt; p
+    .WithOrigins("http://localhost:3000")   // allow the UI's origin
+    .AllowAnyHeader()                        // allow Authorization, Content-Type…
+    .AllowAnyMethod()                        // GET, POST, PATCH…
+    .AllowCredentials()));
+
+app.UseCors("CareerHubFrontend");            // runs BEFORE auth in the pipeline</code></pre>
+  <div class="step"><span class="n">6</span><b>Verify CORS is set (preflight)</b></div>
+<pre class="term"><span class="c">$ curl -i -X OPTIONS http://localhost:8080/api/v1/auth/login \
+     -H "Origin: http://localhost:3000" \
+     -H "Access-Control-Request-Method: POST"</span>
+<span class="o">HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: http://localhost:3000   ✔
+Access-Control-Allow-Methods: POST</span></pre>
+  <div class="beg"><h4>🟢 In plain words</h4>
+    CORS is the API saying "I trust requests coming from <b>localhost:3000</b>." Without that line, the browser refuses to even send the request and you'd see <i>"Failed to fetch"</i>.</div>
+</section>
+
+<!-- STEP 5: ROUND TRIPS -->
+<section class="page pagebreak">
+  <h2>Step 5 — The full round trips (UI ⟷ API ⟷ DB)</h2>
+
+  <h3>A. Browsing jobs</h3>
+  <div class="flow">
+    <div class="node"><b>Server render</b><small>/jobs</small></div><span class="arrow">→</span>
+    <div class="node"><b>GET /api/jobs</b></div><span class="arrow">→</span>
+    <div class="node"><b>SELECT …</b><small>job_listings</small></div><span class="arrow">→</span>
+    <div class="node"><b>HTML</b><small>with cards</small></div>
+  </div>
+
+  <h3>B. Signing in (real JWT)</h3>
+  <div class="flow">
+    <div class="node"><b>Login form</b></div><span class="arrow">→</span>
+    <div class="node"><b>POST /auth/login</b></div><span class="arrow">→</span>
+    <div class="node"><b>check hash</b><small>applicants</small></div><span class="arrow">→</span>
+    <div class="node"><b>JWT token</b><small>stored client-side</small></div>
+  </div>
+
+  <h3>C. Applying — cover note + skills + CV (PDF)</h3>
+  <p>The apply form sends <b>multipart/form-data</b> with the bearer token. The API stores the CV as <code>bytea</code> and the ticked skills as a PostgreSQL <code>text[]</code>:</p>
+<pre><code>// browser → API (multipart, with the JWT)
+const fd = new FormData();
+fd.set("coverNote", coverNote);
+for (const s of selectedSkills) fd.append("selectedSkills", s);
+if (cv) fd.set("cv", cv);                          // the PDF file
+await fetchWithRetry(`${API_BASE}/api/v1/jobs/${jobId}/applications`, {
+  method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });</code></pre>
+<pre class="term"><span class="c"># proof it landed in the real DB:</span>
+<span class="c">$ docker exec careerhub24-pg psql -U postgres -d CareerHub24 \
+    -c 'SELECT "SelectedSkills", "CvFileName", octet_length("CvContent") FROM applications LIMIT 1;'</span>
+<span class="o"> {Docker,AWS} | cv.pdf | 209</span></pre>
+
+  <h3>D. Recruiter review → status → candidate tracking</h3>
+  <div class="flow">
+    <div class="node"><b>Recruiter</b><small>list applicants</small></div><span class="arrow">→</span>
+    <div class="node"><b>PATCH status</b><small>Accept/Reject</small></div><span class="arrow">→</span>
+    <div class="node"><b>UPDATE</b><small>applications</small></div><span class="arrow">→</span>
+    <div class="node"><b>Candidate</b><small>Track shows it</small></div>
+  </div>
+  <p class="small muted">Every one of these reads/writes the <b>same</b> PostgreSQL tables through the API — never the database directly. That is what "the UI is connected to the real database" means.</p>
+</section>
+
+<!-- STEP 6: RUN ALL -->
+<section class="page pagebreak">
+  <h2>Step 6 — Run the whole stack (in order)</h2>
+  <div class="do"><h4>▶ The exact sequence</h4>
+  <ol class="small">
+    <li>Start the database &amp; API together (Docker brings up Postgres first, then the API which migrates + seeds):</li>
+  </ol></div>
+<pre class="term"><span class="c">$ cd C:\Users\Xolisa\assignment-3.2</span>
+<span class="c">$ docker compose up -d --build           # db + api</span>
+<span class="c">$ docker ps                              # both Up; api on :8080, db on :5544</span></pre>
+  <ol class="small" start="2">
+    <li>Confirm the API serves real data:</li>
+  </ol>
+<pre class="term"><span class="c">$ curl -s "http://localhost:8080/api/jobs?page=1&amp;pageSize=1"   # → JSON from Postgres</span></pre>
+  <ol class="small" start="3">
+    <li>Start the UI and open it:</li>
+  </ol>
+<pre class="term"><span class="c">$ cd C:\Users\Xolisa\careerhub-1.3</span>
+<span class="c">$ npm install            # first time only</span>
+<span class="c">$ npm run build &amp;&amp; npm start              # → http://localhost:3000</span></pre>
+  <ol class="small" start="4">
+    <li>In the browser: open <b>http://localhost:3000</b> → <b>Browse jobs</b> → open a job → sign in as a job-seeker → apply (tick skills, attach a PDF) → sign in as the employer at <b>/recruiter/signin</b> → review applicants &amp; set a status → back as the seeker, <b>Track applications</b> shows the change.</li>
+  </ol>
+  <div class="note"><h4>ℹ Demo accounts (seeded in the DB)</h4>
+    Job-seeker: <code>demo.applicant@careerhub.co.za</code> / <code>DemoPass123!</code><br>
+    Employer: <code>demo.employer@takealot.co.za</code> / <code>DemoPass123!</code></div>
+</section>
+
+<!-- STEP 7: VERIFY / TROUBLESHOOT -->
+<section class="page pagebreak">
+  <h2>Step 7 — Verify each layer &amp; troubleshoot</h2>
+  <table>
+    <tr><th>Symptom</th><th>Check (terminal)</th><th>Fix</th></tr>
+    <tr>
+      <td>UI shows "Failed to fetch" / "server is waking up"</td>
+      <td><code>docker ps</code> — is <b>careerhub24-api</b> Up?<br><code>curl localhost:8080/api/jobs?pageSize=1</code></td>
+      <td>The API was cold/idle — the first call takes a few seconds; the UI now retries automatically. If down: <code>docker compose up -d api</code></td>
+    </tr>
+    <tr>
+      <td>API can't reach the DB on startup</td>
+      <td><code>docker logs careerhub24-api</code></td>
+      <td>Ensure the connection string uses <code>Host=db;Port=5432</code> (not 5544) and the db service is healthy.</td>
+    </tr>
+    <tr>
+      <td>Browser blocks the call (CORS error)</td>
+      <td>Preflight test from Step 4</td>
+      <td>Confirm <code>WithOrigins("http://localhost:3000")</code> and <code>app.UseCors(...)</code> before auth.</td>
+    </tr>
+    <tr>
+      <td>New columns / tables missing</td>
+      <td><code>psql … "\d applications"</code></td>
+      <td>Migrations apply on API startup. Add one with <code>dotnet ef migrations add &lt;Name&gt;</code> then rebuild the API image.</td>
+    </tr>
+  </table>
+
+  <h3>Adding a schema change (the migration loop)</h3>
+<pre class="term"><span class="c"># 1) change a C# entity, then generate a migration</span>
+<span class="c">$ dotnet ef migrations add AddApplicationCvAndSkills</span>
+<span class="c"># 2) rebuild the API image — MigrateAsync() applies it on startup</span>
+<span class="c">$ docker compose up -d --build api</span>
+<span class="c"># 3) confirm the column exists</span>
+<span class="c">$ docker exec careerhub24-pg psql -U postgres -d CareerHub24 \
+    -c "SELECT column_name FROM information_schema.columns WHERE table_name='applications';"</span>
+<span class="o">CvContent | CvFileName | SelectedSkills | …   ✔</span></pre>
+
+  <div class="beg"><h4>🟢 The whole thing in one breath</h4>
+    Docker runs <b>Postgres</b> and the <b>API</b>; the API finds Postgres by the service name <code>db</code> via a connection string and creates the tables with EF migrations. The <b>UI</b> knows the API's address from <code>NEXT_PUBLIC_API_BASE_URL</code>, reads jobs on the server, and signs-in/applies from the browser — which the API allows through <b>CORS</b>. Every screen reads and writes the same real PostgreSQL tables through the API. That is the connection, end to end.</div>
+</section>
+
+</body>
+</html>
