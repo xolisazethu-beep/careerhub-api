@@ -33,13 +33,17 @@ npm install
 ```
 
 ### 2. Environment
-A `.env.local` already exists in the project root with:
+Copy the example file to `.env.local`:
+```bash
+cp .env.example .env.local
+```
+It contains the only variable Assignment 2.2 needs:
 ```
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
-This is the only variable Assignment 2.2 needs. It is the app's own origin, so Server Components
-can fetch this app's API routes (`src/app/api/*`). No external/Docker backend is required —
-jobs, applications, stats and the close action all run against the in-app API.
+This is the app's own origin, so Server Components can fetch this app's API routes
+(`src/app/api/*`). No external/Docker backend is required — jobs, applications, stats and the close
+action all run against the in-app API.
 
 ### 3. Development
 ```bash
