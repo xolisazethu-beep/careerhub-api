@@ -1,15 +1,15 @@
 // =============================================================
 // src/components/Navbar.tsx
-// Dark-purple top bar + slide-out menu. Shows the CareerHub brand
-// (laptop-with-code mark), a Track applications link, a light/dark
-// theme toggle, and sign-in / account controls.
-// Needs lucide-react.
+// Dark-purple top bar + slide-out menu. As of Assignment 2.3 the
+// account area and primary links are driven by the Auth.js SESSION
+// (passed in from the async root layout's await auth()), not the old
+// applicant context — so the nav reflects the real signed-in role.
 // =============================================================
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { Session } from "next-auth";
 import {
   Menu as MenuIcon,
   X,
@@ -23,8 +23,8 @@ import {
   UserCircle,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
-import NavLinks from "@/components/NavLinks";
-import { useApplicantAuth } from "@/context/ApplicantAuthContext";
+import NavLinks, { type NavLink } from "@/components/NavLinks";
+import { signOutAction } from "@/app/actions/auth";
 
 const menuItems = [
   { label: "Find a Job", href: "/", icon: Search },
@@ -33,17 +33,41 @@ const menuItems = [
   { label: "Contact Us", href: "/contact", icon: Mail },
 ];
 
-export default function Navbar() {
-  const [open, setOpen] = useState(false);
-  const { applicant, logout } = useApplicantAuth();
-  const user = applicant; // candidate session = real applicant JWT
-  const router = useRouter();
+/** Primary links shown per role (Part 5): Dashboard for employers, Jobs for
+ *  candidates, Jobs only for signed-out visitors. Never both Dashboard+Jobs. */
+function linksForRole(role: string | undefined): NavLink[] {
+  if (role === "employer") return [{ href: "/dashboard/listings", label: "Dashboard" }];
+  if (role === "candidate")
+    return [
+      { href: "/jobs", label: "Jobs" },
+      { href: "/jobs/explore", label: "Explore" },
+    ];
+  return [{ href: "/jobs", label: "Jobs" }];
+}
 
-  const handleSignOut = () => {
-    logout();
-    setOpen(false);
-    router.push("/jobs");
-  };
+/** Small role pill next to the username. */
+function RoleBadge({ role }: { role: "employer" | "candidate" }) {
+  const isEmployer = role === "employer";
+  return (
+    <span
+      className={
+        isEmployer
+          ? "rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200"
+          : "rounded-full bg-emerald-400/20 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-200"
+      }
+    >
+      {isEmployer ? "Employer" : "Candidate"}
+    </span>
+  );
+}
+
+export default function Navbar({ session }: { session: Session | null }) {
+  const [open, setOpen] = useState(false);
+
+  const role = session?.user?.role;
+  const name = session?.user?.name ?? session?.user?.email ?? "Account";
+  const isLoggedIn = Boolean(session);
+  const links = linksForRole(role);
 
   return (
     <>
@@ -64,13 +88,11 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Primary route navigation (Assignment 2.1). Active link is
-              highlighted by NavLinks via usePathname. */}
-          <NavLinks />
+          {/* Role-based primary navigation. Active link highlighted by NavLinks. */}
+          <NavLinks links={links} />
 
-          {/* The "Track applications" link is only meaningful once you have an
-              account, so it is hidden entirely for signed-out visitors. */}
-          {user && (
+          {/* Candidates can track their applications. */}
+          {role === "candidate" && (
             <Link
               href="/applications"
               className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
@@ -81,17 +103,28 @@ export default function Navbar() {
 
           <ThemeToggle />
 
-          {user ? (
-            <button
-              onClick={handleSignOut}
-              className="hidden items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10 sm:inline-flex"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
+          {isLoggedIn && role ? (
+            <div className="hidden items-center gap-2.5 sm:flex">
+              <span className="flex items-center gap-2 text-sm">
+                <UserCircle className="h-5 w-5 text-white/80" />
+                <span className="max-w-[10rem] truncate font-medium">{name}</span>
+                <RoleBadge role={role} />
+              </span>
+              {/* Sign Out is a Server Action form — clears the cookie server-side
+                  and redirects to "/". */}
+              <form action={signOutAction}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </form>
+            </div>
           ) : (
             <Link
-              href="/candidate/signin"
+              href="/login"
               className="hidden items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold hover:bg-violet-600 sm:inline-flex"
             >
               <UserCircle className="h-4 w-4" />
@@ -127,26 +160,29 @@ export default function Navbar() {
 
             {/* Account summary */}
             <div className="border-b border-slate-100 px-5 py-4 text-sm dark:border-slate-800">
-              {user ? (
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
+              {isLoggedIn && role ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
                     <UserCircle className="h-5 w-5 text-brand-600" />
-                    <span className="truncate">{user.email}</span>
+                    <span className="truncate">{name}</span>
+                    <RoleBadge role={role} />
                   </span>
-                  <button
-                    onClick={handleSignOut}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
-                  >
-                    <LogOut className="h-3.5 w-3.5" /> Sign out
-                  </button>
+                  <form action={signOutAction}>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
+                    >
+                      <LogOut className="h-3.5 w-3.5" /> Sign out
+                    </button>
+                  </form>
                 </div>
               ) : (
                 <Link
-                  href="/candidate/signin"
+                  href="/login"
                   onClick={() => setOpen(false)}
                   className="inline-flex items-center gap-2 font-semibold text-brand-700 hover:underline dark:text-brand-400"
                 >
-                  <UserCircle className="h-5 w-5" /> Sign in or create an account
+                  <UserCircle className="h-5 w-5" /> Sign in to your account
                 </Link>
               )}
             </div>
@@ -167,9 +203,7 @@ export default function Navbar() {
                   </Link>
                 </li>
               ))}
-              {/* Same rule inside the slide-out menu: only signed-in users see
-                  the "Track applications" entry. */}
-              {user && (
+              {role === "candidate" && (
                 <li className="border-b border-slate-100 dark:border-slate-800">
                   <Link
                     href="/applications"

@@ -104,6 +104,82 @@ export async function fetchJobs(): Promise<JobListing[]> {
   return payload.data.map(toJobListing);
 }
 
+// ---------- Week 2 Day 4: paginated board + delete ----------
+
+/** The exact envelope GET /api/jobs/explore returns, items adapted to the UI model. */
+export interface PaginatedJobs {
+  items: JobListing[];
+  page: number;
+  limit: number;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+/** The raw wire envelope before items are adapted. */
+interface PaginatedJobsResponse {
+  items: JobListingResponse[];
+  page: number;
+  limit: number;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+/**
+ * One page of the explore board (`GET /api/jobs/explore`). This is the `queryFn`
+ * body behind the `useInfiniteQuery` on /jobs/explore: it takes the page param
+ * plus the active filters and returns the assignment's
+ * `{ items, page, limit, totalCount, hasMore }` envelope, with each wire item
+ * adapted into the `JobListing` view-model the cards render.
+ */
+export async function getJobsPaginated(args: {
+  page: number;
+  limit: number;
+  category?: string;
+  minSalary?: number;
+  remote?: boolean;
+}): Promise<PaginatedJobs> {
+  const params = new URLSearchParams({
+    page: String(args.page),
+    limit: String(args.limit),
+  });
+  if (args.category) params.set("category", args.category);
+  if (args.minSalary) params.set("minSalary", String(args.minSalary));
+  if (args.remote) params.set("remote", "true");
+
+  const res = await fetch(`${JOBS_API_BASE}/api/jobs/explore?${params}`);
+  if (!res.ok) {
+    throw new Error(
+      `Failed to load jobs — server responded with ${res.status} ${res.statusText}`,
+    );
+  }
+
+  const payload = (await res.json()) as PaginatedJobsResponse;
+  return {
+    items: payload.items.map(toJobListing),
+    page: payload.page,
+    limit: payload.limit,
+    totalCount: payload.totalCount,
+    hasMore: payload.hasMore,
+  };
+}
+
+/**
+ * Hard-delete a listing (`DELETE /api/jobs/{id}`). The `mutationFn` behind the
+ * optimistic delete on /jobs/explore. Resolves on 204; a 404/5xx throws so the
+ * mutation's `onError` rolls the optimistic removal back.
+ */
+export async function deleteJob(id: string): Promise<void> {
+  const res = await fetch(`${JOBS_API_BASE}/api/jobs/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const problem = (await res.json().catch(() => ({}))) as ProblemDetails;
+    throw new Error(
+      problem.detail ?? problem.title ?? `Failed to delete job (${res.status})`,
+    );
+  }
+}
+
 /**
  * Fetch ONE listing in full from the detail endpoint (`GET /api/jobs/{id}`).
  *

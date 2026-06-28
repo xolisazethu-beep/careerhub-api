@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { JOBS as SEED } from "@/lib/seed-jobs";
 import {
   getJob,
   countApplicationsByJob,
   getJobStatusOverride,
+  getDeletedJobIds,
   setJobStatus,
+  deleteJobById,
 } from "@/lib/server-store";
 import type { JobListingDetailResponse } from "@/types";
 
@@ -32,6 +35,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  // A hard-deleted listing (Week 2 Day 4) is gone — answer 404 before resolving.
+  const deleted = await getDeletedJobIds();
+  if (deleted.includes(id)) {
+    return problem("Job not found", `No job exists with id '${id}'.`, 404);
+  }
+
   const override = await getJobStatusOverride(id);
 
   const recruiterJob = await getJob(id);
@@ -181,4 +191,29 @@ export async function PATCH(
     companyWebsite: "",
   };
   return NextResponse.json(detail);
+}
+
+/**
+ * DELETE /api/jobs/{id} — hard-delete a listing (Week 2 Day 4, Concept 4).
+ *
+ * Records the id in the store's deleted set (and splices a recruiter job from
+ * `jobs`), so every job-listing read excludes it from then on. Returns 204 on
+ * success or a 404 (Problem Details) when no job has that id. It also clears the
+ * "jobs" Data Cache tag so the cached 2.1 board (force-cache) reflects the
+ * removal on its next load — keeping every view consistent with the delete.
+ */
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  const existsInSeed = SEED.some((j) => j.id === id);
+  const removed = await deleteJobById(id, existsInSeed);
+  if (!removed) {
+    return problem("Job not found", `No job exists with id '${id}'.`, 404);
+  }
+
+  revalidateTag("jobs");
+  return new NextResponse(null, { status: 204 });
 }

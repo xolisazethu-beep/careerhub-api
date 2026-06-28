@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CareerHub 2.3 — Complete Illustrated Guide</title>
+<style>
+  :root{
+    --ink:#140a24; --brand:#6d28d9; --brand2:#a855f7; --muted:#64748b;
+    --bg:#ffffff; --soft:#f7f5fb; --line:#e6e2ef; --code:#0f1021; --ok:#15803d; --warn:#b45309;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font:16px/1.65 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  .wrap{max-width:940px;margin:0 auto;padding:48px 28px 96px}
+  h1{font-size:40px;line-height:1.1;letter-spacing:-.02em;margin:.2em 0}
+  h2{font-size:27px;letter-spacing:-.01em;margin:1.9em 0 .5em;padding-top:.5em;border-top:3px solid var(--line)}
+  h3{font-size:20px;margin:1.5em 0 .4em}
+  h4{font-size:16px;margin:1.3em 0 .3em;text-transform:uppercase;letter-spacing:.06em;color:var(--brand)}
+  p{margin:.6em 0}
+  a{color:var(--brand);text-decoration:none}
+  code{font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:.86em;background:#f0edf7;padding:.1em .4em;border-radius:5px;color:#4c1d95}
+  pre{background:var(--code);color:#e7e7f5;border-radius:12px;padding:18px 20px;overflow:auto;font-size:13.5px;line-height:1.6;margin:.8em 0}
+  pre code{background:none;color:inherit;padding:0}
+  .tok-key{color:#c792ea}.tok-str{color:#c3e88d}.tok-com{color:#7a86b8;font-style:italic}.tok-fn{color:#82aaff}.tok-num{color:#f78c6c}
+  .lead{font-size:19px;color:#3b3550}
+  .badge{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,var(--brand),var(--brand2));color:#fff;padding:4px 11px;border-radius:999px;vertical-align:middle}
+  .file{display:inline-flex;align-items:center;gap:7px;font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:13px;background:#1c0f33;color:#e9d5ff;padding:6px 12px;border-radius:8px;margin:.6em 0}
+  .file::before{content:"📄"}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:.8em 0}
+  .why{border-left:4px solid var(--brand);background:#faf8ff;border-radius:0 12px 12px 0;padding:12px 18px;margin:.9em 0}
+  .why b{color:var(--brand)}
+  figure{margin:1.2em 0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 8px 30px rgba(20,10,36,.07)}
+  figure img{display:block;width:100%}
+  figcaption{font-size:13.5px;color:var(--muted);padding:10px 16px;background:var(--soft);border-top:1px solid var(--line)}
+  figcaption b{color:var(--ink)}
+  table{border-collapse:collapse;width:100%;margin:1em 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--soft);font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:#473b66}
+  .flow{display:flex;align-items:stretch;gap:0;margin:1.1em 0;flex-wrap:wrap}
+  .flow .step{flex:1;min-width:150px;background:#fff;border:2px solid var(--brand);border-radius:12px;padding:12px 14px;font-size:13.5px}
+  .flow .step b{display:block;color:var(--brand);font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+  .flow .arrow{display:flex;align-items:center;color:var(--brand2);font-size:24px;padding:0 8px}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .pill.e{background:#fef3c7;color:#92400e}.pill.c{background:#dcfce7;color:#166534}.pill.x{background:#e2e8f0;color:#475569}
+  .toc{columns:2;font-size:14.5px;background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:18px 24px}
+  .toc a{display:block;padding:3px 0}
+  .speech{background:linear-gradient(135deg,#1c0f33,#2d1b4e);color:#f3eaff;border-radius:16px;padding:26px 30px;font-size:16.5px;line-height:1.75}
+  .speech h3{color:#d8b4fe;margin-top:0}
+  .qa{border:1px solid var(--line);border-radius:14px;margin:.9em 0;overflow:hidden}
+  .qa .q{background:var(--soft);padding:14px 18px;font-weight:700;font-size:16px}
+  .qa .a{padding:14px 18px}
+  .kbd{font-family:ui-monospace,monospace;background:#fff;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:13px}
+  hr{border:none;border-top:1px solid var(--line);margin:2.4em 0}
+  .small{font-size:13.5px;color:var(--muted)}
+  @media print{
+    .toc{columns:2}a{color:var(--ink)}figure{break-inside:avoid;box-shadow:none}
+    pre{white-space:pre-wrap;word-break:break-word}h2{break-after:avoid}.qa,.card,.why,.flow{break-inside:avoid}
+    .speech{background:#1c0f33 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .badge,.pill,.speech,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="badge">Assignment 2.3 · Complete Guide</span>
+  <h1>CareerHub — Authentication &amp; Smart State</h1>
+  <p class="lead">A full, illustrated account of what we built, <em>how</em> we built it,
+  and <em>why</em> each decision was made — with the exact files, the key lines of code, real
+  screenshots of every flow, a combined summary, an interview speech, and five interview Q&amp;A.</p>
+
+  <p class="small">Stack: Next.js 15.5 (App Router) · React 19 · TypeScript (strict) · Tailwind v4 ·
+  Auth.js v5 (credentials + JWT) · nuqs · Zustand v5. To make a PDF: open this file in a browser and
+  <b>Print → Save as PDF</b>.</p>
+
+  <div class="toc">
+    <b>Contents</b>
+    <a href="#big">1. The big picture</a>
+    <a href="#p2">2. Part 2 — Auth setup</a>
+    <a href="#p3">3. Part 3 — Login page</a>
+    <a href="#p4">4. Part 4 — Middleware</a>
+    <a href="#p5">5. Part 5 — Role-gated UI</a>
+    <a href="#p6">6. Part 6 — URL filters (nuqs)</a>
+    <a href="#p7">7. Part 7 — Zustand store</a>
+    <a href="#fix">8. The type-system fix</a>
+    <a href="#summary">9. Combined summary</a>
+    <a href="#speech">10. Interview speech</a>
+    <a href="#qa">11. Five interview Q&amp;A</a>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="big">1. The big picture — what the assignment asked</h2>
+  <p>Assignment 2.2 made CareerHub <b>fast</b> (caching, streaming, server actions). Assignment 2.3
+  makes it <b>secure and stateful</b> — but only where security and state actually belong. There are
+  two kinds of user, and they have <em>different capabilities</em>, not just different views:</p>
+
+  <table>
+    <tr><th>Role</th><th>Account (password <code>password123</code>)</th><th>Can do</th><th>Lands on</th></tr>
+    <tr><td><span class="pill e">employer</span></td><td><code>employer1</code>, <code>employer2</code></td><td>Manage listings, close jobs</td><td><code>/dashboard/listings</code></td></tr>
+    <tr><td><span class="pill c">candidate</span></td><td><code>alice</code>, <code>bob</code></td><td>Browse &amp; apply for jobs</td><td><code>/jobs</code></td></tr>
+  </table>
+
+  <p>We delivered five things on top of 2.2:</p>
+  <div class="grid2">
+    <div class="card"><b>① Identity</b><br>Auth.js v5 credentials provider + JWT sessions, with the role typed end-to-end.</div>
+    <div class="card"><b>② Route protection</b><br>Middleware gates <code>/dashboard</code> by role before any page renders.</div>
+    <div class="card"><b>③ Role-gated UI</b><br>The nav, the apply form and the dashboard show each user only what is theirs.</div>
+    <div class="card"><b>④ URL filter state</b><br>Job filters live in the URL via <code>nuqs</code> — shareable, bookmarkable, refresh-proof.</div>
+    <div class="card"><b>⑤ Session UI state</b><br>The dashboard table/grid preference lives in an in-memory <code>Zustand</code> store.</div>
+    <div class="card"><b>Gate</b><br><code>tsc --noEmit</code> = 0 errors; <code>next build</code> clean; Middleware bundle emitted.</div>
+  </div>
+
+  <h4>The mental model that drove every choice</h4>
+  <div class="why"><b>Right tool, right place.</b> Whole-route, "send them elsewhere" decisions →
+  <b>middleware</b>. "Show a different thing on an allowed page" → <b>the page</b>. Shareable state
+  (filters) → <b>the URL</b>. Per-session UI preference (view) → <b>Zustand</b>. Identity → a
+  <b>signed JWT cookie</b>. We can justify each one — that justification <em>is</em> the assignment.</p></div>
+
+  <!-- ============================================================ -->
+  <h2 id="p2">2. Part 2 — Auth setup <span class="badge">identity</span></h2>
+  <p><b>What:</b> a credentials provider validating four hardcoded users, JWT sessions, and the
+  <code>role</code> typed onto Session, User and JWT.</p>
+  <div class="file">src/auth.ts</div>
+
+  <p><b>How — the four mock users are the single source of truth:</b></p>
+  <pre><code><span class="tok-key">export const</span> USERS = [
+  { id: <span class="tok-str">"1"</span>, username: <span class="tok-str">"employer1"</span>, password: <span class="tok-str">"password123"</span>, name: <span class="tok-str">"Employer One"</span>, role: <span class="tok-str">"employer"</span> },
+  { id: <span class="tok-str">"3"</span>, username: <span class="tok-str">"alice"</span>,     password: <span class="tok-str">"password123"</span>, name: <span class="tok-str">"Alice"</span>,        role: <span class="tok-str">"candidate"</span> },
+  <span class="tok-com">/* …employer2, bob… */</span>
+] <span class="tok-key">as const</span>;</code></pre>
+
+  <p><b>How — <code>authorize</code> returns the identity, never throws:</b></p>
+  <pre><code><span class="tok-fn">authorize</span>: (credentials) => {
+  <span class="tok-key">const</span> user = USERS.<span class="tok-fn">find</span>((u) => u.username === <span class="tok-fn">String</span>(credentials?.username ?? <span class="tok-str">""</span>));
+  <span class="tok-com">// strict equality — this is a mock, no bcrypt. null on ANY mismatch.</span>
+  <span class="tok-key">if</span> (!user || user.password !== credentials?.password) <span class="tok-key">return</span> <span class="tok-num">null</span>;
+  <span class="tok-key">return</span> { id: user.id, name: user.name, role: user.role };
+}</code></pre>
+
+  <div class="why"><b>Why return <code>null</code>, not throw?</b> A thrown error surfaces as an HTTP 500 — a
+  crash. Returning <code>null</code> is how Auth.js signals "bad credentials" cleanly, which becomes the
+  red error panel on the login page instead of a stack trace.</div>
+
+  <p><b>How — the role relay (the heart of Part 2):</b></p>
+  <pre><code>callbacks: {
+  <span class="tok-fn">jwt</span>({ token, user }) { <span class="tok-key">if</span> (user) token.role = user.role; <span class="tok-key">return</span> token; },     <span class="tok-com">// ② sign-in</span>
+  <span class="tok-fn">session</span>({ session, token }) { session.user.role = token.role; <span class="tok-key">return</span> session; } <span class="tok-com">// ③ expose</span>
+}</code></pre>
+
+  <div class="flow">
+    <div class="step"><b>① authorize</b>returns <code>{ id, name, role }</code></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>② jwt callback</b><code>token.role = user.role</code> (persisted in the signed cookie)</div>
+    <div class="arrow">→</div>
+    <div class="step"><b>③ session callback</b><code>session.user.role = token.role</code> (visible to every <code>auth()</code>)</div>
+  </div>
+
+  <p><b>And the type augmentation</b> so <code>session.user.role</code> is strongly typed (a typo won't compile):</p>
+  <div class="file">src/types/next-auth.d.ts</div>
+  <pre><code><span class="tok-key">declare module</span> <span class="tok-str">"next-auth"</span> { <span class="tok-key">interface</span> Session { user: { role: Role } &amp; DefaultSession[<span class="tok-str">"user"</span>] } }
+<span class="tok-key">declare module</span> <span class="tok-str">"@auth/core/jwt"</span> { <span class="tok-key">interface</span> JWT { role: Role } } <span class="tok-com">// see §8 for why this exact module</span></code></pre>
+
+  <!-- ============================================================ -->
+  <h2 id="p3">3. Part 3 — Login page <span class="badge">server action</span></h2>
+  <p><b>What:</b> a <b>Server Component</b> form whose inline Server Action signs the user in and
+  redirects them <em>by role</em>.</p>
+  <div class="file">src/app/login/page.tsx</div>
+
+  <figure><img src="img/01-login.png" alt="Login page"/>
+    <figcaption><b>The login page.</b> A Server Component — no client JS runs the sign-in. The field is named <code>username</code> (not email), as required.</figcaption>
+  </figure>
+
+  <div class="why"><b>The hard problem:</b> <code>signIn()</code> runs <em>before</em> the session cookie
+  exists, so you cannot read the role from the session to decide where to send the user. <b>Our fix:</b>
+  the role is derivable from the <b>username</b> — the same data <code>authorize</code> uses — so we pick
+  the destination first and pass it as <code>redirectTo</code>.</div>
+
+  <pre><code><span class="tok-key">async function</span> <span class="tok-fn">authenticate</span>(formData) {
+  <span class="tok-str">"use server"</span>;
+  <span class="tok-key">const</span> username = <span class="tok-fn">String</span>(formData.<span class="tok-fn">get</span>(<span class="tok-str">"username"</span>) ?? <span class="tok-str">""</span>);
+  <span class="tok-key">const</span> redirectTo = <span class="tok-fn">roleForUsername</span>(username) === <span class="tok-str">"employer"</span> ? <span class="tok-str">"/dashboard/listings"</span> : <span class="tok-str">"/jobs"</span>;
+  <span class="tok-key">try</span> { <span class="tok-key">await</span> <span class="tok-fn">signIn</span>(<span class="tok-str">"credentials"</span>, { username, password, redirectTo }); }
+  <span class="tok-key">catch</span> (err) {
+    <span class="tok-key">if</span> (err <span class="tok-key">instanceof</span> AuthError) <span class="tok-fn">redirect</span>(<span class="tok-str">"/login?error=CredentialsSignin"</span>); <span class="tok-com">// bad creds</span>
+    <span class="tok-key">throw</span> err; <span class="tok-com">// NOT an AuthError → it's the success NEXT_REDIRECT; let it through</span>
+  }
+}</code></pre>
+
+  <figure><img src="img/02-login-error.png" alt="Login error panel"/>
+    <figcaption><b>Wrong credentials.</b> The action catches the <code>AuthError</code> and redirects to <code>?error=CredentialsSignin</code>; the page renders the red panel — no crash.</figcaption>
+  </figure>
+
+  <!-- ============================================================ -->
+  <h2 id="p4">4. Part 4 — Middleware <span class="badge">route protection</span></h2>
+  <p><b>What:</b> protect <code>/dashboard/*</code> by role, and bounce already-signed-in users off
+  <code>/login</code> — all <em>before</em> a page renders.</p>
+  <div class="file">src/middleware.ts</div>
+
+  <pre><code><span class="tok-key">export default</span> <span class="tok-fn">auth</span>((req) => {
+  <span class="tok-key">const</span> role = req.auth?.user?.role, path = req.nextUrl.pathname;
+
+  <span class="tok-key">if</span> (path.<span class="tok-fn">startsWith</span>(<span class="tok-str">"/dashboard"</span>)) {
+    <span class="tok-key">if</span> (!req.auth)            <span class="tok-key">return</span> NextResponse.<span class="tok-fn">redirect</span>(<span class="tok-key">new</span> URL(<span class="tok-str">"/login"</span>, req.nextUrl)); <span class="tok-com">// who are you?</span>
+    <span class="tok-key">if</span> (role !== <span class="tok-str">"employer"</span>) <span class="tok-key">return</span> NextResponse.<span class="tok-fn">redirect</span>(<span class="tok-key">new</span> URL(<span class="tok-str">"/jobs"</span>, req.nextUrl));  <span class="tok-com">// not yours</span>
+  }
+  <span class="tok-key">if</span> (path === <span class="tok-str">"/login"</span> &amp;&amp; req.auth)
+    <span class="tok-key">return</span> NextResponse.<span class="tok-fn">redirect</span>(<span class="tok-key">new</span> URL(role === <span class="tok-str">"employer"</span> ? <span class="tok-str">"/dashboard/listings"</span> : <span class="tok-str">"/jobs"</span>, req.nextUrl));
+
+  <span class="tok-key">return</span> NextResponse.<span class="tok-fn">next</span>(); <span class="tok-com">// /jobs and /jobs/[id] fall through — public</span>
+});
+<span class="tok-key">export const</span> config = { matcher: [<span class="tok-str">"/((?!_next/static|_next/image|favicon.ico|api/auth).*)"</span>] };</code></pre>
+
+  <div class="why"><b>Why two different redirects?</b> An <b>unauthenticated</b> visitor is an
+  <em>authentication</em> failure — "we don't know you" — fixable only by signing in → <code>/login</code>.
+  A <b>signed-in candidate</b> is an <em>authorization</em> failure — "we know you, this isn't yours" —
+  sending them to <code>/login</code> would be absurd and would loop, so they go to <code>/jobs</code>.
+  Same mechanism, opposite cause.</div>
+
+  <p class="small">Verified live: an unauthenticated request to <code>/dashboard/listings</code> returns
+  <code>307 → /login</code>. The build emits a <b>Middleware</b> bundle (87.5 kB).</p>
+
+  <!-- ============================================================ -->
+  <h2 id="p5">5. Part 5 — Role-gated UI <span class="badge">show the right things</span></h2>
+
+  <h3>5a · The nav reads the session (we chose Auth.js to drive it)</h3>
+  <p>The root layout became <b>async</b> and reads the session once, then passes it to the nav.</p>
+  <div class="file">src/app/layout.tsx</div>
+  <pre><code><span class="tok-key">export default async function</span> <span class="tok-fn">RootLayout</span>({ children }) {
+  <span class="tok-key">const</span> session = <span class="tok-key">await</span> <span class="tok-fn">auth</span>();   <span class="tok-com">// only decodes the signed cookie — no DB call</span>
+  <span class="tok-key">return</span> <span class="tok-num">&lt;Navbar session={session} /&gt;</span> <span class="tok-com">/* …rest of tree… */</span>;
+}</code></pre>
+
+  <div class="grid2">
+    <figure><img src="img/06-nav-employer.png" alt="Employer nav"/><figcaption><b>Employer:</b> "Dashboard" link, name + <span class="pill e">EMPLOYER</span> badge, Sign out.</figcaption></figure>
+    <figure><img src="img/10-nav-candidate.png" alt="Candidate nav"/><figcaption><b>Candidate:</b> "Jobs" link, name + <span class="pill c">CANDIDATE</span> badge, Sign out.</figcaption></figure>
+  </div>
+  <figure><img src="img/03-nav-signedout.png" alt="Signed-out nav"/><figcaption><b>Signed out:</b> just a "Sign in" link. No Dashboard, no badge.</figcaption></figure>
+
+  <p>Sign Out is a Server Action — <code>signOut({ redirectTo: "/" })</code>:</p>
+  <div class="file">src/app/actions/auth.ts</div>
+  <pre><code><span class="tok-str">"use server"</span>;
+<span class="tok-key">export async function</span> <span class="tok-fn">signOutAction</span>() { <span class="tok-key">await</span> <span class="tok-fn">signOut</span>({ redirectTo: <span class="tok-str">"/"</span> }); }</code></pre>
+
+  <h3>5b · The apply form is gated in the page (not middleware)</h3>
+  <p><code>/jobs/[id]</code> is <b>public</b> (employers may view a posting), so the gate is about
+  <em>which part renders</em> — a page concern. We fetch the job and the session <b>in parallel</b>:</p>
+  <div class="file">src/app/jobs/[id]/page.tsx</div>
+  <pre><code><span class="tok-key">const</span> [res, session] = <span class="tok-key">await</span> Promise.<span class="tok-fn">all</span>([<span class="tok-fn">fetch</span>(jobUrl, { next: { tags: [<span class="tok-str">"jobs"</span>] } }), <span class="tok-fn">auth</span>()]);
+<span class="tok-com">// employer → message · signed-out → form + note · candidate → form</span></code></pre>
+
+  <div class="grid2">
+    <figure><img src="img/09-jobdetail-employer.png" alt="Employer cannot apply"/><figcaption><b>Employer:</b> "Employers cannot apply for jobs." — no form.</figcaption></figure>
+    <figure><img src="img/12-jobdetail-candidate.png" alt="Candidate apply form"/><figcaption><b>Candidate:</b> the application form renders normally.</figcaption></figure>
+  </div>
+  <figure><img src="img/04-jobdetail-signedout.png" alt="Signed out apply note"/><figcaption><b>Signed out:</b> the form shows with an amber note — "You must be signed in to apply. Sign in here."</figcaption></figure>
+
+  <div class="why"><b>Why <code>Promise.all</code>?</b> The job fetch and the session read don't depend on each
+  other, so running them together means the auth check adds <em>zero</em> latency to the page.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="p6">6. Part 6 — URL filter state with nuqs <span class="badge">shareable state</span></h2>
+  <p><b>What:</b> keyword, location and status filters that live in the URL. <b>How:</b> one
+  <code>useQueryStates</code> call, debounced text inputs, and server-side filtering.</p>
+  <div class="file">src/components/JobFilters.tsx</div>
+
+  <pre><code><span class="tok-key">const</span> [filters, setFilters] = <span class="tok-fn">useQueryStates</span>({
+  q: parseAsString.<span class="tok-fn">withDefault</span>(<span class="tok-str">""</span>),
+  location: parseAsString.<span class="tok-fn">withDefault</span>(<span class="tok-str">""</span>),
+  status: <span class="tok-fn">parseAsStringLiteral</span>([<span class="tok-str">"open"</span>,<span class="tok-str">"all"</span>]).<span class="tok-fn">withDefault</span>(<span class="tok-str">"all"</span>),
+}, { shallow: <span class="tok-num">false</span> }); <span class="tok-com">// shallow:false = real navigation → the Server Component re-filters</span>
+
+<span class="tok-com">// debounce: local state now, push to the URL 300ms after typing stops</span>
+<span class="tok-fn">setQInput</span>(value);
+<span class="tok-fn">clearTimeout</span>(qTimer.current);
+qTimer.current = <span class="tok-fn">setTimeout</span>(() => <span class="tok-fn">setFilters</span>({ q: value || <span class="tok-num">null</span> }), <span class="tok-num">300</span>);</code></pre>
+
+  <p>The server page reads the same values back and filters <b>after</b> the cached fetch:</p>
+  <div class="file">src/app/jobs/(board)/page.tsx</div>
+  <pre><code><span class="tok-key">async function</span> <span class="tok-fn">getJobs</span>({ q, location, status }) {
+  <span class="tok-key">const</span> res = <span class="tok-key">await</span> <span class="tok-fn">fetch</span>(url, { cache: <span class="tok-str">"force-cache"</span>, next: { tags: [<span class="tok-str">"jobs"</span>] } }); <span class="tok-com">// still tagged!</span>
+  <span class="tok-key">let</span> jobs = (<span class="tok-key">await</span> res.<span class="tok-fn">json</span>()).data.<span class="tok-fn">map</span>(toSummaryView);
+  <span class="tok-key">if</span> (q) jobs = jobs.<span class="tok-fn">filter</span>(j => j.title.<span class="tok-fn">toLowerCase</span>().<span class="tok-fn">includes</span>(q.<span class="tok-fn">toLowerCase</span>()) || …);
+  <span class="tok-key">if</span> (status === <span class="tok-str">"open"</span>) jobs = jobs.<span class="tok-fn">filter</span>(j => j.status !== <span class="tok-str">"Closed"</span>);
+  <span class="tok-key">return</span> jobs; <span class="tok-com">// cache stores the FULL list; we filter in JS after retrieval</span>
+}</code></pre>
+
+  <figure><img src="img/11-jobs-filtered.png" alt="Filtered job board"/>
+    <figcaption><b>Live filter.</b> Typing "developer" produced the URL <code>/jobs?q=developer</code> (captured during the screenshot run) — refresh it, share it, or hit Back: the state is in the URL, so it always reproduces this exact view.</figcaption>
+  </figure>
+
+  <div class="why"><b>Why nuqs over <code>useState</code>?</b> A filtered search is something you <em>share and
+  bookmark</em>. In the URL it survives refresh, works with Back/Forward, and — crucially — the
+  <b>Server Component can read it</b> to filter on the server. <code>useState</code> is component-local,
+  invisible to the server, and gone on reload.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="p7">7. Part 7 — Zustand dashboard store <span class="badge">session UI state</span></h2>
+  <p><b>What:</b> a table/grid view toggle and a "show closed jobs" checkbox that survive in-app
+  navigation but <b>reset on refresh</b> — session-level UI state, deliberately <em>not</em> persisted.</p>
+  <div class="file">src/stores/dashboardStore.ts</div>
+
+  <pre><code><span class="tok-key">export const</span> useDashboardStore = <span class="tok-fn">create</span>&lt;DashboardStore&gt;()((set) => ({
+  view: <span class="tok-str">"table"</span>,            <span class="tok-fn">setView</span>: (view) => <span class="tok-fn">set</span>({ view }),
+  showClosedJobs: <span class="tok-num">true</span>,    <span class="tok-fn">toggleShowClosedJobs</span>: () => <span class="tok-fn">set</span>((s) => ({ showClosedJobs: !s.showClosedJobs })),
+}));  <span class="tok-com">// NO persist middleware — see why below</span></code></pre>
+
+  <div class="why"><b>Why no <code>persist</code>?</b> This is a throwaway view preference, not user data, and the
+  server never needs it. It should follow you across navigation (a module-singleton store does) but a
+  fresh visit should start clean. If it <em>had</em> to persist, the right move is
+  <code>persist(…, { name: "careerhub-dashboard-prefs" })</code> to <code>localStorage</code>; the
+  trade-off is <code>localStorage</code> (per-device, zero infra) vs. a preferences API (follows the
+  user across devices, but needs a backend + round-trip).</div>
+
+  <h4>The async-Server-Component ↔ store boundary (the key design point)</h4>
+  <p><code>ListingsTable</code> is an <b>async Server Component</b> — it <code>await</code>s data on the
+  server, so it <b>cannot call <code>useStore</code></b> (hooks are client-only). The bridge: the
+  <b>server fetches, the client presents.</b></p>
+
+  <div class="flow">
+    <div class="step"><b>Server (ListingsTable)</b><code>Promise.all</code> fetch jobs + stats, join → pass as <b>props</b></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Client (ListingsView)</b>reads Zustand (view, showClosedJobs) → renders table or grid</div>
+    <div class="arrow">↑</div>
+    <div class="step"><b>Client (DashboardToolbar)</b>writes the same singleton store</div>
+  </div>
+
+  <div class="file">src/components/ListingsTable.tsx  →  src/components/ListingsView.tsx  +  DashboardToolbar.tsx</div>
+  <pre><code><span class="tok-com">// ListingsTable (server): fetch, then hand plain data to the client view</span>
+<span class="tok-key">const</span> [jobs, stats] = <span class="tok-key">await</span> Promise.<span class="tok-fn">all</span>([<span class="tok-fn">getJobs</span>(), <span class="tok-fn">getApplicationStats</span>()]);
+<span class="tok-key">return</span> <span class="tok-num">&lt;ListingsView jobs={jobs} counts={counts} /&gt;</span>;
+
+<span class="tok-com">// DashboardToolbar (client): ONE selector per value, not destructuring</span>
+<span class="tok-key">const</span> view = <span class="tok-fn">useDashboardStore</span>((s) => s.view);
+<span class="tok-key">const</span> setView = <span class="tok-fn">useDashboardStore</span>((s) => s.setView);</code></pre>
+
+  <div class="grid2">
+    <figure><img src="img/05-dashboard-table.png" alt="Dashboard table view"/><figcaption><b>Table view (default).</b> Toolbar (Table/Grid + Show closed jobs), the streamed stat card (124), and the joined Applications column.</figcaption></figure>
+    <figure><img src="img/07-dashboard-grid.png" alt="Dashboard grid view"/><figcaption><b>Grid view.</b> Same data, re-rendered as cards — no refetch. Survives navigation, resets on refresh.</figcaption></figure>
+  </div>
+  <figure><img src="img/08-dashboard-grid-noclosed.png" alt="Grid with closed hidden"/><figcaption><b>"Show closed jobs" off.</b> The closed listing disappears from the view — the filter applies in both table and grid.</figcaption></figure>
+
+  <!-- ============================================================ -->
+  <h2 id="fix">8. The one real bug we hit — and fixed</h2>
+  <p>The build failed with <code>Type '{}' is not assignable to type 'Role'</code> in the session
+  callback. Two root causes, both about TypeScript module augmentation:</p>
+  <table>
+    <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+    <tr><td><code>token.role</code> typed as <code>{}</code></td><td>The augmentation targeted <code>next-auth/jwt</code>, which only <em>re-exports</em> the JWT type from <code>@auth/core/jwt</code> — so it didn't merge.</td><td>Also <code>declare module "@auth/core/jwt"</code>.</td></tr>
+    <tr><td>Circular type reference</td><td><code>next-auth.d.ts</code> imported <code>Role</code> from <code>@/auth</code>, which depends on the augmented next-auth types.</td><td>Moved <code>Role</code> to a standalone <code>src/types/roles.ts</code>.</td></tr>
+  </table>
+  <p class="small">After both fixes: <code>npx tsc --noEmit</code> exits 0 and <code>npm run build</code> is clean.</p>
+
+  <!-- ============================================================ -->
+  <h2 id="summary">9. Combined summary — everything, in order</h2>
+  <table>
+    <tr><th>Part</th><th>File(s)</th><th>What it does</th></tr>
+    <tr><td>2 · Auth</td><td><code>src/auth.ts</code>, <code>src/types/next-auth.d.ts</code>, <code>src/types/roles.ts</code>, <code>src/app/api/auth/[...nextauth]/route.ts</code></td><td>Credentials provider, JWT, role relay, typed end-to-end.</td></tr>
+    <tr><td>3 · Login</td><td><code>src/app/login/page.tsx</code></td><td>Server-action sign-in, role-based redirect, error panel.</td></tr>
+    <tr><td>4 · Middleware</td><td><code>src/middleware.ts</code></td><td>Employer-only dashboard; bounce signed-in off /login.</td></tr>
+    <tr><td>5 · Role UI</td><td><code>layout.tsx</code>, <code>Navbar.tsx</code>, <code>NavLinks.tsx</code>, <code>actions/auth.ts</code>, <code>jobs/[id]/page.tsx</code></td><td>Session-driven nav + badge + sign-out; apply gate via Promise.all.</td></tr>
+    <tr><td>6 · Filters</td><td><code>JobFilters.tsx</code>, <code>jobs/(board)/page.tsx</code></td><td>URL state (nuqs), debounce, server-side JS filtering of the cached list.</td></tr>
+    <tr><td>7 · Zustand</td><td><code>stores/dashboardStore.ts</code>, <code>DashboardToolbar.tsx</code>, <code>ListingsView.tsx</code>, <code>ListingsTable.tsx</code></td><td>Session view preference; server-fetch → client-present bridge; grid view.</td></tr>
+    <tr><td>Providers</td><td><code>src/app/providers.tsx</code></td><td><code>SessionProvider</code> + <code>NuqsAdapter</code> wired at the root.</td></tr>
+  </table>
+
+  <!-- ============================================================ -->
+  <h2 id="speech">10. Interview speech — "tell me about this project"</h2>
+  <div class="speech">
+    <h3>~90-second version</h3>
+    <p>"CareerHub is a Next.js 15 job board with two kinds of user — candidates and employers — and
+    in this iteration I added authentication and got deliberate about state management.</p>
+    <p>For auth I used <b>Auth.js v5 with a credentials provider and JWT sessions</b>. The key idea is
+    a three-step relay: <code>authorize</code> returns the user's role, the <code>jwt</code> callback
+    persists it onto the signed token, and the <code>session</code> callback exposes it — so every
+    server component, and the middleware, can read <code>session.user.role</code>, fully typed through
+    module augmentation.</p>
+    <p>Protection happens at <b>two levels, on purpose</b>. Coarse, whole-route rules live in
+    <b>middleware</b> — the employer dashboard redirects a candidate before the page ever renders.
+    Fine, content-level rules live in <b>the page</b> — the job detail is public so employers can read
+    a posting, but only candidates see the apply form, which I gate by reading the session alongside
+    the job fetch with <code>Promise.all</code>.</p>
+    <p>For state, my thesis is <b>right tool, right place</b>. Job filters are shareable, so they live
+    in the <b>URL</b> via nuqs — refresh-proof, bookmarkable, and readable by the server so it can
+    filter. The dashboard's table-versus-grid preference is a per-session UI detail, so it lives in an
+    in-memory <b>Zustand</b> store — no persistence, because it should reset on a fresh visit. And
+    because an async Server Component can't read a client store, I fetch on the server and pass the
+    data as props into a small client view that subscribes to Zustand.</p>
+    <p>The whole thing builds clean — zero TypeScript and ESLint errors — and I can justify every one
+    of those decisions, which was really the point of the assignment."</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="qa">11. Five interview questions &amp; answers</h2>
+
+  <div class="qa"><div class="q">Q1. Why put route protection in middleware instead of checking inside each page?</div>
+  <div class="a">Middleware runs <b>before</b> any page code, on the edge, reading the signed session cookie.
+  So a candidate hitting <code>/dashboard</code> is redirected without the dashboard ever rendering or
+  fetching — no wasted work, no flash of protected content. Per-page checks would run after render
+  begins and would have to be repeated in every dashboard route. The exception is the apply form: that
+  route is <em>public</em>, so there's nothing to redirect — the decision is "which part renders," which
+  only the page can make. The principle: <b>redirect-or-not → middleware; what-content-renders → page.</b></div></div>
+
+  <div class="qa"><div class="q">Q2. You signed in but the role was missing everywhere. What's the bug?</div>
+  <div class="a">Almost always the <b>session callback</b>. The role can sit on the JWT (<code>token.role</code>)
+  but it's invisible to the app until the <code>session</code> callback copies it onto
+  <code>session.user</code>. Without <code>session.user.role = token.role</code>, every
+  <code>auth()</code>/<code>useSession()</code> reader sees <code>undefined</code> — the nav can't tell
+  the roles apart and role checks silently fail. In our case there was also a typing twist: the JWT
+  augmentation has to target <code>@auth/core/jwt</code>, not just <code>next-auth/jwt</code>, or
+  <code>token.role</code> falls back to the index signature.</div></div>
+
+  <div class="qa"><div class="q">Q3. Why nuqs for filters but Zustand for the dashboard view — aren't both just "state"?</div>
+  <div class="a">They differ in <b>who needs the state and for how long</b>. Filters describe "what set of
+  jobs am I looking at" — inherently <b>shareable</b>: you paste the URL to a colleague and they see the
+  same results, Back/Forward works, a bookmark reopens it, and the <b>server reads it</b> to filter. That
+  demands URL state. The table/grid toggle is a <b>private, per-session UI</b> preference the server never
+  needs and that nobody shares — putting it in the URL would pollute shareable links, and persisting it
+  would wrongly carry across fresh visits. So it's in-memory Zustand: survives navigation, resets on
+  refresh.</div></div>
+
+  <div class="qa"><div class="q">Q4. How does a Zustand store talk to an async Server Component?</div>
+  <div class="a">It doesn't — and that's the point. An async Server Component runs on the server and can't
+  call React hooks, so it can't subscribe to a client store. The bridge is <b>server fetches, client
+  presents</b>: <code>ListingsTable</code> (server) does the <code>Promise.all</code> fetch and join, then
+  passes plain <code>jobs</code> and <code>counts</code> as props to <code>ListingsView</code> (a client
+  component) which reads the Zustand store and decides table vs. grid. <code>DashboardToolbar</code>
+  writes the same module-singleton store, so toggling it re-renders the view instantly — no refetch, no
+  prop-drilling through the server.</div></div>
+
+  <div class="qa"><div class="q">Q5. Is comparing passwords with <code>===</code> and hardcoding users safe?</div>
+  <div class="a">No — and it's <b>explicitly a mock</b> for the assignment. In production you'd never store
+  plaintext passwords or compare with <code>===</code>: you'd hash with bcrypt/argon2 and use a
+  constant-time compare, behind a real user store. What <em>is</em> production-correct here is the shape:
+  <code>authorize</code> returns <code>null</code> on any mismatch (never throws, so bad creds become a
+  clean error, not a 500), the session carries only a minimal identity + role (no secrets, no unused
+  <code>backendToken</code>), and it's a signed JWT cookie. Swapping the mock <code>authorize</code> body
+  for a hashed lookup is the only change needed to make the auth layer real.</div></div>
+
+  <hr/>
+  <p class="small">Generated for CareerHub Assignment 2.3. Screenshots are real captures of the running
+  production build (<code>npm start</code>) driven through the actual Auth.js login. Source brief:
+  <code>docs/assignment-2.3/Assignment-2.3-Brief.md</code> · Full written decisions:
+  <code>README.md</code>.</p>
+
+</div>
+</body>
+</html>

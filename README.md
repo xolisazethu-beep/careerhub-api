@@ -1,4 +1,254 @@
-# CareerHub — Assignment 2.2
+# CareerHub — Assignment 2.3
+
+**Authentication & Smart State — Protect the Right Things, Show the Right Things to the Right People**
+
+CareerHub now has identity. Auth.js v5 (credentials + JWT) gives candidates and
+employers distinct roles; middleware protects employer routes; role-gated UI shows
+each user only what is theirs; and filter/preference state is moved to the *right*
+tool for each job — URL state (nuqs) for shareable job filters, an in-memory
+Zustand store for the dashboard's view preference.
+
+> Built directly on Assignment 2.2 (Advanced Data Fetching). The 2.2 write-up is
+> preserved further down, under **“Assignment 2.2 (previous).”**
+
+## Mock accounts (all password `password123`)
+
+| Username | Role | Lands on |
+|---|---|---|
+| `employer1`, `employer2` | employer | `/dashboard/listings` |
+| `alice`, `bob` | candidate | `/jobs` |
+
+Sign in at **`/login`**. The accounts are the single source of truth in
+`src/auth.ts` — there is no backend auth endpoint.
+
+---
+
+## Part 1 — Written Decisions
+
+### Q1. CareerHub roles → route protection rules
+
+| Route | Who can access | Wrong/again role → | Enforced in |
+|---|---|---|---|
+| `/jobs` | Everyone (public) | n/a — never redirected | — |
+| `/jobs/[id]` | Everyone (public) — employers may *view* | n/a for the page; only the **apply form** is gated | **page** |
+| `/dashboard` + `/dashboard/listings` | employer only | unauth → `/login`; candidate → `/jobs` | **middleware** |
+| `/login` | signed-out users | already signed in → employer `/dashboard/listings`, candidate `/jobs` | **middleware** |
+
+Everything that is a *whole-section, identity-level* decision lives in middleware
+(it runs before any page code, so a candidate never even starts rendering the
+dashboard). The one access rule handled in the **page** is the apply form on
+`/jobs/[id]`: the route itself is public (an employer is *allowed* to read a job
+posting), so there is nothing to redirect — the rule is "which **part** of this
+page renders," which only the page knows. Putting it in middleware would wrongly
+block employers from *viewing* the listing.
+
+**Why “unauthenticated employer → /login” and “authenticated candidate → not
+/dashboard” are different problems.** The first is an **authentication** failure:
+*we don't know who you are*, and the only thing that can fix it is signing in, so
+the correct destination is `/login`. The second is an **authorization** failure:
+*we know exactly who you are — you're just not allowed here.* Sending a signed-in
+candidate to `/login` would be absurd (they're already authenticated) and would
+loop, since the `/login`-while-signed-in rule would bounce them right back. So
+they go to their own home surface, `/jobs`. Same redirect mechanism, opposite
+cause: missing identity vs. insufficient permission.
+
+### Q2. The session object design
+
+- **On the session:** `id`, `name`, and **`role`** — the minimum needed to render
+  role-gated UI and gate routes. **Deliberately left off:** the password (never
+  leaves the `USERS` array), and there is **no `backendToken`** — this is a mock
+  with no backend to call, so adding one would be dead weight the assignment
+  explicitly warns against.
+- **Cost of putting too much on the session:** the JWT session is a **signed
+  cookie sent on every request**. Everything you add inflates that cookie (header
+  bloat on all traffic), it is only as fresh as the last sign-in (stale the moment
+  the underlying data changes), and anything sensitive is now sitting in the
+  browser. Keep it to a stable identity + role.
+- **What breaks if role is on the JWT but not mapped in the `session` callback:**
+  `token.role` exists server-side, but `session.user.role` is `undefined`
+  everywhere `auth()`/`useSession()` is read. The nav can't tell employer from
+  candidate, the apply gate treats everyone as a candidate, and any
+  `role === "employer"` check silently fails. The token having it is invisible
+  until the **session callback copies it across**.
+- **The three-step relay (this implementation):**
+  1. **`authorize`** returns `{ id, name, role }` after matching a `USERS` entry.
+  2. **`jwt({ token, user })`** — on sign-in `user` is present, so
+     `token.role = user.role` persists the role into the signed token.
+  3. **`session({ session, token })`** — copies `session.user.role = token.role`
+     so every `auth()`/`useSession()` caller sees it.
+
+### Q3. State tool for the job filters
+
+| Filter | Tool | Why |
+|---|---|---|
+| Keyword `q` | **nuqs (URL)** | A filtered search is something you *share and bookmark*. In the URL it survives refresh, is shareable, and works with back/forward. |
+| Location | **nuqs (URL)** | Same as keyword — part of the same shareable "what am I looking at" state. |
+| Status (Open/All) | **nuqs (URL)** | A discrete, shareable view facet; belongs with the other two so one link reproduces the exact result set. |
+
+- **On refresh:** all three persist — they live in the URL, which the page reads
+  back via `searchParams`. `useState` would reset to defaults.
+- **On sharing the URL:** the recipient sees the **identical filtered view**,
+  because the server re-derives results from the same `searchParams`.
+- **Does the employer dashboard need these filters?** No. The candidate board's
+  search is irrelevant to the employer's listings view — which is exactly why the
+  dashboard's *own* preference (table/grid) is **Zustand**, not URL state (Part 7).
+- **What nuqs buys over `useState`:** `useState` is component-local and dies on
+  reload — it can't be shared, bookmarked, or restored by the back button, and the
+  **Server Component can't read it** to filter on the server. nuqs makes the URL
+  the single source of truth that both the client inputs *and* the server page
+  read.
+
+### Q4. What the nav bar knows
+
+- **Why `await auth()` in `layout.tsx` isn't a perf problem:** `auth()` only
+  **verifies and decodes the signed session cookie** — no database round-trip
+  (JWT strategy). The layout already renders on the server, so reading the cookie
+  it was sent is effectively free, even though it runs on every navigation.
+- **Session in a deeply nested Client Component:** don't prop-drill — wrap the
+  tree in `<SessionProvider>` (done in `providers.tsx`) and call **`useSession()`**
+  in the nested client component.
+- **Why `useSession()` exists alongside `auth()`:** `auth()` is the **server**
+  accessor (Server Components, route handlers, middleware) — synchronous-feeling,
+  no provider needed. `useSession()` is the **client** hook — it needs the
+  provider and gives reactive updates in the browser. Reach for `auth()` whenever
+  you're already on the server (it's cheaper and avoids shipping the check to the
+  client); reach for `useSession()` only inside a Client Component that genuinely
+  needs the session at runtime.
+
+---
+
+## README Updates
+
+### The role-redirect decision
+
+The post-login destination is **role-based** because the two roles have different
+home surfaces: an employer wants `/dashboard/listings`, a candidate wants `/jobs`.
+Sending both to one place would dump a candidate on a page middleware immediately
+bounces them off of.
+
+**The problem:** `signIn()` is called inside the login page's Server Action
+*before the session cookie exists*, so the role isn't readable from `auth()` at
+the moment we must choose `redirectTo`. **The fix:** the role isn't only on the
+session — it's derivable from the **username**, which we already have in the form
+data and which is the *same source `authorize` uses*. So `roleForUsername(username)`
+picks the destination, passed as `signIn(..., { redirectTo })`. Auth.js validates
+credentials and, on success, redirects to that URL as it writes the cookie — no
+need to wait for a session that doesn't exist yet.
+
+### Middleware vs. page-level guards
+
+- **In middleware:** `/dashboard/*` requires `role === "employer"`. It's a
+  coarse, whole-section, identity-level rule that should be decided *before* any
+  dashboard code runs — so a candidate is redirected without the page ever
+  rendering.
+- **In the page:** the apply-form gate on `/jobs/[id]`. The route is **public**
+  (employers can view a posting), so there's nothing to redirect; the decision is
+  *which part of the page renders* for whom, which only the page can express.
+- **The principle:** **redirect-or-not, whole-route, decided before render →
+  middleware. What-content-renders, within an allowed page → the page.** If the
+  answer is "send them somewhere else," it's middleware; if it's "show them a
+  different thing here," it's the page.
+
+### The dashboard close button (trusting middleware)
+
+`CloseJobButton` is rendered with **no role check of its own**. That is correct:
+middleware guarantees only `role === "employer"` can reach any `/dashboard/*`
+route at all, so by the time `ListingsView` renders, the viewer is provably an
+employer. Re-checking would be redundant. (Stretch A adds an `auth()` check inside
+the component as *defence-in-depth* — for the hypothetical where the table is
+reused on a public page — but that is a second layer, not the primary guard.)
+
+### Why URL state (nuqs) for job filters
+
+Filters describe "what set of jobs am I looking at" — inherently **shareable**
+state. In the URL: pasting `/jobs?q=engineer&status=open` to a colleague shows
+them the same results; **back/forward** moves between filter states like real
+history; a **bookmark** of a filtered search reopens exactly that search. `useState`
+gives none of this (lost on reload, invisible to the server) and Zustand, while it
+survives navigation, still isn't in the URL — so it can't be shared or bookmarked.
+
+### Why Zustand *without* persist for the dashboard view
+
+The table/grid + show-closed preference is **session-level UI state**: it should
+follow the employer across in-app navigation (Zustand is a module singleton, so it
+does) but **reset on a full refresh** to the sensible default. It isn't user data
+and the server never needs it, so URL state would be wrong (it'd pollute shareable
+links) and a backend write would be overkill.
+
+**If it had to persist:** `persist(..., { name: "careerhub-dashboard-prefs" })`
+to `localStorage` (Stretch B) — the right key/type for a device-local preference.
+The tradeoff: **`localStorage`** is zero-infra and instant but per-device/per-
+browser and invisible to the server (and needs hydration-mismatch handling); a
+**user-preferences API endpoint** follows the user across devices and is
+server-readable, at the cost of a network round-trip, auth, and backend work.
+For a throwaway view toggle, `localStorage`; for "remember my settings
+everywhere," the API.
+
+### The async Server Component / store boundary
+
+`ListingsTable` is an **async Server Component** — it `await`s its data on the
+server. It therefore **cannot call `useStore`**: Zustand's hook (like all React
+hooks) runs only in Client Components and relies on a client-side subscription the
+server doesn't have. The bridge: **the server fetches, the client presents.**
+`ListingsTable` does the `Promise.all` fetch + join, then passes the plain `jobs`
+and `counts` as props to **`ListingsView`** (`"use client"`), which reads the
+Zustand store (`view`, `showClosedJobs`) with one selector per value and renders
+table or grid. `DashboardToolbar` writes the same module-singleton store, so
+toggling it re-renders `ListingsView` instantly — no refetch, no prop-drilling
+through the server.
+
+---
+
+## Gate — build output
+
+`npx tsc --noEmit` exits **0**. `npm run build` completes with **zero TypeScript
+and zero ESLint errors**, and emits the role-protection **Middleware**:
+
+```text
+ ✓ Compiled successfully in 101s
+   Linting and checking validity of types ...
+   Collecting page data ...
+ ✓ Generating static pages (23/23)
+   Finalizing page optimization ...
+
+Route (app)                                 Size  First Load JS
+├ ƒ /api/auth/[...nextauth]                161 B         103 kB
+├ ƒ /dashboard/listings                  3.65 kB         109 kB
+├ ƒ /jobs                                1.59 kB         113 kB
+├ ƒ /jobs/[id]                            2.8 kB         111 kB
+├ ƒ /login                                 165 B         106 kB
+…
+ƒ Middleware                             87.5 kB
+
+ƒ  (Dynamic)  server-rendered on demand
+```
+
+Every route is now `ƒ` (dynamic): `await auth()` in the root layout and the
+middleware make rendering session-dependent, which is correct for an app that
+shows different things to different roles.
+
+### Manual verification checklist
+
+| Check | Result |
+|---|---|
+| `/login` as `employer1` → `/dashboard/listings` | ✓ |
+| `/login` as `alice` → `/jobs` | ✓ |
+| Wrong credentials → error panel, form intact | ✓ |
+| `/dashboard/listings` signed-out → `/login` | ✓ |
+| `/dashboard/listings` as `alice` → `/jobs` | ✓ |
+| `/login` while signed in → role home | ✓ |
+| Nav shows Dashboard (employer) / Jobs (candidate) + badge + Sign Out | ✓ |
+| `/jobs/[id]` as employer → "Employers cannot apply" | ✓ |
+| `/jobs/[id]` signed-out → form + sign-in note | ✓ |
+| `/jobs/[id]` as candidate → form normal | ✓ |
+| `/jobs?q=…` / `?status=open` filter results; URL updates; persists on refresh | ✓ |
+| Keyword/location debounced (no nav per keystroke) | ✓ |
+| Dashboard toolbar toggles table/grid; survives navigation; resets on refresh | ✓ |
+| "Show closed jobs" hides/shows closed listings in both views | ✓ |
+
+---
+
+# Assignment 2.2 (previous) — Advanced Data Fetching
 
 **Advanced Data Fetching — Cache Smarter, Stream Earlier, Mutate on the Server**
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
+import { auth } from "@/auth";
 import RealApplyPanel from "@/components/RealApplyPanel";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
 import { JOBS_API_BASE, toDetailView } from "@/lib/jobs-api";
@@ -27,14 +28,22 @@ export default async function JobDetailPage({
 }) {
   const { id } = await params;
 
-  // CACHE STRATEGY (Part 3 + Stretch B): cached + tagged with BOTH "jobs" and a
-  // per-job `job-${id}` tag. The close action clears "jobs" (so closing ANY job
-  // refreshes every listing/detail), and could clear `job-${id}` to refresh just
-  // this one. `force-cache` is what enables Next 15's Data Cache for this fetch.
-  const res = await fetch(`${JOBS_API_BASE}/api/jobs/${id}`, {
-    cache: "force-cache",
-    next: { tags: ["jobs", `job-${id}`] },
-  });
+  // ROLE-GATED APPLY (Assignment 2.3, Part 5): the job fetch and the session are
+  // independent, so they run IN PARALLEL with Promise.all — the session read
+  // adds no latency to the page. /jobs/[id] stays PUBLIC (employers can view the
+  // detail); only the apply *form* is gated, here in the page rather than in
+  // middleware, because the gate is content-level, not whole-route.
+  const [res, session] = await Promise.all([
+    // CACHE STRATEGY (Part 3 + Stretch B): cached + tagged with BOTH "jobs" and a
+    // per-job `job-${id}` tag. The close action clears "jobs" (so closing ANY job
+    // refreshes every listing/detail), and could clear `job-${id}` to refresh just
+    // this one. `force-cache` is what enables Next 15's Data Cache for this fetch.
+    fetch(`${JOBS_API_BASE}/api/jobs/${id}`, {
+      cache: "force-cache",
+      next: { tags: ["jobs", `job-${id}`] },
+    }),
+    auth(),
+  ]);
 
   // A genuine "no such job" → render the not-found boundary (HTTP 404), never a
   // half-built page. Any OTHER failure is a real error → throw to error.tsx.
@@ -49,6 +58,9 @@ export default async function JobDetailPage({
 
   const job = toDetailView((await res.json()) as JobListingDetailResponse);
   const isClosed = job.status === "Closed";
+  const role = session?.user?.role;
+  const isEmployer = role === "employer";
+  const isSignedOut = !session;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
@@ -133,9 +145,12 @@ export default async function JobDetailPage({
         )}
       </article>
 
-      {/* Composition: Server Component renders the Client Component below the
-          server-rendered details — but only while the role is open. A closed
-          listing shows an informational message instead of the form. */}
+      {/* Composition + role gate (Part 5). The apply area depends on BOTH the
+          listing's status and WHO is viewing:
+            • closed listing  → informational message (no form, any user)
+            • employer        → "Employers cannot apply" (no form)
+            • signed-out      → the form, with a sign-in note above it
+            • candidate       → the form, normally                          */}
       <div className="mt-6">
         {isClosed ? (
           <div
@@ -156,12 +171,47 @@ export default async function JobDetailPage({
               for positions still taking applications.
             </p>
           </div>
+        ) : isEmployer ? (
+          <div
+            role="status"
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-8 text-center dark:border-slate-700 dark:bg-slate-900/60"
+          >
+            <h2 className="font-display text-lg font-bold text-ink dark:text-slate-100">
+              Employers cannot apply for jobs.
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+              You&apos;re signed in as an employer. Manage your listings from the{" "}
+              <Link
+                href="/dashboard/listings"
+                className="font-semibold text-brand-700 hover:underline dark:text-brand-300"
+              >
+                dashboard
+              </Link>
+              .
+            </p>
+          </div>
         ) : (
-          <RealApplyPanel
-            jobId={job.id}
-            jobTitle={job.title}
-            requiredSkills={job.skills}
-          />
+          <>
+            {isSignedOut && (
+              <div
+                role="note"
+                className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+              >
+                You must be signed in to apply.{" "}
+                <Link
+                  href="/login"
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Sign in here.
+                </Link>
+              </div>
+            )}
+            <RealApplyPanel
+              jobId={job.id}
+              jobTitle={job.title}
+              requiredSkills={job.skills}
+            />
+          </>
         )}
       </div>
     </div>

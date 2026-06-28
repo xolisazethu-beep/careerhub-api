@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { auth } from "@/auth";
 import Providers from "./providers";
 import { AuthProvider } from "@/context/AuthContext";
 import { EmployerAuthProvider } from "@/context/EmployerAuthContext";
@@ -47,9 +48,14 @@ const themeBootScript = `
 })();
 `;
 
-export default function RootLayout({
+// The root layout is async (Assignment 2.3, Part 5): it reads the Auth.js
+// session once with `await auth()` and hands it to the nav. This is cheap even
+// though it runs on every page load — `auth()` only verifies the signed session
+// COOKIE (no database round-trip), and the layout already renders on the server.
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -62,7 +68,7 @@ export default function RootLayout({
             <ApplicantAuthProvider>
             <ToastProvider>
               <div className="flex min-h-screen flex-col">
-                <Navbar />
+                <Navbar session={session} />
                 <main className="flex-1">{children}</main>
                 <Footer />
               </div>

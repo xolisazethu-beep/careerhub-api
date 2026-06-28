@@ -71,6 +71,14 @@ interface StoreShape {
    * the effective status as `override ?? baseStatus`.
    */
   jobStatus: Record<string, string>;
+  /**
+   * Hard-deleted job ids (Week 2 Day 4 — optimistic DELETE /api/jobs/{id}).
+   * Like `jobStatus`, this is a side-table keyed off the job id so a *seed* job
+   * (which lives in an immutable module array) can be "deleted" without mutating
+   * that module — every job-listing read filters these ids out. Recruiter jobs
+   * are additionally spliced from `jobs`, so both sources disappear uniformly.
+   */
+  deletedJobs: string[];
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -91,6 +99,7 @@ async function load(): Promise<StoreShape> {
     jobs: [],
     users: [],
     jobStatus: {},
+    deletedJobs: [],
   };
   try {
     const raw = await fs.readFile(DATA_FILE, "utf8");
@@ -100,6 +109,7 @@ async function load(): Promise<StoreShape> {
       jobs: json.jobs ?? [],
       users: json.users ?? [],
       jobStatus: json.jobStatus ?? {},
+      deletedJobs: json.deletedJobs ?? [],
     };
   } catch {
     // No file yet (first run) — start empty. Any malformed file resets cleanly.
@@ -246,6 +256,40 @@ export async function setJobStatus(id: string, status: string): Promise<void> {
   const store = await load();
   store.jobStatus[id] = status;
   await persist(store);
+}
+
+// ---------- Job deletion (Week 2 Day 4) ----------
+
+/** The set of hard-deleted job ids — every listing read filters these out. */
+export async function getDeletedJobIds(): Promise<string[]> {
+  const store = await load();
+  return store.deletedJobs;
+}
+
+/**
+ * Hard-delete a job by id. Returns true if the id matched a known job (seed or
+ * recruiter), false otherwise so the route can answer 404. A recruiter job is
+ * also spliced from `jobs`; either way the id is recorded in `deletedJobs` so
+ * every job-listing read excludes it from then on.
+ */
+export async function deleteJobById(
+  id: string,
+  existsInSeed: boolean,
+): Promise<boolean> {
+  const store = await load();
+  const recruiterIndex = store.jobs.findIndex((j) => j.id === id);
+  if (recruiterIndex === -1 && !existsInSeed) {
+    // Unknown id (and not already recorded as deleted) → genuine 404.
+    if (!store.deletedJobs.includes(id)) return false;
+  }
+  if (recruiterIndex !== -1) {
+    store.jobs.splice(recruiterIndex, 1);
+  }
+  if (!store.deletedJobs.includes(id)) {
+    store.deletedJobs.push(id);
+  }
+  await persist(store);
+  return true;
 }
 
 // ---------- Users / authentication ----------

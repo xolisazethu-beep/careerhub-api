@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import JobLinkCard from "@/components/JobLinkCard";
-import JobSearchBar from "@/components/JobSearchBar";
-import { JOBS_API_BASE, toSummaryView } from "@/lib/jobs-api";
+import JobFilters from "@/components/JobFilters";
+import {
+  JOBS_API_BASE,
+  toSummaryView,
+  type JobSummaryView,
+} from "@/lib/jobs-api";
 import type { JobListingResponse, PagedResponse } from "@/types";
 
 export const metadata: Metadata = {
@@ -10,43 +14,69 @@ export const metadata: Metadata = {
   description: "Live job listings, fetched on the server from the CareerHub API.",
 };
 
-// Reading `searchParams` already opts this route into dynamic rendering, so we
-// no longer force it. That matters for Assignment 2.2: the jobs fetch below is
-// CACHED (tagged "jobs") in the Data Cache, so refreshing /jobs does NOT re-hit
-// the API — until the close action's revalidateTag("jobs") clears that tag.
-
 /** Matches the page size requested below and the skeleton count in loading.tsx. */
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 50;
+
+type StatusFilter = "open" | "all";
 
 type SearchParams = {
   q?: string;
   location?: string;
-  sort?: string;
+  status?: string;
 };
 
-/** Map the UI sort choice to the backend's sort+dir query params. */
-function sortToApi(sort?: string): string {
-  switch (sort) {
-    case "oldest":
-      return "&sort=postedat&dir=asc";
-    case "salary_high":
-      return "&sort=salarymax&dir=desc";
-    case "salary_low":
-      return "&sort=salarymin&dir=asc";
-    default: // newest
-      return "&sort=postedat&dir=desc";
+/**
+ * getJobs — fetch then FILTER (Assignment 2.3, Part 6).
+ *
+ * The fetch is still cached + tagged "jobs" (so the close action's
+ * revalidateTag("jobs") invalidates it). The mock API does not filter, so the
+ * FULL unfiltered result is what the Data Cache stores; we then filter it in
+ * JavaScript here — after cache retrieval — using the URL-derived params. That
+ * means refreshing a filtered URL serves the cached list and re-filters with no
+ * outbound fetch, until a close revalidates the tag.
+ */
+async function getJobs({
+  q,
+  location,
+  status,
+}: {
+  q: string;
+  location: string;
+  status: StatusFilter;
+}): Promise<JobSummaryView[]> {
+  const res = await fetch(
+    `${JOBS_API_BASE}/api/jobs?page=1&pageSize=${PAGE_SIZE}`,
+    { cache: "force-cache", next: { tags: ["jobs"] } },
+  );
+  if (!res.ok) {
+    throw new Error(`The API responded ${res.status} ${res.statusText}`);
   }
+  const payload = (await res.json()) as PagedResponse<JobListingResponse>;
+  let jobs = payload.data.map(toSummaryView);
+
+  if (q) {
+    const needle = q.toLowerCase();
+    jobs = jobs.filter(
+      (j) =>
+        j.title.toLowerCase().includes(needle) ||
+        j.company.toLowerCase().includes(needle),
+    );
+  }
+  if (location) {
+    const needle = location.toLowerCase();
+    jobs = jobs.filter((j) => j.location.toLowerCase().includes(needle));
+  }
+  if (status === "open") {
+    jobs = jobs.filter((j) => j.status !== "Closed");
+  }
+
+  return jobs;
 }
 
 /**
- * /jobs — the candidate-facing listing, as a Server Component (Assignment 2.1).
- *
- * The fetch runs ON THE SERVER while this page renders, so the job data is baked
- * into the HTML the browser receives — there is NO browser-side request to the
- * jobs API on load. `cache: "no-store"` opts out of Next's server-side fetch
- * cache: every request re-fetches, so a job posted seconds ago (the backend
- * sorts newest-first) is on this page immediately. While the fetch is in flight
- * Next streams `loading.tsx` via Suspense.
+ * /jobs — the candidate-facing listing (Server Component). The filter state
+ * lives in the URL (Part 6): this page reads `searchParams`, passes the values
+ * to getJobs(), and renders the client <JobFilters/> that writes them back.
  */
 export default async function JobsPage({
   searchParams,
@@ -56,36 +86,16 @@ export default async function JobsPage({
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   const location = (sp.location ?? "").trim();
+  const status: StatusFilter = sp.status === "open" ? "open" : "all";
 
-  // Build the backend query. Search (q), place (location) and sort all run on
-  // the SERVER/DATABASE — the API already supports them — so results are filtered
-  // before they ever reach the browser.
-  let query = `/api/jobs?page=1&pageSize=${PAGE_SIZE}`;
-  if (q) query += `&q=${encodeURIComponent(q)}`;
-  if (location) query += `&location=${encodeURIComponent(location)}`;
-  query += sortToApi(sp.sort);
+  const hasFilters = Boolean(q || location || status === "open");
 
-  const hasFilters = Boolean(q || location || (sp.sort && sp.sort !== "newest"));
-
-  let payload: PagedResponse<JobListingResponse>;
+  let jobs: JobSummaryView[];
   try {
-    // CACHE STRATEGY (Part 3): cached + tagged "jobs". `force-cache` opts this
-    // fetch into Next 15's Data Cache (fetches are uncached by default in 15),
-    // and the "jobs" tag is the handle the close Server Action clears with
-    // revalidateTag("jobs") — so a closed listing shows here on the next load.
-    const res = await fetch(`${JOBS_API_BASE}${query}`, {
-      cache: "force-cache",
-      next: { tags: ["jobs"] },
-    });
-    if (!res.ok) {
-      throw new Error(`The API responded ${res.status} ${res.statusText}`);
-    }
-    payload = (await res.json()) as PagedResponse<JobListingResponse>;
+    jobs = await getJobs({ q, location, status });
   } catch {
     return <BoardUnavailable />;
   }
-
-  const jobs = payload.data.map(toSummaryView);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -95,13 +105,13 @@ export default async function JobsPage({
         </h1>
         <p className="mt-2 text-slate-600 dark:text-slate-400">
           {hasFilters
-            ? `${payload.totalCount.toLocaleString()} ${payload.totalCount === 1 ? "match" : "matches"}${q ? ` for “${q}”` : ""}${location ? ` in ${location}` : ""}`
-            : `${payload.totalCount.toLocaleString()} live listings, fetched on the server straight from the CareerHub API.`}
+            ? `${jobs.length.toLocaleString()} ${jobs.length === 1 ? "match" : "matches"}${q ? ` for “${q}”` : ""}${location ? ` in ${location}` : ""}`
+            : `${jobs.length.toLocaleString()} live listings, fetched on the server straight from the CareerHub API.`}
         </p>
       </header>
 
       <div className="mb-8">
-        <JobSearchBar />
+        <JobFilters />
       </div>
 
       {jobs.length === 0 ? (
@@ -137,8 +147,7 @@ export default async function JobsPage({
 /**
  * Friendly fallback when the jobs API can't be reached even after retries.
  * A Server Component (no client JS): the "Refresh" link is a plain anchor that
- * reloads /jobs, which re-runs the server fetch — by then the backend is usually
- * warm. This guarantees the route degrades calmly instead of crashing.
+ * reloads /jobs, which re-runs the server fetch.
  */
 function BoardUnavailable() {
   return (

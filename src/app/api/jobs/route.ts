@@ -1,16 +1,6 @@
 import { NextResponse } from "next/server";
-import { JOBS as SEED } from "@/lib/seed-jobs";
-import {
-  listJobs,
-  countApplicationsByJob,
-  getJobStatusOverrides,
-} from "@/lib/server-store";
-import type {
-  JobListing,
-  JobListingResponse,
-  PagedResponse,
-} from "@/types";
-import type { RecruiterJob } from "@/lib/server-store";
+import { getMergedJobResponses } from "@/lib/job-board";
+import type { JobListingResponse, PagedResponse } from "@/types";
 
 /**
  * Mock backend: GET /api/jobs — the candidate board + employer dashboard source.
@@ -31,54 +21,6 @@ import type { RecruiterJob } from "@/lib/server-store";
  * Only GET is exported, so any other verb gets Next.js's automatic 405.
  */
 
-/** Adapt a seed `JobListing` (UI model) back into the API's lean wire shape. */
-function seedToResponse(job: JobListing, applicantCount: number, status: string): JobListingResponse {
-  return {
-    id: job.id,
-    title: job.title,
-    location: job.location,
-    type: job.employmentType,
-    salaryMin: job.salaryMin || null,
-    salaryMax: job.salaryMax || null,
-    status,
-    createdAt: job.postedAt,
-    expiresAt: job.closingDate,
-    companyId: job.company.toLowerCase().replace(/\s+/g, "-"),
-    companyName: job.company,
-    companyCity: job.location,
-    minimumExperienceYears: job.minimumExperienceYears,
-    responsibilities: job.responsibilities,
-    skills: job.skills,
-    applicantCount,
-  };
-}
-
-/** Adapt a recruiter-posted job into the same wire shape. */
-function recruiterToResponse(
-  job: RecruiterJob,
-  applicantCount: number,
-  status: string,
-): JobListingResponse {
-  return {
-    id: job.id,
-    title: job.title,
-    location: job.location,
-    type: job.type,
-    salaryMin: job.salaryMin,
-    salaryMax: job.salaryMax,
-    status,
-    createdAt: job.createdAt,
-    expiresAt: job.expiresAt,
-    companyId: job.company.toLowerCase().replace(/\s+/g, "-"),
-    companyName: job.company,
-    companyCity: job.location,
-    minimumExperienceYears: job.minimumExperienceYears,
-    responsibilities: job.responsibilities,
-    skills: job.skills,
-    applicantCount,
-  };
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -88,33 +30,9 @@ export async function GET(request: Request) {
   const sort = (searchParams.get("sort") ?? "postedat").toLowerCase();
   const dir = (searchParams.get("dir") ?? "desc").toLowerCase();
 
-  const [recruiterJobs, overrides] = await Promise.all([
-    listJobs(),
-    getJobStatusOverrides(),
-  ]);
-
-  // Recruiter jobs first (newest postings on top), then the seed board. Each
-  // row's status is the override if one exists, otherwise its natural status.
-  const recruiterItems = await Promise.all(
-    recruiterJobs.map(async (j) =>
-      recruiterToResponse(
-        j,
-        await countApplicationsByJob(j.id),
-        overrides[j.id] ?? "Active",
-      ),
-    ),
-  );
-  const seedItems = await Promise.all(
-    SEED.map(async (j) =>
-      seedToResponse(
-        j,
-        j.applicantCount + (await countApplicationsByJob(j.id)),
-        overrides[j.id] ?? (j.isActive ? "Active" : "Closed"),
-      ),
-    ),
-  );
-
-  let all = [...recruiterItems, ...seedItems];
+  // The merged board (seed + recruiter jobs, statuses resolved, deleted removed)
+  // is assembled in one shared place — see src/lib/job-board.ts.
+  let all = await getMergedJobResponses();
 
   // Server-side search / filter (Assignment 2.1 feature, now over in-app data).
   if (q) {

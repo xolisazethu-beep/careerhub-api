@@ -3,6 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { SessionProvider } from "next-auth/react";
 
 /**
  * Client-side provider boundary for TanStack Query.
@@ -43,10 +45,20 @@ export default function Providers({ children }: { children: ReactNode }) {
       }),
   );
 
+  // NuqsAdapter sits at the OUTERMOST level so every client component below can
+  // read/write filter state from the URL via nuqs (Week 2 Day 4 — /jobs/explore).
+  // It only wires nuqs to Next's App Router; it does not render any DOM of its own.
+  // SessionProvider (Auth.js v5) exposes the session to client components via
+  // useSession(); the server already has it through auth(). NuqsAdapter stays the
+  // outermost wrapper so URL-filter state works everywhere below it.
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <NuqsAdapter>
+      <SessionProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
+      </SessionProvider>
+    </NuqsAdapter>
   );
 }

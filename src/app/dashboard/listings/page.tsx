@@ -6,6 +6,7 @@ import ApplicationsSummary, {
 import ListingsTable, {
   ListingsTableSkeleton,
 } from "@/components/ListingsTable";
+import DashboardToolbar from "@/components/DashboardToolbar";
 
 export const metadata: Metadata = {
   title: "All listings — Employer Dashboard",
@@ -43,7 +44,13 @@ export default async function DashboardListingsPage() {
         <ApplicationsSummary />
       </Suspense>
 
-      {/* Boundary 2 — the slower joined table. Resolves independently, second. */}
+      {/* Part 7 — client toolbar (table/grid + show-closed) backed by Zustand.
+          Renders instantly outside Suspense; shares the store with ListingsView. */}
+      <div className="mt-8">
+        <DashboardToolbar />
+      </div>
+
+      {/* Boundary 2 — the slower joined table/grid. Resolves independently. */}
       <Suspense fallback={<ListingsTableSkeleton />}>
         <ListingsTable />
       </Suspense>
