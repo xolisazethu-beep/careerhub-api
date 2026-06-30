@@ -80,6 +80,136 @@ flagged in code), so the flow is fully functional for the demo.
 
 ---
 
+# Testing (Week 3 Day 2)
+
+![Tests](https://github.com/xolisazethu-beep/careerhub-api/actions/workflows/test.yml/badge.svg)
+
+Run locally:
+
+```bash
+npm run test:run     # one-shot, exits cleanly (CI)
+npm test             # watch mode
+```
+
+**Suite:** 12 tests across 5 files — `vitest` + Testing Library + `user-event`,
+`jsdom`, and **MSW** for real HTTP interception. Setup lives in
+`src/test/{setup.ts,utils.tsx,msw/}`; `renderWithProviders` wraps every component
+in `QueryClientProvider` (retry off), the nuqs testing adapter, and `AuthProvider`,
+and controls a fake `useSession`.
+
+### A note on adaptation (important)
+
+This assignment was written against the **old 3-step ApplicationWizard** (`useSession`,
+an HTTP submit, a "review" step, a "Discard draft" banner). Assignment 3.2 replaced it
+with the **5-step `JobApplicationWizard`**: auth arrives as a `user` **prop** (the page
+gates with `AuthContext`), submit is a **localStorage** write, and the summary lives on
+a separate confirmation page. So the demo pattern was **adapted**, not copied:
+
+| Assignment expectation | Real component tested | Why |
+|---|---|---|
+| Wizard navigation/validation | `JobApplicationWizard` | The actual 5-step flow + real step headings |
+| Auth gate on "Next" | `/apply/[jobId]` page (`apply-gate.test.tsx`) | Gating moved to the page (wizard assumes a user) |
+| MSW submit happy/error | `ApplicationForm` (`ApplicationForm.test.tsx`) | It's the component that POSTs + `reset()`s; the wizard writes localStorage |
+| AlertDialog confirm | `CloseJobButton` (`CloseJobButton.test.tsx`) | Real destructive flow (Server Action mocked — MSW can't intercept actions) |
+| Draft persistence | `JobApplicationWizard` (`draft-persistence.test.tsx`) | Real jsdom localStorage round-trip |
+
+## Part 1 — Written Decisions
+
+### Q1 — What is worth testing?
+
+**A. High-value behaviours.**
+1. *Step gating* — Next must not advance while a step is invalid. A regression here
+   lets a candidate submit half a form; a test catches it instantly.
+2. *Back preserves answers* — losing typed values on Back is the exact bug that makes
+   people abandon an application. High user cost, easy to regress (e.g. unmounting the form).
+3. *Required-document/consent gate before submit* — submitting without a CV or consent
+   is a data-integrity failure.
+4. *Submit happy/error path* (ApplicationForm) — on success the form must clear; on a
+   500 it must keep the user's input so they can retry. Both are invisible until they break.
+
+**B. NOT worth testing.** Exact Tailwind class strings (`"bg-brand-600"`) and the DOM
+shape (number of `<div>`s, count of `role="status"` nodes). Testing them would let a test
+fail on a purely visual refactor that changed nothing the user experiences — high
+maintenance cost, zero behavioural signal. We assert *roles, labels and visible text*
+instead, which survive restyling.
+
+**C. Draft persistence — real vs mocked localStorage.** We use the **real jsdom
+localStorage**. The behaviour under test *is* the round-trip — write on save, read and
+restore on mount — so the real implementation proves the data actually survives and
+repopulates the form the user sees. A `vi.spyOn` mock would only prove a method was
+*called* with some key; it cannot prove the value comes back or lands in the right field.
+(What jsdom can't prove: real cross-tab `storage` events or browser eviction under quota —
+those need a real browser.)
+
+### Q2 — Mocking the session
+
+- **Approach 1 — `vi.mock("next-auth/react")`:** replaces the module so `useSession`
+  returns whatever we set. It mocks *only* the hook; the rest of the component tree stays
+  real. Fast, no provider needed, and lets each test pick authenticated/null per case.
+- **Approach 2 — real `SessionProvider` with a fake session:** exercises the real provider
+  + context wiring; only the network/JWT verification is absent.
+
+We use **Approach 1** in `renderWithProviders` — it's the lightest way to drive the auth
+state and keeps tests independent. (Caveat specific to CareerHub: the components we test
+read identity from a `user` **prop** / `AuthContext`, not `useSession`, so the auth-gate
+test plants `careerhub.session` in localStorage rather than leaning on the session mock —
+documented in `apply-gate.test.tsx`.)
+
+### Q3 — MSW scope
+
+Requests over the wizard/form lifetime:
+
+| Method | URL pattern | Happy-path response |
+|---|---|---|
+| `GET` | `${API_BASE}/api/jobs/:id` | 200 + a `JobListingDetailResponse` (apply page hydrates the job) |
+| `POST` | `${API_URL}/api/applications` | 201 + `{ id, jobId, email, submittedAt }` (ApplicationForm submit) |
+| `GET` | `${API_BASE}/api/jobs` | 200 + empty paged envelope (TanStack Query invalidates `["jobs"]` after submit) |
+
+**What MSW cannot test here:** the **5-step wizard's own submit** — it writes to
+`localStorage` (the backend isn't wired yet), so no HTTP request leaves the app for MSW to
+intercept. Same for `CloseJobButton`, which calls a **Server Action**, not `fetch`. MSW
+intercepts network requests; neither path is a network request, so those are covered by
+asserting observable state (confirmation render / "Closed …" state) with the action mocked.
+
+### Q4 — Test naming as specification
+
+- a) *implementation* (asserts internal `currentStep` state) → **"advances to the schedule
+  step after completing step 1"**.
+- b) *behaviour* — already good.
+- c) *implementation* (asserts `localStorage.setItem` was called) → **"keeps the draft so a
+  returning user resumes where they left off"**.
+- d) *behaviour* — already good.
+- e) *implementation* (counts `div`s) → **"announces each step to assistive technology"**
+  (if that's the intent) — otherwise delete it.
+
+## README Updates
+
+**1. What makes a test high-value here.** I prioritised the flows where a regression
+silently costs a candidate their application: step gating, Back-preserves-values, and the
+submit success/error paths. I deliberately did **not** test class names or DOM structure —
+they change on any restyle and assert nothing the user perceives.
+
+**2. Session mocking approach.** `vi.mock("next-auth/react")` (Approach 1), set per render
+by `renderWithProviders`. It verifies the app behaves correctly for a given auth state; it
+does **not** verify real JWT/cookie validation (out of scope for component tests). Because
+the tested components actually use `AuthContext`, the gate test plants the localStorage
+session — a faithful test of the real mechanism.
+
+**3. The localStorage question.** Real jsdom localStorage (no spy). It proves the
+write→reload→restore round-trip actually repopulates the visible form; a spy would only
+prove a setter was called. jsdom can't prove real cross-tab events or quota eviction.
+
+**4. One test that surprised me.** The wizard "advance to step 2" test was intermittently
+failing only under full-suite load. The failing test told me the component's `Next`
+handler validates **asynchronously** and updates the step **after** the `await` — so the
+re-render lands outside Testing Library's `act()` window and a bare assertion can race it.
+The fix wasn't in the component (its behaviour is correct in a browser) but in the test: a
+`clickNext` helper that flushes the async continuation inside `act()` before asserting.
+That was a gap in my understanding of how async event handlers interact with `act`, not a
+product bug.
+
+---
+
 # CareerHub — Assignment 2.3
 
 **Authentication & Smart State — Protect the Right Things, Show the Right Things to the Right People**

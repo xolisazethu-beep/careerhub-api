@@ -89,8 +89,17 @@ function splitName(full: string): { fullNames: string; surname: string } {
 
 export default function JobApplicationWizard({ job, user }: Props) {
   const router = useRouter();
-  const [step, setStep] = useQueryState("step", parseAsInteger.withDefault(0));
-  const current = Math.min(Math.max(step ?? 0, 0), LAST_STEP);
+  // The URL (?step=) is the durable mirror: read once to initialise position
+  // (so a refresh resumes there) and written on every change. Rendering is
+  // driven by local state, NOT by reading the nuqs value back — that keeps step
+  // changes synchronous and deterministic instead of depending on a URL
+  // read-after-write round-trip.
+  const [urlStep, setUrlStep] = useQueryState(
+    "step",
+    parseAsInteger.withDefault(0).withOptions({ history: "replace" }),
+  );
+  const clampStep = (n: number) => Math.min(Math.max(n, 0), LAST_STEP);
+  const [current, setCurrent] = useState(() => clampStep(urlStep ?? 0));
 
   const [maxReached, setMaxReached] = useState(current);
   const [docs, setDocs] = useState<Partial<Record<DocumentType, UploadedDoc>>>({});
@@ -115,8 +124,10 @@ export default function JobApplicationWizard({ job, user }: Props) {
     const draft = getWizardDraft(user.email, job.id);
     if (draft) {
       reset({ ...WIZARD_EMPTY, ...draft.values });
-      setStep(Math.min(Math.max(draft.step, 0), LAST_STEP));
-      setMaxReached(Math.min(Math.max(draft.step, 0), LAST_STEP));
+      const dstep = clampStep(draft.step);
+      setCurrent(dstep);
+      setMaxReached(dstep);
+      void setUrlStep(dstep);
       setRestored(true);
       return;
     }
@@ -181,9 +192,10 @@ export default function JobApplicationWizard({ job, user }: Props) {
   }
 
   function goto(target: number) {
-    const clamped = Math.min(Math.max(target, 0), LAST_STEP);
-    setStep(clamped);
+    const clamped = clampStep(target);
+    setCurrent(clamped);
     setMaxReached((m) => Math.max(m, clamped));
+    void setUrlStep(clamped); // mirror into the URL (best-effort)
   }
 
   async function next() {
