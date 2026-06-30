@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CareerHubX · Assignment 3.2 Walkthrough</title>
+<style>
+  :root {
+    --brand: #7c3aed; --brand2: #d946ef; --ink: #140a24; --slate: #475569;
+    --line: #e2e8f0; --bg: #ffffff; --code: #0f0a1e;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: #1e293b; margin: 0; line-height: 1.5; }
+  .page { padding: 48px 56px; max-width: 880px; margin: 0 auto; }
+  .page + .page { page-break-before: always; }
+  h1 { font-size: 30px; color: var(--ink); margin: 0 0 4px; }
+  h2 { font-size: 22px; color: var(--brand); border-bottom: 2px solid var(--line); padding-bottom: 6px; margin-top: 6px; }
+  h3 { font-size: 15px; color: var(--ink); margin: 20px 0 6px; }
+  p, li { font-size: 12.5px; color: #334155; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 11.5px; color: #6d28d9; font-family: Consolas, monospace; }
+  pre { background: var(--code); color: #e2e8f0; padding: 14px 16px; border-radius: 10px; font-size: 11px; line-height: 1.45; overflow:auto; font-family: Consolas, monospace; }
+  pre .c { color: #94a3b8; } pre .k { color: #c4b5fd; } pre .s { color: #6ee7b7; } pre .f { color: #f0abfc; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 11.5px; }
+  th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; vertical-align: top; }
+  th { background: #f8fafc; color: var(--ink); }
+  .tag { display:inline-block; background: #f5f3ff; color: var(--brand); border:1px solid #ddd6fe; border-radius: 999px; padding: 2px 10px; font-size: 11px; font-weight:600; }
+  .ok { color: #059669; font-weight: 700; }
+  .warn { color: #b45309; font-weight: 700; }
+  .cover { background: linear-gradient(135deg, #1c0f33, #140a24); color: #fff; min-height: 100vh; display:flex; flex-direction:column; justify-content:center; padding: 64px; }
+  .cover h1 { color:#fff; font-size: 40px; }
+  .cover .sub { color:#c4b5fd; font-size: 18px; margin-top: 8px; }
+  .cover .meta { margin-top: 40px; color:#cbd5e1; font-size: 13px; }
+  .mark { width:64px;height:64px;border-radius:16px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;margin-bottom:24px;}
+  .wordmark { font-size: 26px; font-weight: 800; }
+  .wordmark .a { color:#c4b5fd; } .wordmark .b { color:#fff; }
+  .mock { border:1px solid var(--line); border-radius:12px; padding:16px; margin:10px 0; background:#fcfcfd; }
+  .steps { display:flex; align-items:center; gap:6px; margin: 6px 0 14px; }
+  .circle { width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid var(--line); color:#94a3b8;}
+  .circle.on { background: var(--brand); color:#fff; border-color: var(--brand); }
+  .circle.done { background:#ede9fe; color: var(--brand); border-color: var(--brand);}
+  .bar { flex:1; height:2px; background: var(--line); } .bar.on { background: var(--brand); }
+  .callout { border-left: 4px solid var(--brand); background:#faf5ff; padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 12px; }
+  .callout.warn { border-color:#f59e0b; background:#fffbeb; }
+  .doc { display:flex; justify-content:space-between; align-items:center; border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; font-size:12px;}
+  .pill { background: var(--brand); color:#fff; border-radius:8px; padding:4px 10px; font-size:11px; font-weight:600;}
+  small { color: var(--slate); }
+  ul { margin: 6px 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="cover">
+  <div class="mark">
+    <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
+      <defs><linearGradient id="g" x1="6" y1="6" x2="38" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#d946ef"/></linearGradient></defs>
+      <circle cx="20" cy="20" r="14" stroke="url(#g)" stroke-width="3.5"/>
+      <rect x="30.5" y="30.5" width="13" height="5" rx="2.5" transform="rotate(45 30.5 30.5)" fill="url(#g)"/>
+      <circle cx="20" cy="16.5" r="4.2" fill="url(#g)"/>
+      <path d="M11.5 29.5c0-4.7 3.8-8 8.5-8s8.5 3.3 8.5 8c0 .9-.7 1.6-1.6 1.6H13.1c-.9 0-1.6-.7-1.6-1.6Z" fill="url(#g)"/>
+    </svg>
+  </div>
+  <div class="wordmark"><span class="a">Career</span><span class="b">HubX</span></div>
+  <h1>Assignment 3.2 — Walkthrough</h1>
+  <div class="sub">Multi-step application wizard, document uploads, branding &amp; the testing suite</div>
+  <div class="meta">
+    Next.js 15 · React 19 · TypeScript · Tailwind v4 · TanStack Query · nuqs · Auth.js<br/>
+    Testing: Vitest · Testing Library · user-event · MSW · jsdom · GitHub Actions<br/>
+    Prepared 2026-06-30 · Branch <code style="color:#c4b5fd;background:rgba(255,255,255,.08)">CareerHub-3.1</code>
+  </div>
+</section>
+
+<!-- OVERVIEW -->
+<section class="page">
+  <h1>0 · Overview &amp; what shipped</h1>
+  <p>This document walks through everything delivered in this session, how it was built, the key
+  code, how the UI behaves, and a one-page terminal runbook (frontend + backend + Docker + tests).</p>
+
+  <h3>Two bodies of work</h3>
+  <table>
+    <tr><th>Assignment 3.2 — Feature build</th><th>Assignment 3.2 — Testing</th></tr>
+    <tr>
+      <td>① 5-step Job Application Wizard<br/>② Document uploads (PDF, conditional, consent)<br/>③ CareerHubX branding<br/>④ Backend contract / gap list</td>
+      <td>Part 1 written decisions · Part 2 Vitest setup · Part 3 wizard tests · Part 4 MSW network tests · Part 5 GitHub Actions CI</td>
+    </tr>
+  </table>
+
+  <h3>Verification status</h3>
+  <table>
+    <tr><th>Check</th><th>Command</th><th>Result</th></tr>
+    <tr><td>Type check</td><td><code>npx tsc --noEmit</code></td><td class="ok">0 errors</td></tr>
+    <tr><td>Production build</td><td><code>npm run build</code></td><td class="ok">compiles (all routes)</td></tr>
+    <tr><td>Tests</td><td><code>npm run test:run</code></td><td class="ok">12 passed / 12</td></tr>
+    <tr><td>CI</td><td>GitHub Actions on push/PR → main</td><td class="ok">workflow committed</td></tr>
+  </table>
+
+  <div class="callout warn"><strong>Backend &amp; Docker note.</strong> The live ASP.NET/PostgreSQL backend
+  (<code>careerhub-api</code>) is a separate repository and is <strong>not in this workspace</strong>, so it
+  could not be built or run via Docker from here. The testing assignment does not need it (tests use MSW + jsdom).
+  Where the new features need persistence the frontend is wired to the <em>real contract names</em> and falls back
+  to <code>localStorage</code> (clearly flagged) so the flow is fully functional for a demo. The exact endpoints/DTOs
+  the backend must add are specified in <code>docs/BACKEND-GAPS.md</code>. The terminal runbook (§6) includes the
+  Docker commands for when the backend repo is present.</div>
+</section>
+
+<!-- FEATURE 1: WIZARD -->
+<section class="page">
+  <h1>1 · The 5-step application wizard</h1>
+  <span class="tag">Feature 1</span> &nbsp; <code>src/components/apply/JobApplicationWizard.tsx</code> · route <code>/apply/[jobId]</code>
+
+  <h3>What it does</h3>
+  <div class="steps">
+    <div class="circle done">✓</div><div class="bar on"></div>
+    <div class="circle on">2</div><div class="bar"></div>
+    <div class="circle">3</div><div class="bar"></div>
+    <div class="circle">4</div><div class="bar"></div>
+    <div class="circle">5</div>
+  </div>
+  <table>
+    <tr><th>#</th><th>Step</th><th>Collects</th></tr>
+    <tr><td>1</td><td>Personal information</td><td>full name(s), surname, gender, race (optional + “Prefer not to say”), date of birth, disability (+details if Yes), nationality</td></tr>
+    <tr><td>2</td><td>Contact details</td><td>email, phone, alternate phone, address, city, province (SA + Other), postal code</td></tr>
+    <tr><td>3</td><td>Qualifications</td><td>highest qualification, institution, year, employment status, years of experience, LinkedIn/portfolio</td></tr>
+    <tr><td>4</td><td>Job-specific</td><td>motivation (≥100 chars), expected salary (ZAR), notice period, start date, willing to relocate</td></tr>
+    <tr><td>5</td><td>Documents &amp; consent</td><td>required PDFs (§2) + three consent checkboxes</td></tr>
+  </table>
+
+  <h3>How it’s built</h3>
+  <ul>
+    <li><strong>One Zod schema</strong> (<code>src/lib/apply-wizard.ts</code>) with per-step field lists; <strong>React Hook Form</strong> validates only the current step before Next.</li>
+    <li><strong>nuqs</strong> keeps position in the URL (<code>?step=</code>) so a refresh resumes there.</li>
+    <li><strong>Save as Draft</strong> on every step (localStorage fallback) + profile pre-fill.</li>
+    <li><strong>Accessible progress bar</strong> (<code>WizardProgress.tsx</code>): <code>aria-current="step"</code>, visited steps are keyboard-focusable buttons, collapses to “Step N of M” under <code>md</code>.</li>
+    <li><strong>Submit</strong> → AlertDialog confirm → <code>sonner</code> toast → redirect to a printable confirmation page.</li>
+  </ul>
+
+  <h3>Key code — per-step validation gate</h3>
+<pre><span class="c">// trigger() validates ONLY the current step's fields before advancing</span>
+<span class="k">async function</span> next() {
+  <span class="k">const</span> valid = <span class="k">await</span> trigger(STEP_FIELDS[current], { shouldFocus: <span class="k">true</span> });
+  <span class="k">if</span> (!valid) <span class="k">return</span>;        <span class="c">// blocked — errors render inline</span>
+  persistDraft(current + <span class="s">1</span>);    <span class="c">// Save-as-Draft semantics on every advance</span>
+  goto(current + <span class="s">1</span>);
+}</pre>
+
+  <h3>Key code — URL as a durable mirror (robust + testable)</h3>
+<pre><span class="k">const</span> [urlStep, setUrlStep] = useQueryState(<span class="s">"step"</span>,
+  parseAsInteger.withDefault(<span class="s">0</span>).withOptions({ history: <span class="s">"replace"</span> }));
+<span class="k">const</span> [current, setCurrent] = useState(() => clampStep(urlStep ?? <span class="s">0</span>)); <span class="c">// read once</span>
+<span class="k">function</span> goto(target) { setCurrent(clampStep(target)); void setUrlStep(target); } <span class="c">// write on change</span></pre>
+</section>
+
+<!-- FEATURE 2: DOCUMENTS -->
+<section class="page">
+  <h1>2 · Documents step (PDF uploads + consent)</h1>
+  <span class="tag">Feature 2</span> &nbsp; <code>src/components/apply/DocumentUpload.tsx</code>
+
+  <h3>How the UI behaves</h3>
+  <div class="mock">
+    <div class="doc"><span>📄 <strong>CV / Résumé</strong> &nbsp; <small>alice@example.com → <code>aliceexamplecom-Cv.pdf</code> · 248 KB</small></span><span><span class="pill">View</span> &nbsp;🗑 Remove</span></div>
+    <div class="doc" style="border-style:solid;border-color:#c4b5fd;background:#faf5ff;"><span>⤓ <strong>Driver’s Licence</strong> &nbsp; <small>Drag &amp; drop or browse · PDF only, up to 3 MB</small></span><span class="pill">Upload</span></div>
+    <small>“No special characters or spaces in filenames — uploads are renamed automatically to <code>{userId}-{document}.pdf</code>.”</small>
+  </div>
+  <ul>
+    <li>Drag-and-drop <em>or</em> click; <strong>PDF only, max 3 MB</strong>, validated with <strong>inline</strong> errors (not toasts).</li>
+    <li>Display name is server-style sanitised; size shown in KB; <strong>Remove</strong> is guarded by an AlertDialog.</li>
+  </ul>
+
+  <h3>Conditional document matrix</h3>
+  <table>
+    <tr><th>Document</th><th>Required</th><th>Condition</th></tr>
+    <tr><td>ID Document (SA) <em>or</em> Passport</td><td>Yes</td><td>by nationality (step 1)</td></tr>
+    <tr><td>Matric Results</td><td>Yes</td><td>always</td></tr>
+    <tr><td>Tertiary Qualification</td><td>Conditional</td><td>if step-3 qualification is tertiary</td></tr>
+    <tr><td>Driver’s Licence</td><td>Conditional</td><td>if the job requires it</td></tr>
+    <tr><td>Motivation Letter / CV</td><td>Yes</td><td>always</td></tr>
+  </table>
+
+  <h3>Key code — required-set is derived from answers</h3>
+<pre><span class="k">const</span> reqDocs = requiredDocuments({
+  isSouthAfrican: nationality === <span class="s">"South African"</span>,
+  hasTertiary: isTertiary(highestQualification),
+  jobRequiresLicence: job.requiresDriversLicence,
+});
+<span class="k">const</span> allDocsUploaded = reqDocs.every((d) => docs[d.type]);
+<span class="c">// Submit is disabled until allDocsUploaded && all three consents are ticked.</span></pre>
+
+  <div class="callout">Consent (all required before submit): <em>information is accurate</em> · <em>consent to data processing per the Privacy Policy</em> · <em>agree to be contacted by employers</em>. A <code>/privacy</code> page was added for the link.</div>
+</section>
+
+<!-- FEATURE 3: BRANDING -->
+<section class="page">
+  <h1>3 · CareerHubX branding</h1>
+  <span class="tag">Feature 3</span> &nbsp; <code>src/components/brand/Logo.tsx</code> · <code>src/app/icon.svg</code>
+
+  <p>An inline-SVG brand mark (a person silhouette inside a magnifying-glass ring) and a two-tone
+  “CareerHubX” wordmark, scaling and theming via brand tokens — no PNG.</p>
+
+  <div class="mock" style="display:flex;align-items:center;gap:14px;">
+    <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+      <defs><linearGradient id="g2" x1="6" y1="6" x2="38" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#8b5cf6"/><stop offset="1" stop-color="#d946ef"/></linearGradient></defs>
+      <circle cx="20" cy="20" r="14" stroke="url(#g2)" stroke-width="3.5"/>
+      <rect x="30.5" y="30.5" width="13" height="5" rx="2.5" transform="rotate(45 30.5 30.5)" fill="url(#g2)"/>
+      <circle cx="20" cy="16.5" r="4.2" fill="url(#g2)"/>
+      <path d="M11.5 29.5c0-4.7 3.8-8 8.5-8s8.5 3.3 8.5 8c0 .9-.7 1.6-1.6 1.6H13.1c-.9 0-1.6-.7-1.6-1.6Z" fill="url(#g2)"/>
+    </svg>
+    <span style="font-size:26px;font-weight:800;"><span style="color:#7c3aed;">Career</span><span style="color:#140a24;">HubX</span></span>
+  </div>
+  <ul>
+    <li><code>&lt;Logo&gt;</code> (mark + wordmark, <code>onDark</code> variant) and <code>&lt;LogoMark&gt;</code> (icon only).</li>
+    <li>Wired into the navbar, footer, auth shell, and the <code>app/icon.svg</code> favicon.</li>
+    <li>Page titles use a <code>%s · CareerHubX</code> template + OpenGraph defaults in <code>layout.tsx</code>.</li>
+  </ul>
+</section>
+
+<!-- TESTING PARTS 1-3 -->
+<section class="page">
+  <h1>4 · Testing — setup &amp; the adaptation</h1>
+
+  <div class="callout warn"><strong>The key insight.</strong> The assignment targets the <em>old</em> 3-step
+  wizard (<code>useSession</code>, HTTP submit, a “review” step). This session had replaced it with the 5-step
+  wizard (auth as a <code>user</code> prop, <strong>localStorage</strong> submit, separate confirmation page). So the
+  demo pattern was <strong>adapted to the real components</strong> — which the brief explicitly rewards.</p></div>
+
+  <table>
+    <tr><th>Assignment expectation</th><th>Real component tested</th></tr>
+    <tr><td>Wizard navigation / validation</td><td><code>JobApplicationWizard</code></td></tr>
+    <tr><td>Auth gate</td><td><code>/apply/[jobId]</code> page (gating moved to the page)</td></tr>
+    <tr><td>MSW submit (happy / error)</td><td><code>ApplicationForm</code> (the component that actually POSTs + resets)</td></tr>
+    <tr><td>AlertDialog confirm</td><td><code>CloseJobButton</code> (Server Action mocked — MSW can’t intercept actions)</td></tr>
+    <tr><td>Draft persistence</td><td><code>JobApplicationWizard</code> via real jsdom localStorage</td></tr>
+  </table>
+
+  <h3>Part 2 — the provider harness</h3>
+<pre><span class="c">// src/test/utils.tsx</span>
+vi.mock(<span class="s">"next-auth/react"</span>, () => ({ useSession: vi.fn(), <span class="c">/* … */</span> }));
+<span class="k">export function</span> renderWithProviders(ui, { session = candidateSession, searchParams = <span class="s">""</span> } = {}) {
+  vi.mocked(useSession).mockReturnValue({ data: session, status: session ? <span class="s">"authenticated"</span> : <span class="s">"unauthenticated"</span>, update: vi.fn() });
+  <span class="k">return</span> render(ui, { wrapper: ({ children }) =>
+    &lt;NuqsTestingAdapter searchParams={searchParams}&gt;
+      &lt;QueryClientProvider client={makeClient()}&gt;<span class="c">/* retry:false */</span>
+        &lt;AuthProvider&gt;{children}&lt;/AuthProvider&gt;
+      &lt;/QueryClientProvider&gt;
+    &lt;/NuqsTestingAdapter&gt; });
+}</pre>
+
+  <h3>Part 4 — MSW: real HTTP interception</h3>
+<pre><span class="c">// happy path returns 201; error path overrides per-test:</span>
+server.use(http.post(<span class="f">`${API}/api/applications`</span>, () => <span class="k">new</span> HttpResponse(<span class="k">null</span>, { status: <span class="s">500</span> })));
+<span class="c">// → assert a server-error alert appears AND the typed value is still present (no reset)</span>
+expect(<span class="k">await</span> screen.findByRole(<span class="s">"alert"</span>)).toBeInTheDocument();
+expect(screen.getByDisplayValue(<span class="s">"Alice Candidate"</span>)).toBeInTheDocument();</pre>
+</section>
+
+<!-- TESTING RESULTS + Q&A -->
+<section class="page">
+  <h1>5 · Testing — results &amp; decisions</h1>
+
+  <h3>Suite (12 tests, 5 files) — all green</h3>
+  <table>
+    <tr><th>File</th><th>Tests</th></tr>
+    <tr><td><code>ApplicationWizard.test.tsx</code></td><td>smoke · blocks-when-invalid · advances to step 2 · Back preserves values</td></tr>
+    <tr><td><code>apply-gate.test.tsx</code></td><td>sign-in prompt when unauthenticated · wizard renders for a candidate</td></tr>
+    <tr><td><code>ApplicationForm.test.tsx</code></td><td>MSW happy path (confirmation) · MSW 500 (values kept)</td></tr>
+    <tr><td><code>CloseJobButton.test.tsx</code></td><td>AlertDialog opens · confirm runs the action + shows closed state</td></tr>
+    <tr><td><code>draft-persistence.test.tsx</code></td><td>restores a saved draft + banner · writes a draft on “Save as Draft”</td></tr>
+  </table>
+
+  <h3>Written decisions (condensed — full text in README)</h3>
+  <p><strong>Q1 high-value:</strong> step gating, Back-preserves-values, document/consent gate, submit success/error.
+  <strong>NOT worth testing:</strong> Tailwind class strings &amp; DOM shape — they break on restyles and assert nothing the user feels.</p>
+  <p><strong>Q1C / localStorage:</strong> use <strong>real jsdom</strong> localStorage — the behaviour <em>is</em> the
+  write→reload→restore round-trip; a spy only proves a method was called, not that the value comes back into the form.</p>
+  <p><strong>Q2 session:</strong> <code>vi.mock("next-auth/react")</code> (mocks just the hook, keeps the tree real).
+  Caveat: our components read <code>AuthContext</code>, so the gate test plants <code>careerhub.session</code> in localStorage.</p>
+  <p><strong>Q3 MSW scope:</strong> GET job, POST application, GET jobs (post-submit invalidation). <strong>MSW cannot test</strong>
+  the wizard’s own submit (localStorage) or <code>CloseJobButton</code> (Server Action) — neither is a network request.</p>
+  <p><strong>Q4 naming:</strong> rewrote implementation-named tests (e.g. “currentStep equals ‘schedule’”, “calls setItem with key”,
+  “renders 3 divs”) into behaviour names (“advances to the schedule step”, “a returning user resumes where they left off”).</p>
+
+  <div class="callout"><strong>The test that surprised me.</strong> “Advance to step 2” flaked only under full-suite load.
+  It revealed that the wizard’s <code>Next</code> handler validates <em>asynchronously</em> and updates the step <em>after</em>
+  the <code>await</code>, so the re-render lands outside Testing Library’s <code>act()</code> window. The fix was in the test
+  (a <code>clickNext</code> helper that flushes the continuation inside <code>act</code>), not the product — a gap in my mental
+  model of async handlers + <code>act</code>, not a bug.</div>
+</section>
+
+<!-- TERMINAL RUNBOOK -->
+<section class="page">
+  <h1>6 · PowerShell runbook — every command to run it</h1>
+  <p>Copy-paste, top to bottom, from the project root in <strong>PowerShell</strong>.</p>
+
+  <h3>A · Frontend (this repo)</h3>
+<pre><span class="c"># install dependencies (first time only)</span>
+npm install
+
+<span class="c"># run the dev server → http://localhost:3000</span>
+npm run dev
+
+<span class="c"># production build + start (verifies the whole app compiles)</span>
+npm run build ; if ($?) { npm run start }</pre>
+
+  <h3>B · Backend + database via Docker (in the careerhub-api repo)</h3>
+<pre><span class="c"># from the careerhub-api repository root (NOT this frontend repo):</span>
+docker compose up --build          <span class="c"># API on http://localhost:8080 + PostgreSQL</span>
+docker compose ps                  <span class="c"># confirm both containers are healthy</span>
+docker compose logs -f api         <span class="c"># follow API logs</span>
+docker compose down                <span class="c"># stop everything</span></pre>
+  <div class="callout warn">The backend is a separate repo, not in this workspace. Point the frontend at it with
+  <code>NEXT_PUBLIC_API_BASE_URL=http://localhost:8080</code> in <code>.env.local</code>, then restart <code>npm run dev</code>.</div>
+
+  <h3>C · Tests</h3>
+<pre><span class="c"># run once and exit (what CI runs)</span>
+npm run test:run
+
+<span class="c"># watch mode while developing</span>
+npm test
+
+<span class="c"># a single file</span>
+npx vitest run src/test/ApplicationWizard.test.tsx
+
+<span class="c"># type-check (zero errors expected)</span>
+npx tsc --noEmit</pre>
+
+  <h3>D · Prove it changed (assignment’s “Proving It Changed”)</h3>
+<pre><span class="c"># 1) remove the validation guard in next() → the "blocks advancement" test fails</span>
+<span class="c"># 2) override the POST handler to 500 in the happy-path test → it fails</span>
+<span class="c"># 3) comment out afterEach(() => server.resetHandlers()) → the 500 leaks between tests</span>
+<span class="c"># restore each → green again</span></pre>
+
+  <h3>E · CI (GitHub Actions)</h3>
+<pre>git add . ; git commit -m <span class="s">"test: ci"</span> ; git push     <span class="c"># Actions tab shows a run</span>
+<span class="c"># Workflow: .github/workflows/test.yml — push/PR to main, Node 20, npm ci, npm run test:run</span></pre>
+</section>
+
+</body>
+</html>
