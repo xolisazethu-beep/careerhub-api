@@ -286,9 +286,175 @@ expect(screen.getByDisplayValue(<span class="s">"Alice Candidate"</span>)).toBeI
   model of async handlers + <code>act</code>, not a bug.</div>
 </section>
 
+<!-- CODE 1: WIZARD TESTS -->
+<section class="page">
+  <h1>6 · Test code — wizard navigation (explained)</h1>
+  <code>src/test/ApplicationWizard.test.tsx</code>
+
+  <h3>The two helpers everything leans on</h3>
+<pre><span class="c">// Render the wizard with a signed-out-of-profile candidate so step 1 is empty.</span>
+<span class="k">function</span> renderWizard(userName = <span class="s">""</span>) {
+  <span class="k">return</span> renderWithProviders(
+    &lt;JobApplicationWizard job={JOB} user={{ name: userName, email: <span class="s">"alice@example.com"</span> }} /&gt;);
+}
+
+<span class="c">// Click Next, THEN flush the async validate-and-advance inside act().</span>
+<span class="k">async function</span> clickNext(user) {
+  <span class="k">await</span> user.click(screen.getByRole(<span class="s">"button"</span>, { name: /next/i }));
+  <span class="k">await</span> act(<span class="k">async</span> () => { <span class="k">await new</span> Promise((r) => setTimeout(r, <span class="s">0</span>)); });
+}
+
+<span class="c">// Fill the minimum required step-1 fields so validation passes.</span>
+<span class="k">async function</span> fillStep1(user) {
+  <span class="k">await</span> user.type(screen.getByLabelText(<span class="s">"Full name(s)"</span>), <span class="s">"Alice"</span>);
+  <span class="k">await</span> user.type(screen.getByLabelText(<span class="s">"Surname"</span>), <span class="s">"Candidate"</span>);
+  fireEvent.change(screen.getByLabelText(<span class="s">"Date of birth"</span>), { target: { value: <span class="s">"1995-06-15"</span> } });
+}</pre>
+  <ul>
+    <li><strong>Why <code>clickNext</code> flushes inside <code>act()</code>:</strong> the wizard’s <code>Next</code> handler does
+      <code>await trigger()</code> then updates step — that re-render lands <em>after</em> the click event, outside
+      Testing Library’s <code>act()</code> window. Flushing a <code>setTimeout(0)</code> inside <code>act</code> makes the
+      advance deterministic instead of a race (this was the “test that surprised me”).</li>
+    <li><strong>Why <code>getByLabelText</code>:</strong> it only finds an input if the <code>&lt;label&gt;</code> is correctly
+      associated — so the query doubles as an accessibility assertion.</li>
+    <li><strong>Why <code>fireEvent</code> for the date:</strong> <code>userEvent.type</code> is unreliable on
+      <code>type="date"</code>; the brief explicitly allows <code>fireEvent</code> for inputs <code>userEvent</code> can’t handle.</li>
+  </ul>
+
+  <h3>The four behaviour tests</h3>
+<pre>beforeEach(() => window.localStorage.clear());           <span class="c">// every test is independent</span>
+
+it(<span class="s">"renders the step 1 heading on mount (smoke)"</span>, () => {
+  renderWizard();
+  expect(screen.getByRole(<span class="s">"heading"</span>, { name: <span class="s">"Personal information"</span> })).toBeInTheDocument();
+});
+
+it(<span class="s">"blocks advancement when required step 1 fields are empty"</span>, <span class="k">async</span> () => {
+  renderWizard(); <span class="k">const</span> user = userEvent.setup();
+  <span class="k">await</span> clickNext(user);
+  expect(screen.getByText(<span class="s">"Please enter your full name(s)."</span>)).toBeInTheDocument();   <span class="c">// inline errors</span>
+  expect(screen.getByRole(<span class="s">"heading"</span>, { name: <span class="s">"Personal information"</span> })).toBeInTheDocument(); <span class="c">// still step 1</span>
+});
+
+it(<span class="s">"advances to step 2 when step 1 required fields are filled"</span>, <span class="k">async</span> () => {
+  renderWizard(); <span class="k">const</span> user = userEvent.setup();
+  <span class="k">await</span> fillStep1(user); <span class="k">await</span> clickNext(user);
+  expect(screen.getByRole(<span class="s">"heading"</span>, { name: <span class="s">"Contact details"</span> })).toBeInTheDocument();
+});
+
+it(<span class="s">"Back button preserves step 1 values"</span>, <span class="k">async</span> () => {
+  renderWizard(); <span class="k">const</span> user = userEvent.setup();
+  <span class="k">await</span> fillStep1(user); <span class="k">await</span> clickNext(user);
+  <span class="k">await</span> user.click(screen.getByRole(<span class="s">"button"</span>, { name: /back/i }));
+  expect(screen.getByDisplayValue(<span class="s">"Alice"</span>)).toBeInTheDocument();      <span class="c">// values survived</span>
+});</pre>
+  <p>Each test asserts something the <em>user</em> sees — a heading, an error message, a field value — never an internal
+  variable. That’s what makes them survive refactors of the component’s internals.</p>
+</section>
+
+<!-- CODE 2: GATE + FORM -->
+<section class="page">
+  <h1>7 · Test code — auth gate &amp; MSW submit (explained)</h1>
+
+  <h3>Auth gate — <code>src/test/apply-gate.test.tsx</code></h3>
+<pre><span class="k">const</span> SESSION_KEY = <span class="s">"careerhub.session"</span>;
+beforeEach(() => window.localStorage.clear());
+
+it(<span class="s">"shows the sign-in prompt and hides the wizard when not authenticated"</span>, <span class="k">async</span> () => {
+  renderWithProviders(&lt;ApplyPage /&gt;, { session: <span class="k">null</span> });
+  expect(<span class="k">await</span> screen.findByText(<span class="s">"Sign in to apply"</span>)).toBeInTheDocument();
+  expect(screen.queryByRole(<span class="s">"heading"</span>, { name: <span class="s">"Personal information"</span> })).not.toBeInTheDocument();
+});
+
+it(<span class="s">"renders the wizard when authenticated as a candidate"</span>, <span class="k">async</span> () => {
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify({ id: <span class="s">"u1"</span>, name: <span class="s">"Alice"</span>, email: <span class="s">"alice@example.com"</span> }));
+  renderWithProviders(&lt;ApplyPage /&gt;);
+  expect(<span class="k">await</span> screen.findByRole(<span class="s">"heading"</span>, { name: <span class="s">"Personal information"</span> })).toBeInTheDocument();
+});</pre>
+  <ul>
+    <li><strong>Why plant localStorage, not mock <code>useSession</code>:</strong> the page reads identity from
+      <code>AuthContext</code>, which restores its session from the <code>careerhub.session</code> key on mount. Planting that
+      key tests the <em>real</em> auth mechanism end-to-end.</li>
+    <li><strong><code>queryByRole</code> vs <code>findByRole</code>:</strong> <code>query…</code> returns
+      <code>null</code> (used to assert <em>absence</em>); <code>find…</code> waits for async appearance.</li>
+  </ul>
+
+  <h3>MSW submit — <code>src/test/ApplicationForm.test.tsx</code></h3>
+<pre><span class="k">const</span> API = process.env.NEXT_PUBLIC_API_URL;          <span class="c">// same env var the API client reads</span>
+
+it(<span class="s">"happy path: shows the confirmation after a successful submission"</span>, <span class="k">async</span> () => {
+  renderWithProviders(&lt;ApplicationForm jobId=<span class="s">"job-1"</span> jobTitle=<span class="s">"Senior Frontend Engineer"</span> /&gt;);
+  <span class="k">await</span> fillAllFields(user);
+  <span class="k">await</span> user.click(screen.getByRole(<span class="s">"button"</span>, { name: /submit application/i }));
+  expect(<span class="k">await</span> screen.findByRole(<span class="s">"heading"</span>, { name: <span class="s">"Application submitted"</span> })).toBeInTheDocument();
+});
+
+it(<span class="s">"error path: keeps the entered values when the API returns 500"</span>, <span class="k">async</span> () => {
+  server.use(http.post(<span class="f">`${API}/api/applications`</span>, () => <span class="k">new</span> HttpResponse(<span class="k">null</span>, { status: <span class="s">500</span> }))); <span class="c">// per-test override</span>
+  <span class="k">await</span> fillAllFields(user);
+  <span class="k">await</span> user.click(screen.getByRole(<span class="s">"button"</span>, { name: /submit application/i }));
+  expect(<span class="k">await</span> screen.findByRole(<span class="s">"alert"</span>)).toBeInTheDocument();          <span class="c">// server error shown</span>
+  expect(screen.getByDisplayValue(<span class="s">"Alice Candidate"</span>)).toBeInTheDocument();  <span class="c">// NOT reset</span>
+});</pre>
+  <ul>
+    <li><strong>Real HTTP, not a stubbed function:</strong> MSW intercepts the actual <code>fetch</code> to
+      <code>/api/applications</code> — the component, TanStack Query mutation, and network layer all run for real.</li>
+    <li><strong><code>server.use(...)</code></strong> overrides a handler for one test; <code>afterEach</code> resets it so the
+      500 can’t leak into the next test.</li>
+  </ul>
+</section>
+
+<!-- CODE 3: DIALOG + DRAFT + HARNESS -->
+<section class="page">
+  <h1>8 · Test code — dialog, drafts &amp; the shared harness</h1>
+
+  <h3>AlertDialog — <code>src/test/CloseJobButton.test.tsx</code></h3>
+<pre>vi.mock(<span class="s">"@/app/actions/closeJob"</span>, () => ({           <span class="c">// MSW can't intercept a Server Action → mock it</span>
+  closeJobListing: vi.fn(<span class="k">async</span> () => ({ status: <span class="s">"success"</span>, jobTitle: <span class="s">"Senior Frontend Engineer"</span> })) }));
+
+it(<span class="s">"opens the AlertDialog when the close button is clicked"</span>, <span class="k">async</span> () => {
+  renderWithProviders(&lt;CloseJobButton jobId=<span class="s">"job-1"</span> currentStatus=<span class="s">"Active"</span> /&gt;);
+  <span class="k">await</span> user.click(screen.getByRole(<span class="s">"button"</span>, { name: <span class="s">"Close listing"</span> }));
+  expect(<span class="k">await</span> screen.findByRole(<span class="s">"heading"</span>, { name: <span class="s">"Close this listing?"</span> })).toBeInTheDocument();
+});
+
+it(<span class="s">"calls the close action and shows the closed state when confirmed"</span>, <span class="k">async</span> () => {
+  <span class="k">await</span> user.click(screen.getByRole(<span class="s">"button"</span>, { name: <span class="s">"Close listing"</span> }));
+  <span class="k">const</span> dialog = <span class="k">await</span> screen.findByRole(<span class="s">"alertdialog"</span>);
+  <span class="k">await</span> user.click(within(dialog).getByRole(<span class="s">"button"</span>, { name: <span class="s">"Close listing"</span> })); <span class="c">// scope: label shared</span>
+  expect(vi.mocked(closeJobListing)).toHaveBeenCalledTimes(<span class="s">1</span>);
+  expect(<span class="k">await</span> screen.findByText(/Closed/)).toBeInTheDocument();
+});</pre>
+  <p><code>within(dialog)</code> scopes the query inside the Radix portal because the trigger and the confirm button share
+  the label “Close listing”. <code>screen</code> searches the whole document (portals included), so no special handling is needed to find dialog content.</p>
+
+  <h3>Draft round-trip — <code>src/test/draft-persistence.test.tsx</code></h3>
+<pre>it(<span class="s">"restores a saved draft + banner on mount"</span>, <span class="k">async</span> () => {
+  plantDraft({ fullNames: <span class="s">"Restored"</span>, surname: <span class="s">"Draftson"</span> }); <span class="c">// write REAL localStorage first</span>
+  renderWizard();
+  expect(<span class="k">await</span> screen.findByText(/restored your saved draft/i)).toBeInTheDocument();
+  expect(screen.getByDisplayValue(<span class="s">"Restored"</span>)).toBeInTheDocument();   <span class="c">// value came back into the field</span>
+});</pre>
+  <p>Uses the <strong>real jsdom localStorage</strong> (no spy): the test proves the value actually survives and repopulates
+  the visible field — something a <code>vi.spyOn</code> on <code>setItem</code> could never show.</p>
+
+  <h3>The shared harness every file imports — <code>src/test/utils.tsx</code> + <code>setup.ts</code></h3>
+<pre><span class="c">// utils.tsx — one render function wraps the providers + controls the session</span>
+vi.mock(<span class="s">"next-auth/react"</span>, () => ({ useSession: vi.fn(), <span class="c">/* … */</span> }));
+<span class="k">export function</span> renderWithProviders(ui, { session = candidateSession, searchParams = <span class="s">""</span> } = {}) {
+  vi.mocked(useSession).mockReturnValue({ data: session, status: session ? <span class="s">"authenticated"</span> : <span class="s">"unauthenticated"</span> });
+  <span class="k">return</span> render(ui, { wrapper: ({ children }) =&gt;
+    &lt;NuqsTestingAdapter&gt;&lt;QueryClientProvider client={makeClient()}&gt;&lt;AuthProvider&gt;{children}&lt;/AuthProvider&gt;&lt;/QueryClientProvider&gt;&lt;/NuqsTestingAdapter&gt; }); }
+
+<span class="c">// setup.ts — global lifecycle for ALL files</span>
+beforeAll(() => server.listen());            <span class="c">// MSW on</span>
+afterEach(() => { server.resetHandlers(); window.history.replaceState(<span class="k">null</span>, <span class="s">""</span>, <span class="s">"/"</span>); }); <span class="c">// reset handlers + URL</span>
+afterAll(() => server.close());</pre>
+</section>
+
 <!-- TERMINAL RUNBOOK -->
 <section class="page">
-  <h1>6 · PowerShell runbook — every command to run it</h1>
+  <h1>9 · PowerShell runbook — every command to run it</h1>
   <p>Copy-paste, top to bottom, from the project root in <strong>PowerShell</strong>.</p>
 
   <h3>A · Frontend (this repo)</h3>
@@ -332,6 +498,94 @@ npx tsc --noEmit</pre>
   <h3>E · CI (GitHub Actions)</h3>
 <pre>git add . ; git commit -m <span class="s">"test: ci"</span> ; git push     <span class="c"># Actions tab shows a run</span>
 <span class="c"># Workflow: .github/workflows/test.yml — push/PR to main, Node 20, npm ci, npm run test:run</span></pre>
+</section>
+
+<!-- HOW IT CONNECTS -->
+<section class="page">
+  <h1>10 · How everything connects (the whole picture)</h1>
+
+  <h3>Feature code → what the tests pin down</h3>
+  <table>
+    <tr><th>Feature file</th><th>Verified by</th><th>The contract that’s locked</th></tr>
+    <tr><td><code>JobApplicationWizard.tsx</code></td><td><code>ApplicationWizard</code> + <code>draft-persistence</code></td><td>can’t advance while invalid; Back keeps answers; drafts round-trip</td></tr>
+    <tr><td><code>apply/[jobId]/page.tsx</code></td><td><code>apply-gate</code></td><td>no candidate ⇒ sign-in prompt, never the form</td></tr>
+    <tr><td><code>ApplicationForm.tsx</code></td><td><code>ApplicationForm</code> (MSW)</td><td>success clears the form; a 500 keeps the user’s input</td></tr>
+    <tr><td><code>CloseJobButton.tsx</code></td><td><code>CloseJobButton</code></td><td>destructive action always behind a confirm dialog</td></tr>
+  </table>
+
+  <h3>Test-infrastructure dependency map</h3>
+<pre>          vitest.config.ts ── env (NEXT_PUBLIC_API_URL) ──┐
+                 │ setupFiles                            │ same URL
+                 ▼                                       ▼
+   ┌────────  setup.ts  ────────┐              msw/handlers.ts ── used by ── msw/server.ts
+   │ • MSW listen/reset/close   │◄──────────────────────────────────────────────┘
+   │ • mock next/navigation     │
+   │ • reset window.history/URL │
+   └──────────────┬─────────────┘
+                  │ (runs before every test file)
+                  ▼
+            utils.tsx  ──  renderWithProviders()
+                  │   wraps:  NuqsTestingAdapter → QueryClientProvider → AuthProvider
+                  │   mocks:  useSession (next-auth)
+                  ▼
+   ┌───────────────────────────────────────────────────────────────────┐
+   │  5 test files import { renderWithProviders, screen, userEvent } …   │
+   │  ApplicationWizard · apply-gate · ApplicationForm · CloseJobButton  │
+   │  · draft-persistence                                                │
+   └───────────────────────────────────────────────────────────────────┘</pre>
+  <ul>
+    <li><strong>One render entry point.</strong> Every test calls <code>renderWithProviders</code>, so all five files share the
+      exact same providers, the same fake-session control, and the same query client — no per-test boilerplate, no drift.</li>
+    <li><strong>One env, two readers.</strong> <code>vitest.config.ts</code> sets <code>NEXT_PUBLIC_API_URL</code>; both the
+      <em>app’s</em> API client and the <em>MSW handlers</em> read it, so a handler can never target a URL the code doesn’t call.</li>
+    <li><strong>Global hygiene in one place.</strong> <code>setup.ts</code> starts/stops MSW, resets handlers, and clears the URL
+      after each test — that’s what keeps tests independent (the “Proving It Changed” leak check).</li>
+  </ul>
+
+  <h3>Final summary</h3>
+  <p>This session shipped a polished <strong>5-step application wizard</strong> (Zod + RHF + nuqs), a conditional
+  <strong>document-upload step</strong> with consent gating, <strong>CareerHubX branding</strong>, and a written
+  <strong>backend contract</strong> — then locked that behaviour in with a <strong>12-test suite</strong> (Vitest + Testing
+  Library + MSW + jsdom) and <strong>GitHub Actions CI</strong>. The throughline: tests describe what a <em>user</em>
+  experiences (headings, errors, values, dialogs), not how the code is written — so the build can be refactored freely as
+  long as the experience holds. <code>tsc --noEmit</code> is clean; <code>npm run test:run</code> is 12/12 green.</p>
+</section>
+
+<!-- KEY LEARNINGS -->
+<section class="page">
+  <h1>11 · Five key things to take away</h1>
+
+  <h3>1 · Test behaviour, not implementation</h3>
+  <p>Assert what shows on screen — <code>getByRole("heading", …)</code>, visible error text, <code>getByDisplayValue</code> —
+  never an internal state variable or a class name. A good test name reads like a product spec (“Back button preserves step 1
+  values”), so the suite doubles as living documentation and survives refactors.</p>
+
+  <h3>2 · Query the way a user (and a screen reader) would</h3>
+  <p><code>getByLabelText</code> only succeeds when a <code>&lt;label&gt;</code> is correctly tied to its input, and
+  <code>getByRole</code> relies on semantic HTML + ARIA. Writing tests this way <em>forces</em> accessible markup — the test
+  fails if labels aren’t associated. <code>queryBy…</code> asserts absence, <code>findBy…</code> waits for async appearance.</p>
+
+  <h3>3 · Async UI + <code>act()</code> is the #1 source of flakes</h3>
+  <p>The wizard’s <code>Next</code> validates <em>asynchronously</em> then updates state, so the re-render lands outside
+  Testing Library’s <code>act()</code> window and a naïve assertion races it. Flush the continuation
+  (<code>await act(async () =&gt; …)</code>) before asserting. Lesson: when a click triggers async work, give the component a
+  chance to settle inside <code>act</code> — don’t just assert immediately.</p>
+
+  <h3>4 · Mock at the boundary that matches the seam</h3>
+  <p>Choose the tool to fit how the code actually talks to the outside world: <strong>MSW</strong> for real HTTP
+  (<code>ApplicationForm</code>’s <code>POST</code>); <strong><code>vi.mock</code></strong> for a Server Action
+  (<code>CloseJobButton</code>) or a hook (<code>useSession</code>); <strong>real jsdom localStorage</strong> for a storage
+  round-trip (drafts). MSW can <em>only</em> see network requests — it can’t test a localStorage submit or a Server Action.</p>
+
+  <h3>5 · Isolation is a feature — reset all shared state between tests</h3>
+  <p>Tests must not leak into each other: <code>server.resetHandlers()</code> (so a 500 override doesn’t bleed forward),
+  <code>localStorage.clear()</code> in <code>beforeEach</code>, and resetting <code>window.history</code> (nuqs writes
+  <code>?step=</code> to the URL and jsdom keeps it). When a test only passes because of a previous one, the suite is lying to you.</p>
+
+  <div class="callout"><strong>Project-level takeaway.</strong> The frontend is wired to the <em>real</em> backend contract
+  but falls back to <code>localStorage</code> until the API ships — so the wizard works today and will “just work” against
+  <code>careerhub-api</code> once the endpoints in <code>docs/BACKEND-GAPS.md</code> exist. The tests gave us the safety net to
+  make that swap without fear of regressing the application flow.</div>
 </section>
 
 </body>
