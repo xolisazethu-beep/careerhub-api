@@ -91,14 +91,22 @@ export default function Navbar({ session }: { session: Session | null }) {
           {/* Role-based primary navigation. Active link highlighted by NavLinks. */}
           <NavLinks links={links} />
 
-          {/* Candidates can track their applications. */}
+          {/* Candidates can build a profile and track their applications. */}
           {role === "candidate" && (
-            <Link
-              href="/applications"
-              className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
-            >
-              Track applications
-            </Link>
+            <>
+              <Link
+                href="/profile"
+                className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
+              >
+                My profile
+              </Link>
+              <Link
+                href="/applications"
+                className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
+              >
+                Track applications
+              </Link>
+            </>
           )}
 
           <ThemeToggle />
@@ -204,16 +212,28 @@ export default function Navbar({ session }: { session: Session | null }) {
                 </li>
               ))}
               {role === "candidate" && (
-                <li className="border-b border-slate-100 dark:border-slate-800">
-                  <Link
-                    href="/applications"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
-                  >
-                    <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-                    <span>Track applications</span>
-                  </Link>
-                </li>
+                <>
+                  <li className="border-b border-slate-100 dark:border-slate-800">
+                    <Link
+                      href="/profile"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
+                    >
+                      <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                      <span>My profile</span>
+                    </Link>
+                  </li>
+                  <li className="border-b border-slate-100 dark:border-slate-800">
+                    <Link
+                      href="/applications"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
+                    >
+                      <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+                      <span>Track applications</span>
+                    </Link>
+                  </li>
+                </>
               )}
             </ul>
           </nav>

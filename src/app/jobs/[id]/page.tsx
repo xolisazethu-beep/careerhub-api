@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
 import { auth } from "@/auth";
 import RealApplyPanel from "@/components/RealApplyPanel";
+import ApplicationWizard from "@/components/ApplicationWizard";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
 import { JOBS_API_BASE, toDetailView } from "@/lib/jobs-api";
 import type { JobListingDetailResponse } from "@/types";
@@ -191,11 +192,11 @@ export default async function JobDetailPage({
             </p>
           </div>
         ) : (
-          <>
+          <div className="space-y-6">
             {isSignedOut && (
               <div
                 role="note"
-                className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+                className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
               >
                 You must be signed in to apply.{" "}
                 <Link
@@ -206,12 +207,23 @@ export default async function JobDetailPage({
                 </Link>
               </div>
             )}
+
+            {/* Assignment 3.1, Part 3 — the multi-step application wizard, shown
+                alongside the existing real-backend apply panel. `isCandidate`
+                gates advancing past step 1 (signed-out users see step 1 + a
+                sign-in prompt on Next). */}
+            <ApplicationWizard
+              jobId={job.id}
+              jobTitle={job.title}
+              isCandidate={role === "candidate"}
+            />
+
             <RealApplyPanel
               jobId={job.id}
               jobTitle={job.title}
               requiredSkills={job.skills}
             />
-          </>
+          </div>
         )}
       </div>
     </div>

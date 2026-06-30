@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import JobLinkCard from "@/components/JobLinkCard";
 import JobFilters from "@/components/JobFilters";
+import ClearFiltersButton from "@/components/ClearFiltersButton";
 import {
   JOBS_API_BASE,
   toSummaryView,
@@ -35,6 +36,15 @@ type SearchParams = {
  * means refreshing a filtered URL serves the cached list and re-filters with no
  * outbound fetch, until a close revalidates the tag.
  */
+interface JobsResult {
+  /** The jobs after the URL filters are applied. */
+  jobs: JobSummaryView[];
+  /** How many jobs exist on the board BEFORE filtering — the signal that tells
+   *  the two empty states apart (Part 5 / Q4): 0 here = the DB is genuinely
+   *  empty; > 0 with 0 filtered = the filters eliminated everything. */
+  totalUnfiltered: number;
+}
+
 async function getJobs({
   q,
   location,
@@ -43,7 +53,7 @@ async function getJobs({
   q: string;
   location: string;
   status: StatusFilter;
-}): Promise<JobSummaryView[]> {
+}): Promise<JobsResult> {
   const res = await fetch(
     `${JOBS_API_BASE}/api/jobs?page=1&pageSize=${PAGE_SIZE}`,
     { cache: "force-cache", next: { tags: ["jobs"] } },
@@ -52,7 +62,8 @@ async function getJobs({
     throw new Error(`The API responded ${res.status} ${res.statusText}`);
   }
   const payload = (await res.json()) as PagedResponse<JobListingResponse>;
-  let jobs = payload.data.map(toSummaryView);
+  const all = payload.data.map(toSummaryView);
+  let jobs = all;
 
   if (q) {
     const needle = q.toLowerCase();
@@ -70,7 +81,7 @@ async function getJobs({
     jobs = jobs.filter((j) => j.status !== "Closed");
   }
 
-  return jobs;
+  return { jobs, totalUnfiltered: all.length };
 }
 
 /**
@@ -91,11 +102,18 @@ export default async function JobsPage({
   const hasFilters = Boolean(q || location || status === "open");
 
   let jobs: JobSummaryView[];
+  let totalUnfiltered: number;
   try {
-    jobs = await getJobs({ q, location, status });
+    ({ jobs, totalUnfiltered } = await getJobs({ q, location, status }));
   } catch {
     return <BoardUnavailable />;
   }
+
+  // The two empty states are decided HERE, server-side, after the fetch — the
+  // only place that knows the unfiltered total (Part 5 / Q4).
+  //   • databaseEmpty → no jobs at all → no action to offer.
+  //   • filteredOut   → jobs exist but the filters hid them → offer Clear.
+  const databaseEmpty = totalUnfiltered === 0;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -116,22 +134,34 @@ export default async function JobsPage({
 
       {jobs.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="font-display text-lg font-bold text-ink dark:text-slate-100">
-            {hasFilters ? "No jobs match your search" : "No open roles right now"}
-          </h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-            {hasFilters ? (
-              <>
-                Try a different title or location, or{" "}
-                <Link href="/jobs" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
-                  clear your filters
-                </Link>
-                .
-              </>
-            ) : (
-              "There are no active listings on the board at the moment. Check back soon — new positions are posted regularly."
-            )}
-          </p>
+          {databaseEmpty ? (
+            // STATE 1 — the board itself is empty. Nothing the user can do, so
+            // we offer no action button.
+            <>
+              <h2 className="font-display text-lg font-bold text-ink dark:text-slate-100">
+                No jobs are currently listed.
+              </h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                There are no listings on the board at the moment. Check back
+                soon — new positions are posted regularly.
+              </p>
+            </>
+          ) : (
+            // STATE 2 — jobs exist, the filters eliminated them. Offer a reset.
+            <>
+              <h2 className="font-display text-lg font-bold text-ink dark:text-slate-100">
+                No jobs match your search
+              </h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+                None of the {totalUnfiltered.toLocaleString()} live listings match
+                {q ? ` “${q}”` : ""}
+                {location ? ` in ${location}` : ""}
+                {status === "open" ? " (open roles only)" : ""}. Try a different
+                search, or clear your filters to see everything.
+              </p>
+              <ClearFiltersButton />
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -539,3 +539,203 @@ src/
 ```
 
 Walkthrough: **`docs/assignment-2.2/CareerHub-2.2-Walkthrough.html`**.
+
+---
+
+# Assignment 3.1 — Rich UI & Form Patterns
+
+Toasts (sonner), a three-step application **wizard** with localStorage draft
+auto-save, `AlertDialog` confirmations for destructive actions, and paired
+skeleton/empty states on `/jobs`.
+
+## Part 1 — Written Decisions
+
+### Q1 — Draft persistence strategy
+
+**Storage key.** `careerhub-application-${jobId}`. It is scoped to the **job**,
+not the user or a single global key, because a draft is meaningful only in the
+context of the role being applied for (the cover letter, the "how did you hear"
+answer, etc. are role-specific). Scoping to the job id means:
+
+- A candidate applying to **two jobs at once** gets two independent drafts
+  (`careerhub-application-<A>` and `careerhub-application-<B>`) that never clobber
+  each other. A single global key like `careerhub-application-draft` would let
+  whichever tab saved last overwrite the other job's answers.
+- A candidate on a **different device** sees no draft — `localStorage` is
+  per-browser/per-device and is not synced. That is acceptable (and expected) for
+  a convenience draft; the source of truth for a *submitted* application is the
+  server, not the draft. We deliberately do **not** promise cross-device drafts.
+
+We do not add the user id to the key. Drafts live in the candidate's own browser,
+so the device already scopes them to that person; adding an id would only help if
+two accounts shared one browser profile, which is out of scope.
+
+**When the draft is cleared — every trigger and why:**
+
+| Trigger | Why |
+| --- | --- |
+| Successful submit | The application is now recorded; keeping the draft would resurrect a "saved draft" banner for an application already sent. |
+| "Discard draft" confirmed (Part 4b) | Explicit user intent to throw the work away. |
+| (Not on navigation away / refresh) | The opposite of clearing — surviving a refresh is the whole point of the draft. |
+
+**Fields safe to store vs excluded.** Safe: `fullName`, `email`, `phone`,
+`coverLetter`, `linkedinUrl`, `source` — all low-sensitivity data the user typed
+about themselves for this application. We deliberately **exclude** anything we
+don't collect in the wizard and would never want lingering in `localStorage`:
+passwords/tokens (never in the form), and any file contents (a CV is a `File`
+object — not serialisable and potentially large/sensitive, so it is never written
+to `localStorage`). National ID numbers are also kept out of this wizard for the
+same reason.
+
+### Q2 — The skeleton loader contract
+
+- **"Matching dimensions"** means the skeleton occupies the *same box* the real
+  `JobCard` will: same overall **height** (`h-full` in the same grid cell), same
+  **padding** (`p-5`), same **border-radius/border**, and bars whose
+  heights/widths approximate the real text lines (badge row, title ~¾ width,
+  company line ~½, salary, footer). When the data swaps in, nothing reflows →
+  **no cumulative layout shift**.
+- If the filter returns **3** jobs but the skeleton showed **6**, the user sees 6
+  placeholders collapse to 3 — a jarning shrink that reads as "results
+  disappeared". The skeleton count is a **loading-time guess about an as-yet
+  unknown result count**; you cannot know the real count until the fetch
+  resolves. The correct number is "a plausible first screen" (6 here) — not the
+  real count, which is unknowable during loading. Once data arrives the skeleton
+  is replaced wholesale, so a mismatch only ever flickers for one frame.
+- **Paired component pattern:** `JobCard` and `JobCardSkeleton` live side by side
+  and are changed together. If one drifts — e.g. JobCard gains a new footer row
+  but the skeleton doesn't — the skeleton stops matching dimensions and layout
+  shift returns. Pairing is a maintenance contract: edit the card, edit its
+  skeleton in the same commit.
+
+### Q3 — AlertDialog vs the alternatives
+
+- **Closing a job** → `AlertDialog`. It is destructive and irreversible
+  (removed from the public board), so it warrants a modal that traps focus and
+  cannot be dismissed by an accidental outside click.
+- **Discarding a draft** → `AlertDialog`. Also destructive ("permanently
+  deleted"). Same reasoning. A regular `Dialog` is for non-critical content you
+  can click away from; an inline confirm is for low-stakes, reversible toggles —
+  neither fits a permanent delete.
+- **The Server-Action problem.** Closing a job is a Server Action driven by
+  `useActionState` on a `<form>`. `AlertDialog` renders its content — including
+  `AlertDialogAction` — in a **Radix portal at the end of `<body>`**, i.e.
+  *outside* the `<form>`. A `type="submit"` button in a portal is not associated
+  with any form, so clicking it **does nothing** — the form never submits.
+  **Solution (chosen):** keep the Server Action, control the dialog's open state
+  with `useState`, and on confirm call the action **programmatically** inside
+  `useTransition` (`startTransition(() => formAction(fd))`), reading the result
+  and firing a toast. The action is invoked by code, not by an in-portal submit,
+  so the portal boundary is irrelevant. See "Solving AlertDialog with a Server
+  Action" below.
+
+### Q4 — Empty state taxonomy
+
+- **Two different states.** "The database has no jobs at all" is a *system*
+  state — there is nothing the user can do, so offering a "clear filters" button
+  would be a lie (clearing filters reveals nothing). "Your filters returned no
+  results" is a *user* state — the data exists, their query hid it, so the
+  correct action is **"Clear all filters"** to get back to the full list.
+- **Where it's decided.** Server-side, **after the fetch**, in `/jobs`
+  `getJobs()`. We compute the **unfiltered** total and the **filtered** length
+  from the same payload. `filteredCount === 0 && unfilteredCount === 0` →
+  *DB-empty* state (no action). `filteredCount === 0 && unfilteredCount > 0` →
+  *filtered-out* state (Clear-filters button). It must be server-side because
+  only the server fetch knows the unfiltered total; the client only ever sees the
+  already-filtered list.
+
+## README Updates (required)
+
+### Draft storage key decision
+
+Scoped to `${jobId}` so simultaneous applications to different jobs keep separate
+drafts. A single `careerhub-application-draft` key would mean the second job's
+auto-save overwrites the first — the candidate switches tabs and finds someone
+else's cover letter. **If the job's requirements change while a draft is saved:**
+the draft only stores the candidate's *answers*, not the job's fields, so a
+changed job description doesn't corrupt the draft — but the restored answers might
+no longer be appropriate. We surface the restore explicitly (a dismissible
+"Draft restored" banner) precisely so the candidate re-reads the now-current
+listing before submitting, rather than silently sending stale answers.
+
+### Solving AlertDialog with a Server Action
+
+I chose **keep the Server Action + `useTransition`** (over converting to a client
+`useMutation`). Why: the existing `closeJobListing` already does the PATCH,
+`revalidateTag("jobs")` cross-route cache invalidation, and returns a typed
+result — rewriting it as a client mutation would duplicate all of that and lose
+the tag revalidation that refreshes both `/dashboard` and `/jobs`. The problem
+was that `AlertDialogAction` renders in a **portal outside the `<form>`**, so a
+`type="submit"` inside it is attached to no form and does nothing. The fix is to
+not rely on form submission at all: dialog open state is `useState`, and on
+confirm I build a `FormData`, call the action inside `startTransition`, `await`
+its result, then fire a sonner success/error toast and close the dialog.
+`isPending` from `useTransition` drives the button's loading state.
+
+### The Back button and validation
+
+**Back skips validation on purpose.** Going back is a non-destructive navigation
+to data the user already saw; re-validating would block them from returning to
+fix an *earlier* field because a *later*, half-filled field is invalid. Scenario:
+a candidate on Step 2 realises they typed the wrong email in Step 1. They've also
+started a LinkedIn URL but not finished it (currently invalid). If Back
+re-validated Step 2, they'd be trapped on Step 2 — unable to reach the email field
+they need to fix — by an error on a field they didn't even want to submit yet.
+Back must always go back.
+
+### Skeleton count justification
+
+**6 skeletons.** It fills the first two rows of the 3-column grid — a plausible
+"first screen" of results without pretending to know the real count (unknowable
+mid-fetch). **Too few** (e.g. 1–2) signals "almost no jobs" and under-fills the
+viewport, so the page looks broken/empty while loading. **Too many** (e.g. 24)
+implies a huge result set and causes a bigger collapse when fewer real cards
+arrive, plus more layout to paint for nothing. 6 is the balance between filling
+the fold and minimising the swap-in delta.
+
+### Empty state taxonomy
+
+Distinguished **server-side in `getJobs()`** by comparing the unfiltered total to
+the filtered length (see Q4). `/jobs` receives both counts and renders either the
+no-action *"No jobs are currently listed."* state or the *"No jobs match your
+search."* state with a `<ClearFiltersButton/>` that resets every nuqs param. It's
+server-side because the unfiltered total is only known to the server fetch.
+
+## Stretch goals
+
+- **A — Cross-tab draft sync:** the wizard listens for the `window` `storage`
+  event and updates its "draft restored" banner/values when another tab edits the
+  same `careerhub-application-${jobId}` key. The `storage` event fires on *other*
+  tabs of the same origin when `localStorage` changes — never in the tab that made
+  the change (that tab already has the value), which is why a same-tab save
+  doesn't double-handle.
+- **B — Animated step transitions:** plain CSS `transform`/`transition` on an
+  `overflow-hidden` container; a `direction` state (set by Next/Back) picks
+  slide-from-right vs slide-from-left.
+- **C — LinkedIn URL live preview:** best-effort preview from the URL slug with an
+  `<img onError>` fallback. `onError` on an `<img>` fires when the resource fails
+  to load; we use it to hide the broken avatar and fall back to initials, since
+  LinkedIn exposes no public profile API or guaranteed image URL.
+
+## Build gate (Assignment 3.1)
+
+`npx tsc --noEmit` → **0 errors**. `npm run build` → **exit 0**, lint + types
+clean. (The only warnings are pre-existing Auth.js/`jose` *Edge-runtime*
+warnings about `CompressionStream`, unrelated to this assignment's code.)
+
+```text
+> next build
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+ ✓ Generating static pages (24/24)
+
+Route (app)                                 Size  First Load JS
+├ ƒ /jobs                                2.16 kB         114 kB
+├ ƒ /jobs/[id]                           35.2 kB         171 kB   ← + ApplicationWizard
+├ ƒ /dashboard/listings                  3.65 kB         140 kB
+└ ƒ /login                                 165 B         106 kB
+ƒ Middleware                             87.5 kB
+EXIT=0
+```
+
+

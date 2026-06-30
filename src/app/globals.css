@@ -140,3 +140,18 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Assignment 3.1 Stretch B — wizard step transitions (library-free).
+   The container is overflow-hidden; each step panel gets a direction class
+   keyed to the step so the animation re-fires on every change. Advancing slides
+   in from the right; going Back slides in from the left. */
+@keyframes wizardSlideFromRight {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes wizardSlideFromLeft {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.wizard-slide-right { animation: wizardSlideFromRight 0.28s ease both; }
+.wizard-slide-left  { animation: wizardSlideFromLeft 0.28s ease both; }

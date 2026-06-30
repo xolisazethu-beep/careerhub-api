@@ -3,16 +3,32 @@
 // Application form for a single job. Reads the job by id from the
 // client-side store, validates every field, and on success records
 // the application and shows a confirmation with a tracking link.
-// Prefills name/email from the signed-in user so their applications
-// stay tied to their account.
+//
+// Assignment 3.2 additions:
+//   • AUTO-FILL — name/email/phone/ID/nationality are pre-filled from the
+//     signed-in user's saved profile (profile-store), so applying never starts
+//     from a blank page. Saved qualification PDFs can be attached in one click.
+//   • RESUME — every change is saved to a per-job DRAFT. If the user leaves
+//     without submitting, their answers are restored on return (and surfaced by
+//     the "unfinished application" banner elsewhere). The draft is cleared on a
+//     successful submit.
 // =============================================================
 "use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, FileText, ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
+import {
+  CheckCircle2,
+  FileText,
+  ArrowLeft,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  History,
+  UserCircle,
+} from "lucide-react";
 import {
   getJobById,
   saveApplication,
@@ -20,16 +36,19 @@ import {
   uid,
   type Application,
 } from "@/lib/careerhub-store";
+import {
+  getProfile,
+  getDraft,
+  saveDraft,
+  clearDraft,
+  QUALIFICATION_LABELS,
+  type ApplicantProfile,
+  type QualificationKey,
+} from "@/lib/profile-store";
 import { fetchJobById } from "@/lib/api";
 import { EMPLOYMENT_TYPE_LABELS } from "@/lib/employmentType";
 import { useAuth } from "@/context/AuthContext";
 
-/**
- * The minimal, source-agnostic view of a job the apply form needs. A job can
- * come from two places: the real API (the public board, by GUID) or the local
- * recruiter-posted demo store. Both are normalised into this one shape so the
- * form below never has to care which it was.
- */
 interface ApplyJob {
   id: string;
   title: string;
@@ -49,10 +68,6 @@ export default function ApplyPage() {
   const jobId = params.jobId;
   const { user } = useAuth();
 
-  // Primary source: the real API, by GUID. Shares the ["job", id] cache with
-  // the home-page SummaryPanel, so selecting then applying reuses one fetch.
-  // `retry: false` so a genuine 404 (bad/removed id) fails fast instead of
-  // retrying three times before we fall back to the local store.
   const {
     data: apiJob,
     isPending: apiPending,
@@ -63,11 +78,8 @@ export default function ApplyPage() {
     retry: false,
   });
 
-  // Fallback source: recruiter-posted demo jobs live only in localStorage and
-  // were never in the API, so their ids 404 above. This keeps that demo flow working.
   const localJob = useMemo(() => getJobById(jobId), [jobId]);
 
-  // Normalise whichever source resolved into the single ApplyJob shape.
   const job = useMemo<ApplyJob | null>(() => {
     if (apiJob) {
       return {
@@ -94,9 +106,7 @@ export default function ApplyPage() {
     return null;
   }, [apiJob, localJob]);
 
-  // Still waiting on the API and no local match to show yet.
   const isLoading = apiPending && !localJob;
-  // The API failed AND there is no local fallback → genuinely not found.
   const notFound = apiError && !localJob;
 
   const [fullName, setFullName] = useState("");
@@ -106,31 +116,136 @@ export default function ApplyPage() {
   const [idNumber, setIdNumber] = useState("");
   const [hasSkill, setHasSkill] = useState<boolean | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
+  /** Display/validation name for the CV — set by an upload OR by attaching
+   *  profile documents. Decoupled from the File so it can be restored from a draft. */
+  const [cvName, setCvName] = useState("");
+  const [usingProfileDocs, setUsingProfileDocs] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const [profile, setProfile] = useState<ApplicantProfile | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
+  const [restored, setRestored] = useState(false);
 
   const [errors, setErrors] = useState<Errors>({});
   const [submitted, setSubmitted] = useState(false);
-  // True once we detect this person has already applied to this exact job.
   const [alreadyApplied, setAlreadyApplied] = useState(false);
 
-  // Prefill from the signed-in account so the application is linked to them.
-  useEffect(() => {
-    if (user) {
-      setFullName((v) => v || user.name);
-      setEmail((v) => v || user.email);
-    }
-  }, [user]);
+  // Guards so the one-time load and the autosave behave predictably.
+  const loadedRef = useRef(false);
+  const baselineRef = useRef("");
 
-  // Early guard: if the signed-in user has already applied to this job, show
-  // the "already applied" notice straight away instead of letting them refill
-  // the whole form only to be blocked at submit time.
+  // The profile documents available to attach (uploaded PDFs only).
+  const profileDocs = useMemo(() => {
+    if (!profile) return [] as { key: QualificationKey; name: string }[];
+    return (Object.keys(QUALIFICATION_LABELS) as QualificationKey[])
+      .map((key) => ({ key, doc: profile.qualifications[key] }))
+      .filter((x) => x.doc)
+      .map((x) => ({ key: x.key, name: x.doc!.fileName }));
+  }, [profile]);
+
+  // ---- one-time load: restore a draft, else pre-fill from the profile -------
+  useEffect(() => {
+    if (!user || !job || loadedRef.current) return;
+    loadedRef.current = true;
+
+    const prof = getProfile(user.email);
+    setProfile(prof);
+
+    const draft = getDraft(user.email, job.id);
+    const snapshot = {
+      fullName: "",
+      email: "",
+      phone: "",
+      nationality: "",
+      idNumber: "",
+      hasSkill: null as boolean | null,
+      cvName: "",
+      acceptedTerms: false,
+    };
+
+    if (draft) {
+      const v = draft.values;
+      setFullName((snapshot.fullName = v.fullName ?? ""));
+      setEmail((snapshot.email = v.email ?? ""));
+      setPhone((snapshot.phone = v.phone ?? ""));
+      setNationality((snapshot.nationality = v.nationality ?? ""));
+      setIdNumber((snapshot.idNumber = v.idNumber ?? ""));
+      setHasSkill((snapshot.hasSkill = v.hasSkill ?? null));
+      setCvName((snapshot.cvName = v.cvFileName ?? ""));
+      setAcceptedTerms((snapshot.acceptedTerms = v.acceptedTerms ?? false));
+      setRestored(true);
+    } else if (prof) {
+      setFullName((snapshot.fullName = prof.personal.fullName || user.name));
+      setEmail((snapshot.email = prof.personal.email || user.email));
+      setPhone((snapshot.phone = prof.personal.phone));
+      setNationality((snapshot.nationality = prof.personal.nationality));
+      setIdNumber((snapshot.idNumber = prof.personal.idNumber));
+      setPrefilled(true);
+    } else {
+      setFullName((snapshot.fullName = user.name));
+      setEmail((snapshot.email = user.email));
+    }
+
+    // Baseline = what we loaded. The autosave below only writes a draft once the
+    // user changes something, so a fresh, untouched pre-fill never creates one.
+    baselineRef.current = JSON.stringify(snapshot);
+  }, [user, job]);
+
+  // Early "already applied" notice for the signed-in case.
   useEffect(() => {
     if (user && job && hasApplied(job.id, user.email)) {
       setAlreadyApplied(true);
     }
   }, [user, job]);
 
-  // Loading — the API lookup is in flight and there is no local job to show yet.
+  // ---- autosave the draft on any meaningful change --------------------------
+  useEffect(() => {
+    if (!user || !job || submitted || alreadyApplied) return;
+    const snapshot = JSON.stringify({
+      fullName,
+      email,
+      phone,
+      nationality,
+      idNumber,
+      hasSkill,
+      cvName,
+      acceptedTerms,
+    });
+    if (snapshot === baselineRef.current) return; // nothing changed yet
+    saveDraft({
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.company,
+      email: user.email,
+      values: { fullName, email, phone, nationality, idNumber, hasSkill, cvFileName: cvName, acceptedTerms },
+    });
+  }, [
+    user,
+    job,
+    submitted,
+    alreadyApplied,
+    fullName,
+    email,
+    phone,
+    nationality,
+    idNumber,
+    hasSkill,
+    cvName,
+    acceptedTerms,
+  ]);
+
+  function attachProfileDocs(on: boolean) {
+    setUsingProfileDocs(on);
+    if (on) {
+      setCvFile(null);
+      setCvName(
+        `Profile documents (${profileDocs.map((d) => QUALIFICATION_LABELS[d.key]).join(", ")})`,
+      );
+    } else {
+      setCvName("");
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="flex min-h-[70vh] items-center justify-center bg-white px-4 py-16 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
@@ -174,8 +289,9 @@ export default function ApplyPage() {
     if (!idNumber.trim()) next.idNumber = "Please enter your ID number.";
     if (hasSkill === null)
       next.hasSkill = "Please tell us whether you have the required skill.";
-    if (!cvFile) next.cv = "Please attach your CV as a PDF.";
-    else if (cvFile.type !== "application/pdf")
+    // CV satisfied by a fresh PDF upload OR by attaching saved profile documents.
+    if (!cvName) next.cv = "Please attach your CV (PDF) or your profile documents.";
+    else if (cvFile && cvFile.type !== "application/pdf")
       next.cv = "Your CV must be a PDF file.";
     if (!acceptedTerms)
       next.terms = "You must accept the terms and conditions.";
@@ -188,9 +304,6 @@ export default function ApplyPage() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    // Block a second application to the same job from the same email. This is
-    // the real enforcement point; the on-mount effect above is just an early
-    // warning for the signed-in case.
     if (hasApplied(job!.id, email.trim())) {
       setAlreadyApplied(true);
       return;
@@ -207,17 +320,17 @@ export default function ApplyPage() {
       nationality: nationality.trim(),
       idNumber: idNumber.trim(),
       hasRequiredSkill: hasSkill === true,
-      cvFileName: cvFile!.name,
+      cvFileName: cvName,
       acceptedTerms,
       status: "Submitted",
       appliedAt: new Date().toISOString(),
     };
     saveApplication(application);
+    // The application is in — drop the saved draft so the resume banner clears.
+    if (user) clearDraft(user.email, job!.id);
     setSubmitted(true);
   }
 
-  // Already applied — shown instead of the form. We never reach the success
-  // screen because the duplicate is caught before it is saved.
   if (alreadyApplied && !submitted) {
     return (
       <main className="min-h-[70vh] bg-white px-4 py-16 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
@@ -226,26 +339,15 @@ export default function ApplyPage() {
           <h1 className="mt-4 text-2xl font-bold">You have already applied</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             You&apos;ve already submitted an application for{" "}
-            <span className="font-medium text-slate-900 dark:text-white">
-              {job.title}
-            </span>{" "}
-            at{" "}
-            <span className="font-medium text-slate-900 dark:text-white">
-              {job.company}
-            </span>
-            . You can only apply to each role once.
+            <span className="font-medium text-slate-900 dark:text-white">{job.title}</span> at{" "}
+            <span className="font-medium text-slate-900 dark:text-white">{job.company}</span>.
+            You can only apply to each role once.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Link
-              href="/applications"
-              className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-            >
+            <Link href="/applications" className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
               Track my application
             </Link>
-            <Link
-              href="/"
-              className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100 dark:border-white/15 dark:hover:bg-white/10"
-            >
+            <Link href="/" className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100 dark:border-white/15 dark:hover:bg-white/10">
               Browse more jobs
             </Link>
           </div>
@@ -262,27 +364,15 @@ export default function ApplyPage() {
           <h1 className="mt-4 text-2xl font-bold">Application submitted</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             Your application for{" "}
-            <span className="font-medium text-slate-900 dark:text-white">
-              {job.title}
-            </span>{" "}
-            at{" "}
-            <span className="font-medium text-slate-900 dark:text-white">
-              {job.company}
-            </span>{" "}
-            has been received. We&apos;ll keep you posted as it moves through
-            the stages.
+            <span className="font-medium text-slate-900 dark:text-white">{job.title}</span> at{" "}
+            <span className="font-medium text-slate-900 dark:text-white">{job.company}</span> has
+            been received. We&apos;ll keep you posted as it moves through the stages.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Link
-              href="/applications"
-              className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-            >
+            <Link href="/applications" className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
               Track my application
             </Link>
-            <Link
-              href="/"
-              className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100 dark:border-white/15 dark:hover:bg-white/10"
-            >
+            <Link href="/" className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100 dark:border-white/15 dark:hover:bg-white/10">
               Browse more jobs
             </Link>
           </div>
@@ -294,10 +384,7 @@ export default function ApplyPage() {
   return (
     <main className="min-h-[70vh] bg-white px-4 py-10 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
       <div className="mx-auto max-w-2xl">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-        >
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
           <ArrowLeft className="h-4 w-4" /> Back to jobs
         </Link>
 
@@ -308,144 +395,127 @@ export default function ApplyPage() {
           {job.location} · {job.typeLabel}
         </p>
 
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="mt-8 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-[#1a1133]"
-        >
-          <Field
-            id="fullName"
-            label="Full name"
-            value={fullName}
-            onChange={setFullName}
-            autoComplete="name"
-            error={errors.fullName}
-          />
-          <Field
-            id="email"
-            label="Email"
-            type="email"
-            value={email}
-            onChange={setEmail}
-            autoComplete="email"
-            error={errors.email}
-          />
-          <Field
-            id="phone"
-            label="Phone"
-            type="tel"
-            value={phone}
-            onChange={setPhone}
-            autoComplete="tel"
-            error={errors.phone}
-          />
-          <Field
-            id="nationality"
-            label="Nationality"
-            value={nationality}
-            onChange={setNationality}
-            error={errors.nationality}
-          />
-          <Field
-            id="idNumber"
-            label="ID number"
-            value={idNumber}
-            onChange={setIdNumber}
-            error={errors.idNumber}
-          />
+        {/* Restored-draft banner */}
+        {restored && (
+          <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800/60 dark:bg-amber-950/30">
+            <History className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-300" />
+            <p className="text-amber-800 dark:text-amber-200">
+              Welcome back — we restored the answers you started earlier. Pick up
+              where you left off.
+            </p>
+          </div>
+        )}
+
+        {/* Auto-fill banner */}
+        {prefilled && !restored && (
+          <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-brand-500/40 bg-brand-50 px-4 py-3 text-sm dark:border-brand-800/60 dark:bg-brand-900/30">
+            <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-600 dark:text-brand-100" />
+            <p className="text-brand-800 dark:text-brand-100">
+              We pre-filled this form from your{" "}
+              <Link href="/profile" className="font-semibold underline">profile</Link>. Review it,
+              attach your documents, and submit.
+            </p>
+          </div>
+        )}
+
+        {/* Nudge to build a profile when none exists */}
+        {user && !profile && (
+          <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm dark:border-white/10 dark:bg-white/5">
+            <UserCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
+            <p className="text-slate-600 dark:text-slate-300">
+              Tip: <Link href="/profile" className="font-semibold underline">build your profile</Link>{" "}
+              once and future applications fill themselves in.
+            </p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate
+          className="mt-8 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-[#1a1133]">
+          <Field id="fullName" label="Full name" value={fullName} onChange={setFullName} autoComplete="name" error={errors.fullName} />
+          <Field id="email" label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" error={errors.email} />
+          <Field id="phone" label="Phone" type="tel" value={phone} onChange={setPhone} autoComplete="tel" error={errors.phone} />
+          <Field id="nationality" label="Nationality" value={nationality} onChange={setNationality} error={errors.nationality} />
+          <Field id="idNumber" label="ID number" value={idNumber} onChange={setIdNumber} error={errors.idNumber} />
 
           {/* Required skill callout + Yes/No toggle */}
           <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-4">
             <p className="text-sm">
               This role requires:{" "}
-              <span className="font-semibold text-brand-700 dark:text-brand-300">
-                {job.requiredSkill}
-              </span>
+              <span className="font-semibold text-brand-700 dark:text-brand-300">{job.requiredSkill}</span>
             </p>
             <fieldset className="mt-3">
-              <legend className="text-sm font-medium">
-                Do you have this required skill?
-              </legend>
+              <legend className="text-sm font-medium">Do you have this required skill?</legend>
               <div className="mt-2 flex gap-2">
                 {(["Yes", "No"] as const).map((label) => {
                   const value = label === "Yes";
                   const active = hasSkill === value;
                   return (
-                    <button
-                      key={label}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setHasSkill(value)}
+                    <button key={label} type="button" aria-pressed={active} onClick={() => setHasSkill(value)}
                       className={
                         "rounded-lg border px-5 py-2 text-sm font-semibold transition " +
                         (active
                           ? "border-brand-600 bg-brand-600 text-white"
                           : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-white/15 dark:bg-[#0f0a1e] dark:text-slate-300 dark:hover:bg-white/10")
-                      }
-                    >
+                      }>
                       {label}
                     </button>
                   );
                 })}
               </div>
-              {errors.hasSkill && (
-                <p className="mt-2 text-xs text-red-500 dark:text-red-400">
-                  {errors.hasSkill}
-                </p>
-              )}
+              {errors.hasSkill && <p className="mt-2 text-xs text-red-500 dark:text-red-400">{errors.hasSkill}</p>}
             </fieldset>
           </div>
 
-          {/* CV upload (PDF only) */}
-          <div>
-            <label htmlFor="cv" className="block text-sm font-medium">
-              Upload your CV (PDF)
+          {/* Attach saved profile documents (only when the profile has some) */}
+          {profileDocs.length > 0 && (
+            <label className="flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm dark:border-emerald-800/60 dark:bg-emerald-950/20">
+              <input type="checkbox" checked={usingProfileDocs}
+                onChange={(e) => attachProfileDocs(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/40 dark:border-white/20 dark:bg-[#0f0a1e]" />
+              <span className="text-slate-700 dark:text-slate-200">
+                Attach my saved documents from my profile
+                <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                  {profileDocs.map((d) => QUALIFICATION_LABELS[d.key]).join(", ")}
+                </span>
+              </span>
             </label>
-            <input
-              id="cv"
-              type="file"
-              accept="application/pdf"
-              onChange={(e) => setCvFile(e.target.files?.[0] ?? null)}
-              className="mt-1.5 block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700 dark:text-slate-400"
-            />
-            {cvFile && (
-              <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <FileText className="h-4 w-4 text-brand-500" />
-                {cvFile.name}
-              </p>
-            )}
-            {errors.cv && (
-              <p className="mt-2 text-xs text-red-500 dark:text-red-400">
-                {errors.cv}
-              </p>
-            )}
-          </div>
+          )}
+
+          {/* CV upload (PDF only) — hidden when using profile documents */}
+          {!usingProfileDocs && (
+            <div>
+              <label htmlFor="cv" className="block text-sm font-medium">Upload your CV (PDF)</label>
+              <input id="cv" type="file" accept="application/pdf"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setCvFile(f);
+                  setCvName(f?.name ?? "");
+                }}
+                className="mt-1.5 block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700 dark:text-slate-400" />
+            </div>
+          )}
+          {cvName && (
+            <p className="-mt-2 inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <FileText className="h-4 w-4 text-brand-500" /> {cvName}
+            </p>
+          )}
+          {errors.cv && <p className="text-xs text-red-500 dark:text-red-400">{errors.cv}</p>}
 
           {/* Terms */}
           <div>
             <label className="flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
+              <input type="checkbox" checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/40 dark:border-white/20 dark:bg-[#0f0a1e]"
-              />
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/40 dark:border-white/20 dark:bg-[#0f0a1e]" />
               <span className="text-slate-600 dark:text-slate-300">
-                I accept the terms and conditions and consent to my information
-                being shared with {job.company}.
+                I accept the terms and conditions and consent to my information being shared with {job.company}.
               </span>
             </label>
-            {errors.terms && (
-              <p className="mt-2 text-xs text-red-500 dark:text-red-400">
-                {errors.terms}
-              </p>
-            )}
+            {errors.terms && <p className="mt-2 text-xs text-red-500 dark:text-red-400">{errors.terms}</p>}
           </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1a1133]"
-          >
+          <button type="submit"
+            className="w-full rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1a1133]">
             Submit application
           </button>
         </form>
@@ -464,32 +534,14 @@ interface FieldProps {
   error?: string;
 }
 
-function Field({
-  id,
-  label,
-  value,
-  onChange,
-  type = "text",
-  autoComplete,
-  error,
-}: FieldProps) {
+function Field({ id, label, value, onChange, type = "text", autoComplete, error }: FieldProps) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        autoComplete={autoComplete}
-        value={value}
+      <label htmlFor={id} className="block text-sm font-medium">{label}</label>
+      <input id={id} type={type} autoComplete={autoComplete} value={value}
         onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error ? true : undefined}
-        className={inputClass}
-      />
-      {error && (
-        <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{error}</p>
-      )}
+        aria-invalid={error ? true : undefined} className={inputClass} />
+      {error && <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{error}</p>}
     </div>
   );
 }
