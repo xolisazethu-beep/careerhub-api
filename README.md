@@ -1,3 +1,85 @@
+# CareerHub — Assignment 3.2
+
+**Job Application Wizard, Document Uploads & CareerHubX Branding**
+
+> The latest milestone. Earlier assignment write-ups (2.3, 2.2, 3.1) are preserved
+> further down.
+
+The job-application experience is now a polished, multi-step wizard, the brand
+is **CareerHubX**, and the backend contract those features need is specified in
+[`docs/BACKEND-GAPS.md`](docs/BACKEND-GAPS.md).
+
+### The 5-step application wizard (`/apply/[jobId]`)
+
+`components/apply/JobApplicationWizard.tsx` replaces the previous 3-step embedded
+wizard and the single-page form. The detail page (`/jobs/[id]`) now shows a
+**"Start application"** CTA that links here.
+
+| # | Step | Collects |
+|---|---|---|
+| 1 | Personal information | Full name(s), surname, gender, race (optional + "Prefer not to say"), date of birth, disability status (+ details if Yes), nationality |
+| 2 | Contact details | Email, phone, alternate phone, address, city, province (SA provinces + "Other"), postal code |
+| 3 | Qualifications & experience | Highest qualification, institution, year completed, employment status, years of experience, LinkedIn/portfolio URLs |
+| 4 | Job-specific questions | Motivation (min 100 chars), expected salary (ZAR), notice period, available start date, willing to relocate |
+| 5 | Documents & consent | Required PDFs (below) + three consent checkboxes |
+
+- **Validation:** one Zod schema (`lib/apply-wizard.ts`), per-step `trigger()` via
+  React Hook Form — Next is blocked until the current step is valid.
+- **URL state:** position lives in `?step=` via **nuqs**, so a refresh resumes there.
+- **Progress bar:** `components/apply/WizardProgress.tsx` is reusable and
+  accessible — numbered circles with `aria-current="step"`, visited steps are
+  keyboard-focusable buttons, and it collapses to a compact **"Step N of M"** bar
+  below the `md` breakpoint.
+- **Save as Draft** on every step. ⚠️ **localStorage fallback** (`lib/apply-draft.ts`)
+  until the backend draft endpoints ship — uploaded files are *not* kept in drafts
+  (browser storage limit); form fields and the current step are. Pre-fills from the
+  saved profile when no draft exists.
+- **Submit:** AlertDialog confirmation → `sonner` success toast → redirect to
+  `/applications/[id]/confirmation`, a **print-friendly** summary (`@media print`
+  in `globals.css` hides the nav/footer/buttons).
+
+### Documents step — required PDFs
+
+All documents are **PDF only, max 3 MB**. The display name is auto-renamed to
+`{userId}-{docType}.pdf` (mirroring server-side sanitisation — the client filename
+is never trusted). `components/apply/DocumentUpload.tsx` provides drag-and-drop,
+inline (non-toast) validation errors, file size in KB, and an AlertDialog-guarded
+**Remove**.
+
+| Document | Required | Condition |
+|---|---|---|
+| ID Document (SA) **or** Passport | Yes | Based on nationality (Step 1) |
+| Matric Results | Yes | Always |
+| Tertiary Qualification | Conditional | If Step 3 qualification is tertiary |
+| Driver's Licence | Conditional | If the job requires it¹ |
+| Motivation Letter | Yes | Always |
+| CV / Résumé | Yes | Always |
+
+Submit is disabled until every required document is uploaded and all three consents
+("information is accurate", "consent to data processing per the Privacy Policy",
+"agree to be contacted by employers") are ticked.
+
+¹ The API has no `requiresDriversLicence` flag yet (see `docs/BACKEND-GAPS.md` §B.1);
+the frontend currently infers it from the role's title/skills as a stand-in.
+
+### Branding — CareerHubX
+
+`components/brand/Logo.tsx` exports `<Logo>` (magnifying-glass-and-person mark plus
+the two-tone "CareerHubX" wordmark) and `<LogoMark>` (icon only) as inline SVG, used
+in the navbar, footer, auth shell, and `app/icon.svg` favicon. Page titles use a
+`%s · CareerHubX` template.
+
+### Backend integration
+
+Application drafts, document storage, saved jobs, match scores and notification
+settings are **not yet on the ASP.NET API** — the real C# service today only serves
+job-board reads. `docs/BACKEND-GAPS.md` is the paste-ready gap list / contract for
+the `careerhub-api` repo, including six fields/endpoints that the first backend
+draft was missing. Until those ship, the wizard persists to `localStorage` (clearly
+flagged in code), so the flow is fully functional for the demo.
+
+---
+
 # CareerHub — Assignment 2.3
 
 **Authentication & Smart State — Protect the Right Things, Show the Right Things to the Right People**
