@@ -8,12 +8,26 @@
 import type { JobListing } from "@/types";
 import { JOBS as JOB_LISTINGS } from "@/lib/seed-jobs";
 
+// Aligned with the backend status enum (docs/BACKEND-GAPS.md §E). The labels
+// here are the human-readable display form; the spaced variants are kept for
+// the records written by the older single-page apply flow.
 export type ApplicationStatus =
+  | "Draft"
   | "Submitted"
   | "Under review"
+  | "Shortlisted"
   | "Interview"
   | "Offer"
-  | "Rejected";
+  | "Rejected"
+  | "Withdrawn";
+
+/** One uploaded document's metadata, as kept on a submitted application. */
+export interface ApplicationDocument {
+  type: string;
+  /** The display filename, server-renamed to {userId}-{docType}.pdf. */
+  fileName: string;
+  size: number;
+}
 
 export interface Application {
   id: string;
@@ -30,6 +44,12 @@ export interface Application {
   acceptedTerms: boolean;
   status: ApplicationStatus;
   appliedAt: string;
+
+  // ---- Rich 5-step wizard payload (all optional so older records still load) ----
+  /** The full set of wizard answers, stored verbatim for the confirmation page. */
+  wizard?: Record<string, unknown>;
+  /** Metadata for every document attached at submit time. */
+  documents?: ApplicationDocument[];
 }
 
 export interface Job {

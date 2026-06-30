@@ -155,3 +155,21 @@ body {
 }
 .wizard-slide-right { animation: wizardSlideFromRight 0.28s ease both; }
 .wizard-slide-left  { animation: wizardSlideFromLeft 0.28s ease both; }
+
+/* Assignment 3.2 — print-friendly confirmation page.
+   Hide the app chrome (sticky nav, footer) and anything tagged print:hidden, so
+   a printed/"Save as PDF" record shows only the application summary in black on
+   white with sensible margins. */
+@media print {
+  header,
+  footer {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}

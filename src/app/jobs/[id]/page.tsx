@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
 import { auth } from "@/auth";
 import RealApplyPanel from "@/components/RealApplyPanel";
-import ApplicationWizard from "@/components/ApplicationWizard";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
 import { JOBS_API_BASE, toDetailView } from "@/lib/jobs-api";
 import type { JobListingDetailResponse } from "@/types";
@@ -208,15 +207,24 @@ export default async function JobDetailPage({
               </div>
             )}
 
-            {/* Assignment 3.1, Part 3 — the multi-step application wizard, shown
-                alongside the existing real-backend apply panel. `isCandidate`
-                gates advancing past step 1 (signed-out users see step 1 + a
-                sign-in prompt on Next). */}
-            <ApplicationWizard
-              jobId={job.id}
-              jobTitle={job.title}
-              isCandidate={role === "candidate"}
-            />
+            {/* Assignment 3.2 — the full application now lives in the canonical
+                5-step wizard at /apply/[jobId]. This card is the entry point. */}
+            <div className="rounded-2xl border border-brand-500/30 bg-brand-50 p-6 dark:border-brand-800/60 dark:bg-brand-900/20">
+              <h3 className="font-display text-lg font-bold text-ink dark:text-slate-100">
+                Apply for this role
+              </h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                A guided, 5-step application: your details, qualifications,
+                role-specific questions and document uploads. Your progress saves
+                as you go.
+              </p>
+              <Link
+                href={`/apply/${job.id}`}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+              >
+                Start application
+              </Link>
+            </div>
 
             <RealApplyPanel
               jobId={job.id}
