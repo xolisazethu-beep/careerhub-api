@@ -28,9 +28,21 @@ const jakarta = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CareerHub — Find your next role in South Africa",
+  // `template` makes per-page titles render as "{page} · CareerHubX"; pages set
+  // only their own segment via their `metadata`/`generateMetadata` `title`.
+  title: {
+    default: "CareerHubX — Find your next role in South Africa",
+    template: "%s · CareerHubX",
+  },
   description:
-    "Browse curated job listings across South Africa. Built with Next.js 15, React 19 and TypeScript.",
+    "Browse curated job listings across South Africa and apply with a guided, multi-step application. Built with Next.js 15, React 19 and TypeScript.",
+  openGraph: {
+    title: "CareerHubX — Find your next role in South Africa",
+    description:
+      "Browse curated job listings across South Africa and apply with a guided, multi-step application.",
+    siteName: "CareerHubX",
+    type: "website",
+  },
 };
 
 // Runs before first paint to set the `.dark` class on <html> from the stored

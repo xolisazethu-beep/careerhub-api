@@ -17,11 +17,10 @@ import {
   Users,
   Info,
   Mail,
-  Laptop,
-  Code2,
   LogOut,
   UserCircle,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavLinks, { type NavLink } from "@/components/NavLinks";
 import { signOutAction } from "@/app/actions/auth";
@@ -73,18 +72,9 @@ export default function Navbar({ session }: { session: Session | null }) {
     <>
       {/* Top bar */}
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-violet-500/20 bg-gradient-to-r from-[#1c0f33] via-[#140a24] to-[#1c0f33] px-4 py-3 text-white">
-        {/* Brand — laptop-with-code mark + gradient wordmark */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30">
-            <Laptop className="h-5 w-5 text-white" />
-            <Code2 className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded bg-[#140a24] p-0.5 text-fuchsia-300" />
-          </span>
-          <span className="font-display text-xl font-extrabold tracking-tight">
-            <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-300 bg-clip-text text-transparent">
-              Career
-            </span>
-            <span className="text-white">Hub</span>
-          </span>
+        {/* Brand — CareerHubX magnifying-glass + person mark and wordmark */}
+        <Link href="/" className="flex items-center" aria-label="CareerHubX home">
+          <Logo onDark />
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
