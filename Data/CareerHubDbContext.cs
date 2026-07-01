@@ -110,6 +110,19 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
             entity.Property(j => j.MinimumRequirements).IsRequired().HasMaxLength(2000);
             entity.Property(j => j.Location).IsRequired().HasMaxLength(200);
             entity.Property(j => j.Type).IsRequired().HasConversion<string>().HasMaxLength(20);
+
+            // Structured list fields the frontend renders. Npgsql maps List<string>
+            // to a native PostgreSQL text[] column, so no JSON serialisation is
+            // needed. Default to an empty array so a NULL can never reach the UI.
+            entity.Property(j => j.Responsibilities)
+                  .HasColumnType("text[]")
+                  .HasDefaultValueSql("ARRAY[]::text[]");
+            entity.Property(j => j.Skills)
+                  .HasColumnType("text[]")
+                  .HasDefaultValueSql("ARRAY[]::text[]");
+            entity.Property(j => j.MinimumExperienceYears)
+                  .IsRequired()
+                  .HasDefaultValue(0);
             entity.Property(j => j.SalaryMin).HasColumnType("numeric(18,2)");
             entity.Property(j => j.SalaryMax).HasColumnType("numeric(18,2)");
             entity.Property(j => j.Status).IsRequired().HasConversion<string>().HasMaxLength(20);

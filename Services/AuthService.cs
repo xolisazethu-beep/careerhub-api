@@ -35,7 +35,7 @@ public class AuthService(CareerHubDbContext db, IConfiguration config) : IAuthSe
         db.Applicants.Add(applicant);
         await db.SaveChangesAsync(ct);
 
-        return BuildResponse(applicant.Id, applicant.Email, ApplicantRole, companyId: null);
+        return BuildResponse(applicant.Id, applicant.Email, ApplicantRole, companyId: null, applicant.FullName);
     }
 
     public async Task<AuthResponse> RegisterEmployerAsync(RegisterEmployerRequest request, CancellationToken ct = default)
@@ -57,7 +57,7 @@ public class AuthService(CareerHubDbContext db, IConfiguration config) : IAuthSe
         db.Employers.Add(employer);
         await db.SaveChangesAsync(ct);
 
-        return BuildResponse(employer.Id, employer.Email, EmployerRole, employer.CompanyId);
+        return BuildResponse(employer.Id, employer.Email, EmployerRole, employer.CompanyId, employer.FullName);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
@@ -66,11 +66,11 @@ public class AuthService(CareerHubDbContext db, IConfiguration config) : IAuthSe
         // (enforced at registration), so at most one of these matches.
         var applicant = await db.Applicants.FirstOrDefaultAsync(a => a.Email == request.Email, ct);
         if (applicant is not null && PasswordHasher.Verify(request.Password, applicant.PasswordHash))
-            return BuildResponse(applicant.Id, applicant.Email, ApplicantRole, companyId: null);
+            return BuildResponse(applicant.Id, applicant.Email, ApplicantRole, companyId: null, applicant.FullName);
 
         var employer = await db.Employers.FirstOrDefaultAsync(e => e.Email == request.Email, ct);
         if (employer is not null && PasswordHasher.Verify(request.Password, employer.PasswordHash))
-            return BuildResponse(employer.Id, employer.Email, EmployerRole, employer.CompanyId);
+            return BuildResponse(employer.Id, employer.Email, EmployerRole, employer.CompanyId, employer.FullName);
 
         // Identical message whether the email is unknown or the password is wrong —
         // never reveal which, nor which table an account lives in.
@@ -90,8 +90,8 @@ public class AuthService(CareerHubDbContext db, IConfiguration config) : IAuthSe
             throw new ConflictException("An account with this email already exists.");
     }
 
-    private AuthResponse BuildResponse(Guid userId, string email, string role, Guid? companyId) =>
-        new(GenerateToken(userId, email, role, companyId), userId, email, role, companyId);
+    private AuthResponse BuildResponse(Guid userId, string email, string role, Guid? companyId, string fullName) =>
+        new(GenerateToken(userId, email, role, companyId), userId, email, role, companyId, fullName);
 
     private string GenerateToken(Guid userId, string email, string role, Guid? companyId)
     {

@@ -60,7 +60,10 @@ public class JobService(IJobListingRepository jobs) : IJobService
             Status = ListingStatus.Active,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = request.ExpiresAt,
-            CompanyId = companyId
+            CompanyId = companyId,
+            Responsibilities = request.Responsibilities?.ToList() ?? [],
+            Skills = request.Skills?.ToList() ?? [],
+            MinimumExperienceYears = request.MinimumExperienceYears
         };
 
         await jobs.AddAsync(listing, ct);

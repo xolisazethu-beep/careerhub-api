@@ -20,7 +20,13 @@ public record JobListingResponse(
     DateTime ExpiresAt,
     Guid CompanyId,
     string CompanyName,
-    string CompanyCity);
+    string CompanyCity,
+    // Structured fields the frontend board renders. Arrays come straight from the
+    // text[] columns; ApplicantCount is a server-side COUNT of the listing's applications.
+    IReadOnlyList<string> Responsibilities,
+    IReadOnlyList<string> Skills,
+    int MinimumExperienceYears,
+    int ApplicantCount);
 
 /// <summary>
 /// The full detail of a single listing (GET /api/jobs/{id}). Unlike the lean list
@@ -44,7 +50,11 @@ public record JobListingDetailResponse(
     string CompanyName,
     string CompanyCity,
     string CompanyProvince,
-    string CompanyWebsite);
+    string CompanyWebsite,
+    IReadOnlyList<string> Responsibilities,
+    IReadOnlyList<string> Skills,
+    int MinimumExperienceYears,
+    int ApplicantCount);
 
 /// <summary>
 /// One row of the Part 8 statistics report: a single active listing with its
@@ -70,7 +80,12 @@ public record CreateJobListingRequest(
     JobType Type,
     decimal? SalaryMin,
     decimal? SalaryMax,
-    DateTime ExpiresAt);
+    DateTime ExpiresAt,
+    // Structured fields supplied by the recruiter post-a-job form. Optional so an
+    // older client that omits them still posts a valid (if sparse) listing.
+    IReadOnlyList<string>? Responsibilities = null,
+    IReadOnlyList<string>? Skills = null,
+    int MinimumExperienceYears = 0);
 // NOTE: CompanyId is intentionally NOT a client input. The owning company is
 // taken from the authenticated employer's token claim, so an employer can only
 // ever post for their own company — a forged id in the body has nowhere to land.
@@ -207,7 +222,10 @@ public record AuthResponse(
     Guid UserId,
     string Email,
     string Role,
-    Guid? CompanyId);
+    Guid? CompanyId,
+    // The user's display name, so the frontend can greet them without a second
+    // round-trip. Present for both account types.
+    string FullName);
 
 /// <summary>
 /// One row of an applicant's own application history ("track applications").

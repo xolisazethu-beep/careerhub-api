@@ -34,6 +34,24 @@ public class JobListing
     public string Location { get; set; } = string.Empty;   // e.g. "Sandton, Gauteng"
     public JobType Type { get; set; }
 
+    /// <summary>
+    /// Day-to-day duties for the role, one bullet per entry. Stored as a PostgreSQL
+    /// <c>text[]</c> (Npgsql maps <see cref="List{T}"/> of string to a native array)
+    /// so the structured list the frontend renders round-trips without a JSON blob.
+    /// </summary>
+    public List<string> Responsibilities { get; set; } = [];
+
+    /// <summary>
+    /// Tools, frameworks and languages the candidate should know — the "skills
+    /// chips" the UI shows. Also a PostgreSQL <c>text[]</c>.
+    /// </summary>
+    public List<string> Skills { get; set; } = [];
+
+    /// <summary>
+    /// Minimum years of professional experience required. 0 = open to entry-level.
+    /// </summary>
+    public int MinimumExperienceYears { get; set; }
+
     // Salaries are in South African Rand (ZAR), monthly gross. Nullable because
     // many SA adverts say "market related" and omit the figure.
     public decimal? SalaryMin { get; set; }

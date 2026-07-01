@@ -16,7 +16,9 @@ public class JobListingRepository(CareerHubDbContext db) : IJobListingRepository
             j.Id, j.Title, j.Location, j.Type.ToString(),
             j.SalaryMin, j.SalaryMax, j.Status.ToString(),
             j.CreatedAt, j.ExpiresAt,
-            j.CompanyId, j.Company.Name, j.Company.City);
+            j.CompanyId, j.Company.Name, j.Company.City,
+            j.Responsibilities, j.Skills, j.MinimumExperienceYears,
+            j.Applications.Count);
 
     // ── PART 6: COMPILED QUERY — GetActiveListingsAsync ──────────────────────
     // HOT PATH. This is the public job board's landing query: it runs on every
@@ -37,7 +39,9 @@ public class JobListingRepository(CareerHubDbContext db) : IJobListingRepository
                        j.Id, j.Title, j.Location, j.Type.ToString(),
                        j.SalaryMin, j.SalaryMax, j.Status.ToString(),
                        j.CreatedAt, j.ExpiresAt,
-                       j.CompanyId, j.Company.Name, j.Company.City)));
+                       j.CompanyId, j.Company.Name, j.Company.City,
+                       j.Responsibilities, j.Skills, j.MinimumExperienceYears,
+                       j.Applications.Count)));
 
     public async Task<IReadOnlyList<JobListingResponse>> GetActiveListingsAsync(CancellationToken ct = default)
     {
@@ -202,7 +206,9 @@ public class JobListingRepository(CareerHubDbContext db) : IJobListingRepository
                 j.Id, j.Title, j.Description, j.MinimumRequirements, j.Location, j.Type.ToString(),
                 j.SalaryMin, j.SalaryMax, j.Status.ToString(),
                 j.CreatedAt, j.ExpiresAt,
-                j.CompanyId, j.Company.Name, j.Company.City, j.Company.Province, j.Company.Website))
+                j.CompanyId, j.Company.Name, j.Company.City, j.Company.Province, j.Company.Website,
+                j.Responsibilities, j.Skills, j.MinimumExperienceYears,
+                j.Applications.Count))
             .FirstOrDefaultAsync(ct);
 
     // ── PART 5: FULL-TEXT SEARCH ─────────────────────────────────────────────

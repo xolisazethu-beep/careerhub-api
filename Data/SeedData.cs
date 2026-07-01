@@ -100,7 +100,10 @@ public static class SeedData
                     Status = isActive ? ListingStatus.Active : ListingStatus.Closed,
                     CreatedAt = createdAt,
                     ExpiresAt = expiresAt,
-                    CompanyId = company.Id
+                    CompanyId = company.Id,
+                    Responsibilities = ResponsibilitiesFor(role),
+                    Skills = SkillsFor(role, rng),
+                    MinimumExperienceYears = MinExperienceFor(seniority)
                 });
             }
         }
@@ -126,7 +129,15 @@ public static class SeedData
                 Status = ListingStatus.Active,
                 CreatedAt = now.AddDays(-5),
                 ExpiresAt = now.AddDays(40),
-                CompanyId = c.Id
+                CompanyId = c.Id,
+                Responsibilities =
+                [
+                    "Operate and scale production Kubernetes clusters across regions",
+                    "Build and maintain CI/CD pipelines and infrastructure-as-code",
+                    "Own observability, incident response and on-call for the platform",
+                ],
+                Skills = ["Kubernetes", "Docker", "Helm", "Terraform", "AWS", "CI/CD"],
+                MinimumExperienceYears = 5
             });
         }
 
@@ -148,7 +159,15 @@ public static class SeedData
             Status = ListingStatus.Active,
             CreatedAt = now.AddDays(-3),
             ExpiresAt = now.AddDays(50),
-            CompanyId = companies[1].Id
+            CompanyId = companies[1].Id,
+            Responsibilities =
+            [
+                "Facilitate sprint planning, stand-ups, reviews and retrospectives",
+                "Remove blockers and shield the squad from interruptions",
+                "Coach the team on Agile practices and continuous improvement",
+            ],
+            Skills = ["Scrum", "Agile", "Jira", "Facilitation", "Stakeholder management"],
+            MinimumExperienceYears = 3
         });
 
         // ── 8 CURATED, HAND-WRITTEN LISTINGS ─────────────────────────────────
@@ -463,8 +482,79 @@ public static class SeedData
             Status = ListingStatus.Active,
             CreatedAt = DateTime.UtcNow.AddDays(-2),
             ExpiresAt = DateTime.UtcNow.AddDays(60),
-            CompanyId = company.Id
+            CompanyId = company.Id,
+            Responsibilities = ResponsibilitiesFor(title),
+            Skills = SkillsFor(title, new Random(title.GetHashCode())),
+            MinimumExperienceYears = 2
         };
+
+    // ── Structured-field generators (Responsibilities / Skills / MinExperience) ──
+    // Keyed loosely off the role text so a listing's bullets/chips read sensibly.
+    // Deterministic given the same role + rng, so reseeds are reproducible.
+    private static readonly string[] GenericResponsibilities =
+        ["Deliver high-quality work within agreed timelines",
+         "Collaborate across product, design and engineering",
+         "Participate in code reviews and knowledge sharing",
+         "Continuously improve processes, tooling and quality"];
+
+    private static List<string> ResponsibilitiesFor(string role)
+    {
+        var r = role.ToLowerInvariant();
+        if (r.Contains("frontend") || r.Contains("ux") || r.Contains("ui") || r.Contains("mobile"))
+            return ["Build accessible, responsive user interfaces",
+                    "Translate designs into production components",
+                    "Collaborate with designers and backend engineers",
+                    "Write tests and maintain a clean component library"];
+        if (r.Contains("backend") || r.Contains("software") || r.Contains("developer") || r.Contains("systems"))
+            return ["Design and build REST APIs and services",
+                    "Model and query relational data efficiently",
+                    "Write automated tests and review peers' code",
+                    "Operate services in production and respond to incidents"];
+        if (r.Contains("devops") || r.Contains("reliability") || r.Contains("cloud") || r.Contains("network"))
+            return ["Automate build, deployment and infrastructure",
+                    "Own monitoring, alerting and incident response",
+                    "Improve reliability, performance and cost",
+                    "Maintain CI/CD pipelines and infrastructure-as-code"];
+        if (r.Contains("data") || r.Contains("analyst") || r.Contains("business"))
+            return ["Gather, clean and analyse data sets",
+                    "Build dashboards and report on key metrics",
+                    "Partner with stakeholders to surface insights",
+                    "Document findings and recommend actions"];
+        return [.. GenericResponsibilities];
+    }
+
+    private static readonly string[] BaseSkills = ["Git", "Agile", "Communication"];
+
+    private static List<string> SkillsFor(string role, Random rng)
+    {
+        var r = role.ToLowerInvariant();
+        string[] core =
+            r.Contains("frontend") || r.Contains("mobile") || r.Contains("ux") || r.Contains("ui")
+                ? ["JavaScript", "TypeScript", "React", "CSS", "Figma"]
+            : r.Contains("backend") || r.Contains("software") || r.Contains("developer") || r.Contains("systems")
+                ? ["C#", ".NET", "PostgreSQL", "REST APIs", "SQL"]
+            : r.Contains("devops") || r.Contains("reliability") || r.Contains("cloud") || r.Contains("network")
+                ? ["Docker", "Kubernetes", "Terraform", "AWS", "Linux"]
+            : r.Contains("data") || r.Contains("analyst") || r.Contains("business")
+                ? ["Python", "SQL", "Power BI", "Pandas", "Excel"]
+                : ["Problem solving", "Teamwork", "Time management"];
+
+        // Take a deterministic 3–4 of the core skills, then add the base set.
+        var picked = core.OrderBy(_ => rng.Next()).Take(3 + rng.Next(0, 2)).ToList();
+        picked.AddRange(BaseSkills);
+        return picked.Distinct().ToList();
+    }
+
+    private static int MinExperienceFor(string seniority) => seniority switch
+    {
+        "Graduate"     => 0,
+        "Junior"       => 1,
+        "Intermediate" => 3,
+        "Senior"       => 5,
+        "Lead"         => 8,
+        "Principal"    => 10,
+        _              => 0
+    };
 
     // Builds a realistic, SA-flavoured advert body. Salary is quoted in Rand when
     // present, or "market related" when the figures were omitted.
