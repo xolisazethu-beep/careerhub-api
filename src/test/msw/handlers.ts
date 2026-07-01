@@ -44,11 +44,12 @@ export const handlers = [
     );
   }),
 
-  // GET a single job — used when a page hydrates job details on mount.
-  http.get(`${BOARD}/api/jobs/:id`, () => HttpResponse.json(mockJob)),
+  // GET a single job — used when a page hydrates job details on mount. The real
+  // backend serves this under the versioned path (/api/v1/jobs/:id).
+  http.get(`${BOARD}/api/v1/jobs/:id`, () => HttpResponse.json(mockJob)),
 
   // GET the job board — TanStack Query invalidates ["jobs"] after a submit.
-  http.get(`${BOARD}/api/jobs`, () =>
+  http.get(`${BOARD}/api/v1/jobs`, () =>
     HttpResponse.json({
       data: [],
       page: 1,

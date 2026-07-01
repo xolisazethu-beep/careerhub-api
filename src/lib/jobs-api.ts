@@ -21,14 +21,20 @@
 import type { JobListingResponse, JobListingDetailResponse } from "@/types";
 
 /**
- * Absolute base of THIS app's own API (Assignment 2.2). Server Components need an
- * absolute url to fetch their own route handlers, so this is the app origin
- * (NEXT_PUBLIC_API_URL), defaulting to the dev origin. Pointing the job reads
- * here — rather than at the external Docker backend — is what lets the close
- * action's revalidateTag("jobs") actually invalidate the data these pages show.
+ * Absolute base of the REAL CareerHub backend (ASP.NET + Postgres). Server
+ * Components need an absolute URL; this is the backend origin
+ * (NEXT_PUBLIC_API_BASE_URL), defaulting to the local dev backend. Every job read
+ * now goes to the live database — there is no mock route in the middle. The close
+ * action's revalidateTag("jobs") still invalidates Next's Data Cache for these
+ * fetches, so a close refreshes the cached board/detail on next render.
+ *
+ * Routes are versioned: use `${JOBS_API_BASE}${API_V1}/jobs...`.
  */
 export const JOBS_API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
+
+/** The API version segment every backend route lives under. */
+export const API_V1 = "/api/v1";
 
 /** One row of the per-job application-count stats (GET /api/applications/stats). */
 export interface ApplicationStat {

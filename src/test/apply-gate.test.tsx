@@ -4,16 +4,17 @@
 //
 // Adaptation note: the new wizard doesn't gate on a Next click — the /apply page
 // gates before the wizard ever renders (show "Sign in to apply" when there's no
-// signed-in candidate). These tests exercise that real gate. Identity comes from
-// AuthContext (localStorage `careerhub.session`), so we plant/clear that key
-// rather than mocking useSession.
+// signed-in job seeker). Identity now comes from the REAL backend applicant
+// session (ApplicantAuthContext, localStorage `careerhub:applicant`, holding the
+// JWT), so we plant/clear that key. The job itself is fetched from the backend —
+// MSW answers GET /api/v1/jobs/:id.
 // =============================================================
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderWithProviders, screen } from "./utils";
 import ApplyPage from "@/app/apply/[jobId]/page";
 
-const SESSION_KEY = "careerhub.session";
+const APPLICANT_KEY = "careerhub:applicant";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -30,10 +31,16 @@ describe("Apply flow — authentication gate", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the wizard when authenticated as a candidate", async () => {
+  it("renders the wizard when authenticated as a job seeker", async () => {
     window.localStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({ id: "u1", name: "Alice Candidate", email: "alice@example.com" }),
+      APPLICANT_KEY,
+      JSON.stringify({
+        token: "test.jwt.token",
+        userId: "u1",
+        email: "alice@example.com",
+        role: "Applicant",
+        fullName: "Alice Candidate",
+      }),
     );
 
     renderWithProviders(<ApplyPage />);

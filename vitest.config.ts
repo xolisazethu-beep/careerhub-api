@@ -18,6 +18,18 @@ export default defineConfig({
     // Generous timeouts keep behaviour tests from flaking on speed alone.
     testTimeout: 20000,
     hookTimeout: 20000,
+    // --- Worker pool: avoid the parallel-spawn storm ------------------------
+    // Vitest's forks pool defaults to one worker PER test file, up to the CPU
+    // count, all booting the Vite transform pipeline at once. On this slow box
+    // that contention pushes individual workers past Vitest's *hardcoded* 60s
+    // start/stop timeouts → "Failed to start forks worker" / "Timeout
+    // terminating forks worker". fileParallelism:false forces maxWorkers to 1,
+    // so a single worker runs every file in sequence (still isolated per file):
+    // it starts once and is torn down once — no spawn/teardown storm.
+    pool: "forks",
+    fileParallelism: false,
+    // Belt-and-suspenders if the box is busy when the one worker is torn down.
+    teardownTimeout: 30000,
     env: {
       NEXT_PUBLIC_API_URL: "http://localhost:8080",
       NEXT_PUBLIC_API_BASE_URL: "http://localhost:8080",

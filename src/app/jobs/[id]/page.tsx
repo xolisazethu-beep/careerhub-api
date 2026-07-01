@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
 import { auth } from "@/auth";
 import RealApplyPanel from "@/components/RealApplyPanel";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
-import { JOBS_API_BASE, toDetailView } from "@/lib/jobs-api";
+import { JOBS_API_BASE, API_V1, toDetailView } from "@/lib/jobs-api";
 import type { JobListingDetailResponse } from "@/types";
 
 /**
@@ -38,7 +38,7 @@ export default async function JobDetailPage({
     // per-job `job-${id}` tag. The close action clears "jobs" (so closing ANY job
     // refreshes every listing/detail), and could clear `job-${id}` to refresh just
     // this one. `force-cache` is what enables Next 15's Data Cache for this fetch.
-    fetch(`${JOBS_API_BASE}/api/jobs/${id}`, {
+    fetch(`${JOBS_API_BASE}${API_V1}/jobs/${id}`, {
       cache: "force-cache",
       next: { tags: ["jobs", `job-${id}`] },
     }),

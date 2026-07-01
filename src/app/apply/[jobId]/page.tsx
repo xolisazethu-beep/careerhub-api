@@ -14,10 +14,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { fetchJobById } from "@/lib/api";
-import { getJobById, hasApplied } from "@/lib/careerhub-store";
-import { useAuth } from "@/context/AuthContext";
+import { useApplicantAuth } from "@/context/ApplicantAuthContext";
 import JobApplicationWizard from "@/components/apply/JobApplicationWizard";
 
 interface ResolvedJob {
@@ -36,7 +35,7 @@ function inferLicence(haystack: string[]): boolean {
 
 export default function ApplyPage() {
   const { jobId } = useParams<{ jobId: string }>();
-  const { user, isReady } = useAuth();
+  const { applicant, ready } = useApplicantAuth();
 
   const { data: apiJob, isPending, isError } = useQuery({
     queryKey: ["job", jobId],
@@ -44,37 +43,23 @@ export default function ApplyPage() {
     retry: false,
   });
 
-  const localJob = useMemo(() => getJobById(jobId), [jobId]);
-
   const job = useMemo<ResolvedJob | null>(() => {
-    if (apiJob) {
-      return {
-        id: apiJob.id,
-        title: apiJob.title,
-        company: apiJob.company,
-        location: apiJob.location,
-        requiresDriversLicence: inferLicence([
-          apiJob.title,
-          apiJob.minimumQualification,
-          ...apiJob.skills,
-          ...apiJob.responsibilities,
-        ]),
-      };
-    }
-    if (localJob) {
-      return {
-        id: localJob.id,
-        title: localJob.title,
-        company: localJob.company,
-        location: localJob.location,
-        requiresDriversLicence: inferLicence([localJob.title, localJob.requiredSkill]),
-      };
-    }
-    return null;
-  }, [apiJob, localJob]);
+    if (!apiJob) return null;
+    return {
+      id: apiJob.id,
+      title: apiJob.title,
+      company: apiJob.company,
+      location: apiJob.location,
+      requiresDriversLicence: inferLicence([
+        apiJob.title,
+        apiJob.minimumQualification,
+        ...apiJob.skills,
+        ...apiJob.responsibilities,
+      ]),
+    };
+  }, [apiJob]);
 
-  const loading = (isPending && !localJob) || !isReady;
-  const alreadyApplied = Boolean(user && job && hasApplied(job.id, user.email));
+  const loading = isPending || !ready;
 
   if (loading) {
     return (
@@ -101,35 +86,20 @@ export default function ApplyPage() {
     );
   }
 
-  if (!user) {
+  if (!applicant) {
     return (
       <Card>
         <AlertCircle className="mx-auto h-12 w-12 text-amber-500" />
         <h1 className="mt-4 text-xl font-bold">Sign in to apply</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          You need a candidate account to apply for{" "}
+          You need a job-seeker account to apply for{" "}
           <span className="font-medium text-slate-900 dark:text-white">{job.title}</span>.
         </p>
         <Link
-          href={`/login?next=/apply/${job.id}`}
+          href={`/candidate/signin?next=/apply/${job.id}`}
           className="mt-6 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
         >
           Sign in
-        </Link>
-      </Card>
-    );
-  }
-
-  if (alreadyApplied) {
-    return (
-      <Card>
-        <CheckCircle2 className="mx-auto h-12 w-12 text-brand-500" />
-        <h1 className="mt-4 text-xl font-bold">You&apos;ve already applied</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          You can only apply once to <span className="font-medium">{job.title}</span>.
-        </p>
-        <Link href="/applications" className="mt-6 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-          Track my applications
         </Link>
       </Card>
     );
@@ -156,7 +126,8 @@ export default function ApplyPage() {
               company: job.company,
               requiresDriversLicence: job.requiresDriversLicence,
             }}
-            user={{ name: user.name, email: user.email }}
+            user={{ name: applicant.fullName || applicant.email, email: applicant.email }}
+            token={applicant.token}
           />
         </div>
       </div>

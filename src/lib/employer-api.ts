@@ -19,7 +19,7 @@
 import type { EmploymentType } from "@/types";
 import { fetchWithRetry } from "@/lib/http";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
 
 interface ProblemDetails {
   title?: string;
@@ -132,7 +132,7 @@ export async function fetchCompanyJobs(
   companyId: string,
 ): Promise<EmployerJob[]> {
   const res = await fetchWithRetry(
-    `${API_BASE}/api/jobs/company/${companyId}?page=1&pageSize=100`,
+    `${API_BASE}/api/v1/jobs/company/${companyId}?page=1&pageSize=100`,
     { cache: "no-store" },
   );
   if (!res.ok) throw new Error(await readError(res));
@@ -239,7 +239,7 @@ export async function createJobListing(
   token: string,
   body: NewJobListing,
 ): Promise<{ id: string }> {
-  const res = await fetchWithRetry(`${API_BASE}/api/jobs`, {
+  const res = await fetchWithRetry(`${API_BASE}/api/v1/jobs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

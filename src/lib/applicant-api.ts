@@ -8,7 +8,7 @@
 
 import { fetchWithRetry } from "@/lib/http";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
 
 interface ProblemDetails {
   title?: string;
@@ -23,6 +23,8 @@ export interface ApplicantAuth {
   userId: string;
   email: string;
   role: string;
+  /** Display name, so the UI can greet the applicant without a second call. */
+  fullName: string;
 }
 
 /** One row of the applicant's own application history (Track Applications). */

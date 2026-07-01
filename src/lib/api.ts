@@ -86,7 +86,7 @@ export async function fetchJobs(): Promise<JobListing[]> {
   // ~600); full client-side pagination is a separate feature. When the env var
   // is absent this is a relative URL, so the in-app mock route still serves the
   // board instead of the app fetching `undefined/api/jobs`.
-  const res = await fetch(`${JOBS_API_BASE}/api/jobs?page=1&pageSize=50`);
+  const res = await fetch(`${JOBS_API_BASE}/api/v1/jobs?page=1&pageSize=50`);
 
   // `fetch` only REJECTS on a network-level failure (DNS, offline, CORS, etc.).
   // A 404 or 500 still RESOLVES with `res.ok === false`. Without this check the
@@ -194,7 +194,7 @@ export async function deleteJob(id: string): Promise<void> {
  * routes it into TanStack Query's `isError` path at the call site.
  */
 export async function fetchJobById(id: string): Promise<JobListing> {
-  const res = await fetch(`${JOBS_API_BASE}/api/jobs/${id}`);
+  const res = await fetch(`${JOBS_API_BASE}/api/v1/jobs/${id}`);
 
   if (!res.ok) {
     throw new Error(`Failed to load job ${id} — server responded with ${res.status} ${res.statusText}`);

@@ -56,7 +56,7 @@ import {
 } from "@/lib/apply-wizard";
 import { getWizardDraft, saveWizardDraft, clearWizardDraft } from "@/lib/apply-draft";
 import { getProfile, type UploadedDoc } from "@/lib/profile-store";
-import { saveApplication, uid, type Application } from "@/lib/careerhub-store";
+import { applyToJob } from "@/lib/applicant-api";
 import { cn } from "@/lib/utils";
 
 const LAST_STEP = STEP_LABELS.length - 1;
@@ -78,6 +78,47 @@ interface WizardJob {
 interface Props {
   job: WizardJob;
   user: { name: string; email: string };
+  /**
+   * The real backend applicant JWT. Present when the wizard is hosted by the
+   * apply page (which gates on a signed-in job seeker). Optional so component
+   * tests can render the wizard without a live session.
+   */
+  token?: string;
+}
+
+/** Turn a stored base64 data-URL document back into a File for multipart upload. */
+async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
+  const blob = await (await fetch(dataUrl)).blob();
+  return new File([blob], fileName, { type: blob.type || "application/pdf" });
+}
+
+/**
+ * Compose the backend cover note from the wizard answers. The API stores a single
+ * free-text cover note, so the motivation leads and the key structured answers
+ * (experience, notice period, availability, links) follow as a short summary the
+ * recruiter can read at a glance.
+ */
+function buildCoverNote(v: WizardValues, jobTitle: string): string {
+  const lines: string[] = [];
+  if (v.motivationText?.trim()) lines.push(v.motivationText.trim());
+
+  const facts: string[] = [];
+  if (v.yearsOfExperience) facts.push(`Experience: ${v.yearsOfExperience} year(s)`);
+  if (v.highestQualification)
+    facts.push(
+      `Highest qualification: ${v.highestQualification}${v.institution ? ` (${v.institution})` : ""}`,
+    );
+  if (v.noticePeriod) facts.push(`Notice period: ${v.noticePeriod}`);
+  if (v.availableStartDate) facts.push(`Available from: ${v.availableStartDate}`);
+  if (v.expectedSalary) facts.push(`Expected salary: R${v.expectedSalary}/month`);
+  facts.push(`Willing to relocate: ${v.willingToRelocate ? "Yes" : "No"}`);
+  if (v.linkedInUrl?.trim()) facts.push(`LinkedIn: ${v.linkedInUrl.trim()}`);
+  if (v.portfolioUrl?.trim()) facts.push(`Portfolio: ${v.portfolioUrl.trim()}`);
+
+  if (facts.length > 0) {
+    lines.push(`\nApplication summary for ${jobTitle}:\n- ${facts.join("\n- ")}`);
+  }
+  return lines.join("\n").slice(0, 2000); // backend CoverNote column caps at 2000 chars
 }
 
 /** Best-effort split of a single stored name into first names + surname. */
@@ -87,7 +128,7 @@ function splitName(full: string): { fullNames: string; surname: string } {
   return { fullNames: parts.slice(0, -1).join(" "), surname: parts.at(-1) ?? "" };
 }
 
-export default function JobApplicationWizard({ job, user }: Props) {
+export default function JobApplicationWizard({ job, user, token }: Props) {
   const router = useRouter();
   // The URL (?step=) is the durable mirror: read once to initialise position
   // (so a refresh resumes there) and written on every change. Rendering is
@@ -233,41 +274,43 @@ export default function JobApplicationWizard({ job, user }: Props) {
       return;
     }
 
+    if (!token) {
+      toast.error("Your session has expired. Please sign in again to submit.");
+      return;
+    }
+
     setSubmitting(true);
     const v = getValues();
-    const id = uid();
-    const application: Application = {
-      id,
-      jobId: job.id,
-      jobTitle: job.title,
-      company: job.company,
-      fullName: `${v.fullNames} ${v.surname}`.trim(),
-      email: v.email.trim(),
-      phone: v.phone.trim(),
-      nationality: v.nationality === "Other" ? v.nationalityOther || "Other" : "South African",
-      idNumber: "",
-      hasRequiredSkill: true,
-      cvFileName: docs.Cv?.fileName ?? "",
-      acceptedTerms: true,
-      status: "Submitted",
-      appliedAt: new Date().toISOString(),
-      wizard: v as unknown as Record<string, unknown>,
-      documents: reqDocs.map((d) => ({
-        type: d.type,
-        fileName: docs[d.type]!.fileName,
-        size: docs[d.type]!.size,
-      })),
-    };
 
-    // ⚠️ localStorage fallback for POST /api/applications/{id}/submit. The real
-    // backend runs full server-side validation and persists the PDFs.
-    await new Promise((r) => setTimeout(r, 600));
-    saveApplication(application);
-    clearWizardDraft(user.email, job.id);
-    toast.success("Application submitted", {
-      description: `Your application for ${job.title} is on its way.`,
-    });
-    router.push(`/applications/${id}/confirmation`);
+    // The backend apply contract is lean (cover note + optional CV + ticked
+    // skills). Fold the wizard's rich, role-specific answers into a structured
+    // cover note so the recruiter still sees them — the extra fields that have no
+    // column yet (documents beyond the CV, EE data) are a known backend gap.
+    const coverNote = buildCoverNote(v, job.title);
+
+    try {
+      // Attach the CV PDF (always a required document). Convert the stored data
+      // URL back into a File so it uploads as real multipart bytes.
+      const cvDoc = docs.Cv;
+      const cv = cvDoc
+        ? await dataUrlToFile(cvDoc.dataUrl, cvDoc.fileName || "cv.pdf")
+        : null;
+
+      await applyToJob(token, job.id, { coverNote, selectedSkills: [], cv });
+
+      clearWizardDraft(user.email, job.id);
+      toast.success("Application submitted", {
+        description: `Your application for ${job.title} was sent to ${job.company}.`,
+      });
+      // Real track page — reads the applicant's history from the backend.
+      router.push("/applications");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not submit your application.";
+      // The backend returns a 409 (already applied) as a friendly message.
+      toast.error("Application not submitted", { description: message });
+      setSubmitting(false);
+    }
   }
 
   return (

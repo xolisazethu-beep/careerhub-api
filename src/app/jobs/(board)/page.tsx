@@ -5,6 +5,7 @@ import JobFilters from "@/components/JobFilters";
 import ClearFiltersButton from "@/components/ClearFiltersButton";
 import {
   JOBS_API_BASE,
+  API_V1,
   toSummaryView,
   type JobSummaryView,
 } from "@/lib/jobs-api";
@@ -55,7 +56,7 @@ async function getJobs({
   status: StatusFilter;
 }): Promise<JobsResult> {
   const res = await fetch(
-    `${JOBS_API_BASE}/api/jobs?page=1&pageSize=${PAGE_SIZE}`,
+    `${JOBS_API_BASE}${API_V1}/jobs?page=1&pageSize=${PAGE_SIZE}`,
     { cache: "force-cache", next: { tags: ["jobs"] } },
   );
   if (!res.ok) {
