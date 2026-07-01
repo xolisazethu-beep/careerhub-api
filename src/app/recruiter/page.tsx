@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Plus, Users } from "lucide-react";
-import { useEmployerAuth } from "@/context/EmployerAuthContext";
+import { useSession, signOut } from "next-auth/react";
 import {
   createJobListing,
   fetchCompanyJobs,
@@ -43,7 +43,8 @@ function defaultClosingDate(): string {
 export default function RecruiterDashboardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { employer, ready, logout } = useEmployerAuth();
+  const { data: session, status } = useSession();
+  const ready = status !== "loading";
 
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -64,13 +65,14 @@ export default function RecruiterDashboardPage() {
     setClosingDate(defaultClosingDate());
   }, []);
 
-  // Auth gate. Once the stored session is read, bounce anyone without an
-  // employer session to sign-in.
+  // Auth gate. Once the session is read, bounce anyone who isn't a signed-in
+  // employer to sign-in.
   useEffect(() => {
-    if (ready && !employer) router.replace("/recruiter/signin");
-  }, [ready, employer, router]);
+    if (ready && (!session || session.user.role !== "employer"))
+      router.replace("/recruiter/signin");
+  }, [ready, session, router]);
 
-  const companyId = employer?.companyId ?? null;
+  const companyId = session?.user.companyId ?? null;
 
   // This employer's postings, read from the real backend.
   const { data: jobs } = useQuery({
@@ -81,7 +83,7 @@ export default function RecruiterDashboardPage() {
 
   const postJob = useMutation({
     mutationFn: (body: NewJobListing) =>
-      createJobListing(employer!.token, body),
+      createJobListing(session?.accessToken ?? "", body),
     onSuccess: () => {
       // Refresh the employer's list AND the public board cache so the new job
       // shows up everywhere immediately.
@@ -101,7 +103,7 @@ export default function RecruiterDashboardPage() {
     },
   });
 
-  if (!ready || !employer) return null;
+  if (!ready || !session) return null;
 
   function handlePost(event: FormEvent) {
     event.preventDefault();
@@ -142,8 +144,7 @@ export default function RecruiterDashboardPage() {
   }
 
   function handleSignOut() {
-    logout();
-    router.push("/recruiter/signin");
+    void signOut({ callbackUrl: "/recruiter/signin" });
   }
 
   return (
@@ -153,7 +154,7 @@ export default function RecruiterDashboardPage() {
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">Employer dashboard</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Signed in as {employer.email}
+              Signed in as {session.user.email}
             </p>
           </div>
           <button

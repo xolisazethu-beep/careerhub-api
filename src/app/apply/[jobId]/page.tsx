@@ -15,8 +15,8 @@ import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { fetchJobById } from "@/lib/api";
-import { useApplicantAuth } from "@/context/ApplicantAuthContext";
 import JobApplicationWizard from "@/components/apply/JobApplicationWizard";
 
 interface ResolvedJob {
@@ -35,7 +35,8 @@ function inferLicence(haystack: string[]): boolean {
 
 export default function ApplyPage() {
   const { jobId } = useParams<{ jobId: string }>();
-  const { applicant, ready } = useApplicantAuth();
+  const { data: session, status } = useSession();
+  const ready = status !== "loading";
 
   const { data: apiJob, isPending, isError } = useQuery({
     queryKey: ["job", jobId],
@@ -86,7 +87,7 @@ export default function ApplyPage() {
     );
   }
 
-  if (!applicant) {
+  if (!session) {
     return (
       <Card>
         <AlertCircle className="mx-auto h-12 w-12 text-amber-500" />
@@ -126,8 +127,11 @@ export default function ApplyPage() {
               company: job.company,
               requiresDriversLicence: job.requiresDriversLicence,
             }}
-            user={{ name: applicant.fullName || applicant.email, email: applicant.email }}
-            token={applicant.token}
+            user={{
+              name: session.user.name || session.user.email || "",
+              email: session.user.email || "",
+            }}
+            token={session.accessToken}
           />
         </div>
       </div>

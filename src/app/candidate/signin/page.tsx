@@ -10,7 +10,8 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 import { UserCircle, Eye, EyeOff } from "lucide-react";
-import { useApplicantAuth } from "@/context/ApplicantAuthContext";
+import { signIn } from "next-auth/react";
+import { applicantRegister } from "@/lib/applicant-api";
 
 /**
  * The form reads useSearchParams (the post-login `next` target), which Next
@@ -33,7 +34,6 @@ function SignInForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/applications";
-  const { login, register } = useApplicantAuth();
 
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
@@ -70,20 +70,31 @@ function SignInForm() {
 
     setBusy(true);
     try {
-      const auth =
-        mode === "login"
-          ? await login(email.trim(), password)
-          : await register({
-              fullName: fullName.trim(),
-              email: email.trim(),
-              password,
-            });
-      if (auth.role !== "Applicant") {
-        setError("That is not a job-seeker account. Use the employer sign-in to post jobs.");
+      // Register first (creates the backend applicant), then sign in — so the
+      // whole app shares ONE Auth.js session carrying the backend JWT.
+      if (mode === "register") {
+        await applicantRegister({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          password,
+        });
+      }
+      const res = await signIn("credentials", {
+        email: email.trim(),
+        password,
+        redirect: false,
+      });
+      if (res?.error) {
+        setError(
+          mode === "login"
+            ? "Invalid email or password."
+            : "Account created, but sign-in failed. Please try signing in.",
+        );
         setBusy(false);
         return;
       }
       router.push(next);
+      router.refresh();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Sign in failed.");
       setBusy(false);

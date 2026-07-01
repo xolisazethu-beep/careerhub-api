@@ -5,71 +5,97 @@ import type { Role } from "@/types/roles";
 export type { Role };
 
 /**
- * Assignment 2.3 — MOCK, FRONTEND-ONLY authentication (Auth.js v5).
+ * REAL, backend-backed authentication (Auth.js v5).
  *
- * There is no backend auth endpoint. The only users that exist are the four
- * hardcoded here — this array is the SINGLE source of truth for both `authorize`
- * (who can sign in) and the login page's role-based redirect (where they land).
- * Nothing about auth talks to the job API; the backend's only job is job data.
+ * This is the single sign-in for the whole app. The Credentials provider verifies
+ * the email + password against the real CareerHub API (`POST /api/v1/auth/login`)
+ * and, on success, threads the backend's JWT, role, company id and display name
+ * onto the Auth.js session. Everything downstream reads ONE session:
+ *   • middleware gates routes on `session.user.role` (from the signed cookie),
+ *   • client API calls read `session.accessToken` for the Authorization header.
+ *
+ * The backend's roles ("Applicant"/"Employer") are mapped to the app's
+ * ("candidate"/"employer") so the existing role checks and UI keep working.
  */
 
-export interface MockUser {
-  id: string;
-  username: string;
-  password: string;
-  name: string;
-  role: Role;
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
+
+/** The shape `POST /api/v1/auth/login` returns. */
+interface BackendAuth {
+  token: string;
+  userId: string;
+  email: string;
+  role: "Applicant" | "Employer";
+  companyId: string | null;
+  fullName: string;
 }
 
-/** The complete set of accounts. Username + password are checked literally. */
-export const USERS: readonly MockUser[] = [
-  { id: "1", username: "employer1", password: "password123", name: "Employer One", role: "employer" },
-  { id: "2", username: "employer2", password: "password123", name: "Employer Two", role: "employer" },
-  { id: "3", username: "alice", password: "password123", name: "Alice", role: "candidate" },
-  { id: "4", username: "bob", password: "password123", name: "Bob", role: "candidate" },
-] as const;
-
-/** Look up the role for a username — used by the login page to pick the redirect. */
-export function roleForUsername(username: string): Role | undefined {
-  return USERS.find((u) => u.username === username)?.role;
+function toRole(backendRole: string): Role {
+  return backendRole === "Employer" ? "employer" : "candidate";
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // JWT sessions — no database, the session lives entirely in a signed cookie.
+  // JWT sessions — no database; the session (incl. the backend token) lives in a
+  // signed cookie the middleware can read on the edge without a round-trip.
   session: { strategy: "jwt" },
-  // Our own login route; Auth.js redirects here when a page calls signIn().
   pages: { signIn: "/login" },
-  // Trust the local host header in dev/preview (no deployment URL configured).
   trustHost: true,
   providers: [
     Credentials({
-      // These names define the credential fields; the login form posts `username`.
       credentials: {
-        username: { label: "Username", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      // Strict, literal check against the hardcoded users. Returns null on any
-      // mismatch (NEVER throws — a thrown error would surface as a 500, not a
-      // clean "invalid credentials"). On success returns the safe identity fields.
-      authorize: (credentials) => {
-        const username = String(credentials?.username ?? "");
+      // Verify against the REAL backend. Returns null on any failure (which
+      // surfaces as a clean "invalid credentials", never a 500). On success the
+      // returned object becomes `user` in the jwt callback below.
+      authorize: async (credentials) => {
+        const email = String(credentials?.email ?? "").trim();
         const password = String(credentials?.password ?? "");
-        const user = USERS.find((u) => u.username === username);
-        if (!user || user.password !== password) return null;
-        return { id: user.id, name: user.name, role: user.role };
+        if (!email || !password) return null;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+          if (!res.ok) return null;
+
+          const data = (await res.json()) as BackendAuth;
+          return {
+            id: data.userId,
+            name: data.fullName,
+            email: data.email,
+            role: toRole(data.role),
+            companyId: data.companyId ?? null,
+            accessToken: data.token,
+          };
+        } catch {
+          // Network/backend down → treat as a failed sign-in rather than crashing.
+          return null;
+        }
       },
     }),
   ],
   callbacks: {
-    // Persist the role on the token at sign-in so every later request has it
-    // without another lookup.
+    // Persist the backend identity + token on the Auth.js token at sign-in, so
+    // every later request has them without another backend call.
     jwt({ token, user }) {
-      if (user) token.role = user.role;
+      if (user) {
+        token.role = user.role;
+        token.id = user.id ?? "";
+        token.companyId = user.companyId;
+        token.accessToken = user.accessToken;
+      }
       return token;
     },
-    // Expose the role on the session so Server Components / middleware can gate UI.
+    // Expose them on the session for Server Components, middleware and the client.
     session({ session, token }) {
-      if (token.role) session.user.role = token.role;
+      session.user.role = token.role;
+      session.user.id = token.id;
+      session.user.companyId = token.companyId;
+      session.accessToken = token.accessToken;
       return session;
     },
   },

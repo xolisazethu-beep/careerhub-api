@@ -10,8 +10,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Building2, Eye, EyeOff } from "lucide-react";
-import { useEmployerAuth } from "@/context/EmployerAuthContext";
-import { fetchCompanies, type CompanyOption } from "@/lib/employer-api";
+import { signIn } from "next-auth/react";
+import {
+  employerRegister,
+  fetchCompanies,
+  type CompanyOption,
+} from "@/lib/employer-api";
 
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-white/10 dark:bg-[#0f0a1e] dark:text-white dark:placeholder:text-slate-500";
@@ -20,7 +24,6 @@ type Mode = "login" | "register";
 
 export default function RecruiterSignInPage() {
   const router = useRouter();
-  const { login, register } = useEmployerAuth();
 
   const [mode, setMode] = useState<Mode>("login");
   const [fullName, setFullName] = useState("");
@@ -74,24 +77,32 @@ export default function RecruiterSignInPage() {
 
     setBusy(true);
     try {
-      const auth =
-        mode === "login"
-          ? await login(email.trim(), password)
-          : await register({
-              fullName: fullName.trim(),
-              email: email.trim(),
-              password,
-              companyId,
-            });
-
-      if (auth.role !== "Employer") {
+      // Register the employer (bound to a company) first, then sign in — so the
+      // whole app shares ONE Auth.js session carrying the backend JWT.
+      if (mode === "register") {
+        await employerRegister({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          password,
+          companyId,
+        });
+      }
+      const res = await signIn("credentials", {
+        email: email.trim(),
+        password,
+        redirect: false,
+      });
+      if (res?.error) {
         setError(
-          "That account is not an employer account. Use an employer login to post jobs.",
+          mode === "login"
+            ? "Invalid email or password."
+            : "Account created, but sign-in failed. Please try signing in.",
         );
         setBusy(false);
         return;
       }
       router.push("/recruiter");
+      router.refresh();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Sign in failed.");
       setBusy(false);

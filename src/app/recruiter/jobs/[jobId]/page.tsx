@@ -22,7 +22,7 @@ import {
   Loader2,
   Eye,
 } from "lucide-react";
-import { useEmployerAuth } from "@/context/EmployerAuthContext";
+import { useSession } from "next-auth/react";
 import { fetchJobById } from "@/lib/api";
 import {
   fetchJobApplications,
@@ -42,7 +42,9 @@ const STAGE_STYLE: Record<string, string> = {
 export default function RecruiterApplicantsPage() {
   const params = useParams<{ jobId: string }>();
   const jobId = params.jobId;
-  const { employer, ready } = useEmployerAuth();
+  const { data: session, status } = useSession();
+  const ready = status !== "loading";
+  const token = session?.accessToken;
 
   const [jobTitle, setJobTitle] = useState<string>("");
   const [apps, setApps] = useState<JobApplication[] | null>(null);
@@ -50,12 +52,12 @@ export default function RecruiterApplicantsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!employer) return;
+    if (!token) return;
     setError(null);
     try {
       const [job, list] = await Promise.all([
         fetchJobById(jobId).catch(() => null),
-        fetchJobApplications(employer.token, jobId),
+        fetchJobApplications(token, jobId),
       ]);
       if (job) setJobTitle(job.title);
       setApps(list);
@@ -63,18 +65,18 @@ export default function RecruiterApplicantsPage() {
       setError(e instanceof Error ? e.message : "Couldn't load applicants.");
       setApps([]);
     }
-  }, [employer, jobId]);
+  }, [token, jobId]);
 
   useEffect(() => {
-    if (ready && employer) load();
-  }, [ready, employer, load]);
+    if (ready && token) load();
+  }, [ready, token, load]);
 
   async function decide(applicantId: string, status: ReviewStatus) {
-    if (!employer) return;
+    if (!token) return;
     setBusyId(applicantId);
     setError(null);
     try {
-      await updateApplicationStatus(employer.token, jobId, applicantId, status);
+      await updateApplicationStatus(token, jobId, applicantId, status);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't update status.");
@@ -84,9 +86,9 @@ export default function RecruiterApplicantsPage() {
   }
 
   async function viewCv(applicantId: string) {
-    if (!employer) return;
+    if (!token) return;
     try {
-      await openApplicantCv(employer.token, jobId, applicantId);
+      await openApplicantCv(token, jobId, applicantId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't open the CV.");
     }
@@ -94,7 +96,7 @@ export default function RecruiterApplicantsPage() {
 
   if (!ready) return null;
 
-  if (!employer) {
+  if (!session || session.user.role !== "employer") {
     return (
       <main className="grid min-h-[70vh] place-items-center bg-white px-4 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
         <div className="max-w-md text-center">

@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Inbox, Loader2, RefreshCw } from "lucide-react";
-import { useApplicantAuth } from "@/context/ApplicantAuthContext";
+import { useSession } from "next-auth/react";
 import { fetchMyApplications, type MyApplication } from "@/lib/applicant-api";
 
 // Happy-path friendly stages, in order. "Rejected" is terminal, shown on its own.
@@ -25,7 +25,8 @@ const PILL_CLASS: Record<string, string> = {
 };
 
 export default function ApplicationsPage() {
-  const { applicant, ready } = useApplicantAuth();
+  const { data: session, status } = useSession();
+  const ready = status !== "loading";
   const [apps, setApps] = useState<MyApplication[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,12 +44,12 @@ export default function ApplicationsPage() {
   }
 
   useEffect(() => {
-    if (ready && applicant) load(applicant.token);
-  }, [ready, applicant]);
+    if (ready && session?.accessToken) load(session.accessToken);
+  }, [ready, session]);
 
   if (!ready) return null;
 
-  if (!applicant) {
+  if (!session) {
     return (
       <main className="grid min-h-[70vh] place-items-center bg-white px-4 text-slate-900 dark:bg-[#0f0a1e] dark:text-white">
         <div className="max-w-md text-center">
@@ -79,7 +80,7 @@ export default function ApplicationsPage() {
           </div>
           <button
             type="button"
-            onClick={() => applicant && load(applicant.token)}
+            onClick={() => session?.accessToken && load(session.accessToken)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-white/15 dark:hover:bg-white/10"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
