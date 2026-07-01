@@ -12,6 +12,24 @@ public interface IApplicationRepository
     Task<IReadOnlyList<Application>> GetForListingAsync(Guid jobListingId, CancellationToken ct = default);
 
     /// <summary>
+    /// The applicants on one listing, joined to their profile, for the OWNING
+    /// employer's review screen. Returns null if the listing does not exist or does
+    /// not belong to <paramref name="companyId"/> (so a recruiter can never read
+    /// another company's applicant pool). An owned listing with no applicants
+    /// returns an empty list.
+    /// </summary>
+    Task<IReadOnlyList<ListingApplicantResponse>?> GetListingApplicantsAsync(
+        Guid companyId, Guid jobListingId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The CV bytes + metadata for one applicant on one of the caller's listings, or
+    /// null if the listing isn't owned by <paramref name="companyId"/>, the
+    /// application doesn't exist, or no CV was uploaded.
+    /// </summary>
+    Task<ApplicantCv?> GetApplicantCvAsync(
+        Guid companyId, Guid jobListingId, Guid applicantId, CancellationToken ct = default);
+
+    /// <summary>
     /// One applicant's own applications + listing/company info ("track applications"),
     /// newest first. When <paramref name="statuses"/> is non-empty the result is
     /// restricted to those internal statuses (used to back the applicant's friendly

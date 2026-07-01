@@ -35,6 +35,71 @@ public class ApplicationRepository(CareerHubDbContext db) : IApplicationReposito
             .ToListAsync(ct);
     }
 
+    // ── EMPLOYER: applicants on one of the caller's own listings ─────────────
+    public async Task<IReadOnlyList<ListingApplicantResponse>?> GetListingApplicantsAsync(
+        Guid companyId, Guid jobListingId, CancellationToken ct = default)
+    {
+        // Ownership gate: the listing must exist AND belong to the caller's company.
+        // Returning null (→ 404) rather than an empty list keeps another company's
+        // listing indistinguishable from a non-existent one.
+        var owned = await db.JobListings
+            .AsNoTracking()
+            .AnyAsync(j => j.Id == jobListingId && j.CompanyId == companyId, ct);
+        if (!owned)
+            return null;
+
+        // Hits ix_applications_joblistingid_submittedat (newest first, no Sort).
+        var rows = await db.Applications
+            .AsNoTracking()
+            .Where(a => a.JobListingId == jobListingId)
+            .OrderByDescending(a => a.SubmittedAt)
+            .Select(a => new
+            {
+                a.JobListingId,
+                a.ApplicantId,
+                a.Applicant.FullName,
+                a.Applicant.Email,
+                a.Applicant.City,
+                a.Applicant.YearsOfExperience,
+                a.CoverNote,
+                a.SelectedSkills,
+                a.Status,
+                a.SubmittedAt,
+                HasCv = a.CvData != null
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new ListingApplicantResponse(
+                r.JobListingId, r.ApplicantId, r.FullName, r.Email, r.City,
+                r.YearsOfExperience, r.CoverNote, r.SelectedSkills,
+                r.Status.ToString(), ApplicationStageMapper.ToStage(r.Status).ToString(),
+                r.SubmittedAt, r.HasCv))
+            .ToList();
+    }
+
+    public async Task<ApplicantCv?> GetApplicantCvAsync(
+        Guid companyId, Guid jobListingId, Guid applicantId, CancellationToken ct = default)
+    {
+        // One query, ownership enforced in the WHERE: the application must be on a
+        // listing owned by the caller's company and actually carry a CV.
+        var row = await db.Applications
+            .AsNoTracking()
+            .Where(a => a.JobListingId == jobListingId
+                        && a.ApplicantId == applicantId
+                        && a.JobListing.CompanyId == companyId
+                        && a.CvData != null)
+            .Select(a => new { a.CvData, a.CvFileName, a.CvContentType })
+            .FirstOrDefaultAsync(ct);
+
+        return row?.CvData is null
+            ? null
+            : new ApplicantCv(
+                row.CvData,
+                string.IsNullOrWhiteSpace(row.CvFileName) ? "cv.pdf" : row.CvFileName,
+                string.IsNullOrWhiteSpace(row.CvContentType) ? "application/pdf" : row.CvContentType);
+    }
+
     public async Task<IReadOnlyList<MyApplicationResponse>> GetByApplicantAsync(
         Guid applicantId, IReadOnlyCollection<ApplicationStatus>? statuses, CancellationToken ct = default)
     {

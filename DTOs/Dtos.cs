@@ -313,6 +313,30 @@ public record ApplicantSearchResponse(
 public record ApplyRequest(string? CoverNote);
 
 /// <summary>
+/// One applicant on a specific listing, as the OWNING employer reviews them
+/// (<c>GET /jobs/{id}/applications</c>). Joins the application to the applicant's
+/// profile and carries both the raw <c>Status</c> and the friendly <c>Stage</c>,
+/// plus whether a CV is attached (so the UI can show/hide the download). Only ever
+/// returned for a listing the caller's company owns.
+/// </summary>
+public record ListingApplicantResponse(
+    Guid JobListingId,
+    Guid ApplicantId,
+    string FullName,
+    string Email,
+    string City,
+    int YearsOfExperience,
+    string CoverNote,
+    IReadOnlyList<string> SelectedSkills,
+    string Status,
+    string Stage,
+    DateTime SubmittedAt,
+    bool HasCv);
+
+/// <summary>An applicant's downloadable CV (raw bytes + metadata), or absent.</summary>
+public record ApplicantCv(byte[] Data, string FileName, string ContentType);
+
+/// <summary>
 /// A single application as returned by the Part 7 single-resource GET. Identity is
 /// the composite key (JobListingId, ApplicantId) — there is no surrogate id.
 /// </summary>

@@ -27,20 +27,66 @@ public class ApplicationsController(IApplicationService applications, IDistribut
     /// outcome for 24h; a retry with the same key replays that outcome instead of
     /// creating a duplicate, so a flaky network retry is safe.
     /// </summary>
+    /// <summary>Cap an uploaded CV at 5 MB — a real CV is a few hundred KB.</summary>
+    private const long MaxCvBytes = 5 * 1024 * 1024;
+
     [HttpPost("api/v{version:apiVersion}/jobs/{jobListingId:guid}/applications")]
     [Authorize(Roles = "Applicant")]
     [EnableRateLimiting("apply")] // PART 8: fixed window, 5 per 60 minutes, partitioned by user
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> Apply(Guid jobListingId, ApplyRequest request, CancellationToken ct)
+    public async Task<IActionResult> Apply(Guid jobListingId, CancellationToken ct)
     {
         var userId = User.GetUserId();
+
+        // Two supported request shapes:
+        //  • multipart/form-data (the web app): coverNote, selectedSkills[], cv file.
+        //  • application/json (API clients / tests): { "coverNote": "..." }.
+        string? coverNote;
+        List<string> selectedSkills = [];
+        byte[]? cvData = null;
+        string? cvFileName = null;
+        string? cvContentType = null;
+
+        if (Request.HasFormContentType)
+        {
+            var form = await Request.ReadFormAsync(ct);
+            coverNote = form["coverNote"];
+            selectedSkills = form["selectedSkills"]
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s!.Trim())
+                .ToList();
+
+            var cv = form.Files.GetFile("cv");
+            if (cv is { Length: > 0 })
+            {
+                if (cv.Length > MaxCvBytes)
+                    return BadRequest(new { detail = "The CV must be 5 MB or smaller." });
+                if (cv.ContentType != "application/pdf")
+                    return BadRequest(new { detail = "The CV must be a PDF." });
+
+                using var ms = new MemoryStream();
+                await cv.CopyToAsync(ms, ct);
+                cvData = ms.ToArray();
+                cvFileName = Path.GetFileName(cv.FileName);
+                cvContentType = cv.ContentType;
+            }
+        }
+        else
+        {
+            var body = await Request.ReadFromJsonAsync<ApplyRequest>(cancellationToken: ct);
+            coverNote = body?.CoverNote;
+        }
+
         var idempotencyKey = Request.Headers["Idempotency-Key"].ToString();
+
+        async Task DoApply() => await applications.ApplyAsync(
+            userId, jobListingId, coverNote, selectedSkills, cvData, cvFileName, cvContentType, ct);
 
         if (string.IsNullOrWhiteSpace(idempotencyKey))
         {
-            await applications.ApplyAsync(userId, jobListingId, request.CoverNote, ct);
+            await DoApply();
             return StatusCode(StatusCodes.Status201Created);
         }
 
@@ -48,10 +94,42 @@ public class ApplicationsController(IApplicationService applications, IDistribut
         if (await cache.GetStringAsync(cacheKey, ct) is not null)
             return StatusCode(StatusCodes.Status201Created); // replay prior outcome — no duplicate
 
-        await applications.ApplyAsync(userId, jobListingId, request.CoverNote, ct);
+        await DoApply();
         await cache.SetStringAsync(cacheKey, "201",
             new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
         return StatusCode(StatusCodes.Status201Created);
+    }
+
+    /// <summary>
+    /// The applicants on one of the EMPLOYER'S OWN listings, for the review screen.
+    /// Employer-only and scoped to the caller's company (via the listing's owner),
+    /// so a recruiter can never read another company's applicant pool. 404 if the
+    /// listing does not exist or is not theirs.
+    /// </summary>
+    [HttpGet("api/v{version:apiVersion}/jobs/{jobListingId:guid}/applications")]
+    [Authorize(Roles = "Employer")]
+    [ProducesResponseType(typeof(IReadOnlyList<ListingApplicantResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ForListing(Guid jobListingId, CancellationToken ct)
+    {
+        var applicants = await applications.GetListingApplicantsAsync(User.GetCompanyId(), jobListingId, ct);
+        return applicants is null ? NotFound() : Ok(applicants);
+    }
+
+    /// <summary>
+    /// Download one applicant's CV (PDF) for one of the employer's listings.
+    /// Employer-only and ownership-scoped. 404 if not theirs or no CV was uploaded.
+    /// </summary>
+    [HttpGet("api/v{version:apiVersion}/jobs/{jobListingId:guid}/applications/{applicantId:guid}/cv")]
+    [Authorize(Roles = "Employer")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ApplicantCv(Guid jobListingId, Guid applicantId, CancellationToken ct)
+    {
+        var cv = await applications.GetApplicantCvAsync(User.GetCompanyId(), jobListingId, applicantId, ct);
+        return cv is null
+            ? NotFound()
+            : File(cv.Data, cv.ContentType, cv.FileName);
     }
 
     /// <summary>

@@ -181,6 +181,17 @@ public class CareerHubDbContext(DbContextOptions<CareerHubDbContext> options) : 
             entity.Property(a => a.SubmittedAt).IsRequired();
             entity.Property(a => a.CoverNote).HasMaxLength(2000);
 
+            // Skills the applicant ticked when applying (PostgreSQL text[]).
+            entity.Property(a => a.SelectedSkills)
+                  .HasColumnType("text[]")
+                  .HasDefaultValueSql("ARRAY[]::text[]");
+
+            // Optional CV PDF stored in-row. bytea is nullable; the metadata columns
+            // travel with it so the download can set a correct filename + content-type.
+            entity.Property(a => a.CvData).HasColumnType("bytea");
+            entity.Property(a => a.CvFileName).HasMaxLength(255);
+            entity.Property(a => a.CvContentType).HasMaxLength(100);
+
             entity.HasOne(a => a.JobListing)
                   .WithMany(j => j.Applications)
                   .HasForeignKey(a => a.JobListingId)

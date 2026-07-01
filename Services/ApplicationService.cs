@@ -16,7 +16,11 @@ public class ApplicationService(
     IApplicationRepository applications,
     IJobListingRepository jobs) : IApplicationService
 {
-    public async Task ApplyAsync(Guid applicantId, Guid jobListingId, string? coverNote, CancellationToken ct = default)
+    public async Task ApplyAsync(
+        Guid applicantId, Guid jobListingId, string? coverNote,
+        IReadOnlyList<string>? selectedSkills = null,
+        byte[]? cvData = null, string? cvFileName = null, string? cvContentType = null,
+        CancellationToken ct = default)
     {
         var listing = await jobs.GetEntityByIdAsync(jobListingId, ct);
         if (listing is null)
@@ -33,10 +37,22 @@ public class ApplicationService(
             ApplicantId = applicantId,
             Status = ApplicationStatus.Submitted,
             SubmittedAt = DateTime.UtcNow,        // server-set; satisfies ck_applications_submitted_not_future
-            CoverNote = coverNote ?? string.Empty
+            CoverNote = coverNote ?? string.Empty,
+            SelectedSkills = selectedSkills?.ToList() ?? [],
+            CvData = cvData,
+            CvFileName = cvFileName,
+            CvContentType = cvContentType
         }, ct);
         await applications.SaveChangesAsync(ct);
     }
+
+    public Task<IReadOnlyList<ListingApplicantResponse>?> GetListingApplicantsAsync(
+        Guid companyId, Guid jobListingId, CancellationToken ct = default) =>
+        applications.GetListingApplicantsAsync(companyId, jobListingId, ct);
+
+    public Task<ApplicantCv?> GetApplicantCvAsync(
+        Guid companyId, Guid jobListingId, Guid applicantId, CancellationToken ct = default) =>
+        applications.GetApplicantCvAsync(companyId, jobListingId, applicantId, ct);
 
     public Task<IReadOnlyList<MyApplicationResponse>> GetMineAsync(
         Guid applicantId, ApplicationStage? stage = null, CancellationToken ct = default)

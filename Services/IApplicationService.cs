@@ -6,8 +6,26 @@ namespace CareerHub.Api.Services;
 
 public interface IApplicationService
 {
-    /// <summary>Apply the given applicant to a listing. Returns nothing; throws on conflict/404.</summary>
-    Task ApplyAsync(Guid applicantId, Guid jobListingId, string? coverNote, CancellationToken ct = default);
+    /// <summary>
+    /// Apply the given applicant to a listing, optionally recording the skills they
+    /// ticked and a CV upload. Returns nothing; throws on conflict/404.
+    /// </summary>
+    Task ApplyAsync(
+        Guid applicantId, Guid jobListingId, string? coverNote,
+        IReadOnlyList<string>? selectedSkills = null,
+        byte[]? cvData = null, string? cvFileName = null, string? cvContentType = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// The applicants on one of the employer's OWN listings (review screen). Null if
+    /// the listing isn't owned by <paramref name="companyId"/> or doesn't exist.
+    /// </summary>
+    Task<IReadOnlyList<ListingApplicantResponse>?> GetListingApplicantsAsync(
+        Guid companyId, Guid jobListingId, CancellationToken ct = default);
+
+    /// <summary>One applicant's CV on one of the employer's listings, or null.</summary>
+    Task<ApplicantCv?> GetApplicantCvAsync(
+        Guid companyId, Guid jobListingId, Guid applicantId, CancellationToken ct = default);
 
     /// <summary>
     /// The applicant's own application history, newest first. When
