@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import AuthShell from "@/components/AuthShell";
 import { Field, FormError, SubmitButton } from "@/components/AuthFields";
-import { useAuth } from "@/context/AuthContext";
 
 export default function ForgotPasswordPage() {
-  const { requestPasswordReset } = useAuth();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -17,14 +15,12 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setError(null);
     setPending(true);
-    try {
-      await requestPasswordReset(email);
+    // Password reset has no backend endpoint yet. Always show the same neutral
+    // confirmation so the page never reveals whether an address is registered.
+    setTimeout(() => {
       setSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send reset link.");
-    } finally {
       setPending(false);
-    }
+    }, 400);
   };
 
   return (

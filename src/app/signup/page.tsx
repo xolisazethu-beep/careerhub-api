@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { signIn } from "next-auth/react";
 import AuthShell from "@/components/AuthShell";
 import { Field, PasswordField, FormError, SubmitButton } from "@/components/AuthFields";
-import { useAuth } from "@/context/AuthContext";
+import { applicantRegister } from "@/lib/applicant-api";
 import { useToast } from "@/context/ToastContext";
 
 export default function SignupPage() {
-  const { signUp } = useAuth();
   const { notify } = useToast();
   const router = useRouter();
   const [name, setName] = useState("");
@@ -38,9 +38,25 @@ export default function SignupPage() {
 
     setPending(true);
     try {
-      await signUp(name, email, password);
+      // Create the job-seeker account on the real backend, then sign in so the
+      // app establishes the unified Auth.js session carrying the JWT.
+      await applicantRegister({
+        fullName: name.trim(),
+        email: email.trim(),
+        password,
+      });
+      const res = await signIn("credentials", {
+        email: email.trim(),
+        password,
+        redirect: false,
+      });
+      if (res?.error) {
+        setError("Account created — please sign in.");
+        return;
+      }
       notify("Account created — you're all set!", "success");
-      router.push("/");
+      router.push("/jobs");
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create account.");
     } finally {

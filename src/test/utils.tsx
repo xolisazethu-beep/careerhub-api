@@ -20,9 +20,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { vi } from "vitest";
 import type { Session } from "next-auth";
-import { AuthProvider } from "@/context/AuthContext";
-import { ApplicantAuthProvider } from "@/context/ApplicantAuthContext";
-import { EmployerAuthProvider } from "@/context/EmployerAuthContext";
 
 // Mock the next-auth client module at the top of this file (assignment Part 2).
 vi.mock("next-auth/react", () => ({
@@ -78,13 +75,7 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <NuqsTestingAdapter searchParams={searchParams}>
-        <QueryClientProvider client={client}>
-          <AuthProvider>
-            <ApplicantAuthProvider>
-              <EmployerAuthProvider>{children}</EmployerAuthProvider>
-            </ApplicantAuthProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
       </NuqsTestingAdapter>
     );
   }

@@ -27,7 +27,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useSession } from "next-auth/react";
 import DocUpload from "@/components/profile/DocUpload";
 import ResumeBanner from "@/components/profile/ResumeBanner";
 import {
@@ -70,7 +70,19 @@ const inputClass =
 const labelClass = "block text-sm font-medium text-slate-700 dark:text-slate-200";
 
 export default function ProfilePage() {
-  const { user, isReady } = useAuth();
+  const { data: session, status } = useSession();
+  const isReady = status !== "loading";
+  // Adapt the unified session into the {name,email} shape the rest of the page
+  // uses. Memoised on the primitive fields so it's a STABLE reference across
+  // renders (otherwise the load effect below would refire every render). The
+  // profile itself is a per-device convenience (localStorage) that pre-fills the
+  // application wizard — see profile-store.
+  const email = session?.user?.email ?? "";
+  const name = session?.user?.name ?? "";
+  const user = useMemo(
+    () => (session?.user ? { name, email } : null),
+    [session?.user, name, email],
+  );
   const [profile, setProfile] = useState<ApplicantProfile | null>(null);
   const [step, setStep] = useState(0);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -168,7 +180,7 @@ export default function ProfilePage() {
             never have to re-type them when you apply.
           </p>
           <Link
-            href="/login"
+            href="/candidate/signin?next=/profile"
             className="mt-5 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             Sign in

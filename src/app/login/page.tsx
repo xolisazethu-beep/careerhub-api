@@ -10,9 +10,8 @@ import AuthShell from "@/components/AuthShell";
  *
  * THE ROLE-REDIRECT PROBLEM: at signIn() time we don't yet know the role (only
  * the backend does, after verifying credentials). Rather than a second lookup we
- * send everyone to `/dashboard/listings` and let the middleware route by role —
- * employers stay; candidates are bounced to `/jobs`. One invisible hop, no role
- * guess needed.
+ * send everyone to `/recruiter` and let the middleware route by role — employers
+ * stay; candidates are bounced to `/jobs`. One invisible hop, no role guess.
  *
  * On success, signIn() throws a NEXT_REDIRECT that must propagate. On bad
  * credentials it throws an AuthError, which we turn into ?error=CredentialsSignin.
@@ -33,7 +32,7 @@ export default async function LoginPage({
       await signIn("credentials", {
         email,
         password,
-        redirectTo: "/dashboard/listings",
+        redirectTo: "/recruiter",
       });
     } catch (err) {
       if (err instanceof AuthError) {

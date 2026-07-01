@@ -3,9 +3,6 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { auth } from "@/auth";
 import Providers from "./providers";
-import { AuthProvider } from "@/context/AuthContext";
-import { EmployerAuthProvider } from "@/context/EmployerAuthContext";
-import { ApplicantAuthProvider } from "@/context/ApplicantAuthContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { Toaster } from "sonner";
 import Navbar from "@/components/Navbar";
@@ -76,23 +73,17 @@ export default async function RootLayout({
       </head>
       <body className={`${inter.variable} ${jakarta.variable} antialiased`}>
         <Providers>
-          <AuthProvider>
-            <EmployerAuthProvider>
-            <ApplicantAuthProvider>
-            <ToastProvider>
-              <div className="flex min-h-screen flex-col">
-                <Navbar session={session} />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
-              {/* Assignment 3.1, Part 2 — system-wide toast feedback (sonner).
-                  Bottom-right keeps it clear of the sticky top nav bar.
-                  richColors gives success/error their own accent automatically. */}
-              <Toaster position="bottom-right" richColors closeButton />
-            </ToastProvider>
-            </ApplicantAuthProvider>
-            </EmployerAuthProvider>
-          </AuthProvider>
+          <ToastProvider>
+            <div className="flex min-h-screen flex-col">
+              <Navbar session={session} />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+            {/* Assignment 3.1, Part 2 — system-wide toast feedback (sonner).
+                Bottom-right keeps it clear of the sticky top nav bar.
+                richColors gives success/error their own accent automatically. */}
+            <Toaster position="bottom-right" richColors closeButton />
+          </ToastProvider>
         </Providers>
       </body>
     </html>

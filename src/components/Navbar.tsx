@@ -35,12 +35,8 @@ const menuItems = [
 /** Primary links shown per role (Part 5): Dashboard for employers, Jobs for
  *  candidates, Jobs only for signed-out visitors. Never both Dashboard+Jobs. */
 function linksForRole(role: string | undefined): NavLink[] {
-  if (role === "employer") return [{ href: "/dashboard/listings", label: "Dashboard" }];
-  if (role === "candidate")
-    return [
-      { href: "/jobs", label: "Jobs" },
-      { href: "/jobs/explore", label: "Explore" },
-    ];
+  if (role === "employer") return [{ href: "/recruiter", label: "Dashboard" }];
+  if (role === "candidate") return [{ href: "/jobs", label: "Jobs" }];
   return [{ href: "/jobs", label: "Jobs" }];
 }
 

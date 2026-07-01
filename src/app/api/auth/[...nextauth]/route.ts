@@ -1,12 +1,7 @@
-/**
- * Auth.js v5 route handler (Assignment 2.3). Auth.js owns every endpoint under
- * /api/auth/* (signin, signout, session, callback/credentials, csrf, …); we just
- * re-export the GET/POST handlers it generated in src/auth.ts.
- *
- * The project's older custom routes (/api/auth/login, /api/auth/signup) keep
- * working because their explicit static segments take routing precedence over
- * this catch-all.
- */
+// The Auth.js v5 catch-all route handler. This is the ONLY /api route the app
+// keeps — every other data endpoint lives on the real CareerHub backend. It
+// simply re-exports the GET/POST handlers Auth.js builds from the config in
+// src/auth.ts, which powers sign-in, sign-out, session and CSRF.
 import { handlers } from "@/auth";
 
 export const { GET, POST } = handlers;

@@ -11,17 +11,18 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { History, ArrowRight, X } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useSession } from "next-auth/react";
 import { getLatestDraft, type ApplicationDraft } from "@/lib/profile-store";
 
 export default function ResumeBanner() {
-  const { user, isReady } = useAuth();
+  const { data: session, status } = useSession();
   const [draft, setDraft] = useState<ApplicationDraft | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (isReady && user) setDraft(getLatestDraft(user.email));
-  }, [isReady, user]);
+    const email = session?.user?.email;
+    if (status !== "loading" && email) setDraft(getLatestDraft(email));
+  }, [status, session]);
 
   if (!draft || dismissed) return null;
 

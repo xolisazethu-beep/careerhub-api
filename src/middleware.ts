@@ -23,28 +23,28 @@ export default auth((req) => {
   const isLoggedIn = Boolean(session);
   const path = nextUrl.pathname;
 
-  const isDashboard = path === "/dashboard" || path.startsWith("/dashboard/");
+  // The employer dashboard lives at /recruiter/*. Its sign-in page must stay
+  // reachable while signed out, so it is excluded from the gate.
+  const isRecruiter = path === "/recruiter" || path.startsWith("/recruiter/");
+  const isRecruiterSignin = path === "/recruiter/signin";
   const isLogin = path === "/login";
 
-  // /dashboard/* — employer-only.
-  if (isDashboard) {
-    // Unauthenticated: send to sign in. This is a "who are you?" problem — there
-    // is no identity yet, so the only correct destination is /login.
+  // /recruiter/* — employer-only (except its own sign-in page).
+  if (isRecruiter && !isRecruiterSignin) {
+    // Unauthenticated: send to the employer sign-in. No identity yet.
     if (!isLoggedIn) {
-      return NextResponse.redirect(new URL("/login", nextUrl));
+      return NextResponse.redirect(new URL("/recruiter/signin", nextUrl));
     }
-    // Authenticated but wrong role: send to the candidate board. This is a
-    // "you're known, but this isn't yours" problem — bouncing them to /login
-    // would be nonsensical (they're already signed in), so they go to /jobs.
+    // Authenticated but wrong role: bounce to the candidate board (they're
+    // already signed in, so /login would be nonsensical).
     if (role !== "employer") {
       return NextResponse.redirect(new URL("/jobs", nextUrl));
     }
   }
 
-  // /login while already signed in — don't make them log in again; send them to
-  // their home surface by role.
+  // /login while already signed in — send them to their home surface by role.
   if (isLogin && isLoggedIn) {
-    const dest = role === "employer" ? "/dashboard/listings" : "/jobs";
+    const dest = role === "employer" ? "/recruiter" : "/jobs";
     return NextResponse.redirect(new URL(dest, nextUrl));
   }
 
