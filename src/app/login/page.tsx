@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
 import AuthShell from "@/components/AuthShell";
+import { Field, PasswordField } from "@/components/AuthFields";
 
 /**
  * /login — the single sign-in, backed by the REAL CareerHub API. A SERVER
@@ -66,42 +67,28 @@ export default async function LoginPage({
           </div>
         ) : null}
 
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-slate-700 dark:text-slate-200"
-          >
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            autoFocus
-            placeholder="you@example.com"
-            className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-          />
-        </div>
+        {/* Field / PasswordField are shared client inputs. PasswordField brings
+            the built-in show/hide (eye) toggle. They stay uncontrolled here, so
+            the surrounding Server Action form still reads them via FormData. */}
+        <Field
+          id="email"
+          name="email"
+          label="Email"
+          type="email"
+          required
+          autoComplete="email"
+          autoFocus
+          placeholder="you@example.com"
+        />
 
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-slate-700 dark:text-slate-200"
-          >
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            placeholder="password123"
-            className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-          />
-        </div>
+        <PasswordField
+          id="password"
+          name="password"
+          label="Password"
+          required
+          autoComplete="current-password"
+          placeholder="password123"
+        />
 
         <button
           type="submit"
@@ -111,9 +98,18 @@ export default async function LoginPage({
         </button>
       </form>
 
-      <p className="mt-4 text-center text-xs text-slate-400 dark:text-slate-500">
+      {/* New-user path — the signup form lives at /signup; surface it here so
+          people without an account can get to it. */}
+      <p className="mt-6 text-center text-sm text-slate-600">
+        New to CareerHub?{" "}
+        <Link href="/signup" className="font-semibold text-brand-700 hover:underline">
+          Create an account
+        </Link>
+      </p>
+
+      <p className="mt-2 text-center text-xs text-slate-400">
         Looking for the public board?{" "}
-        <Link href="/jobs" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
+        <Link href="/jobs" className="font-semibold text-brand-700 hover:underline">
           Browse jobs
         </Link>
       </p>

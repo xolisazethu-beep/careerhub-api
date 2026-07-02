@@ -20,6 +20,9 @@ const JOB = {
   title: "Senior Frontend Engineer",
   company: "Acme",
   requiresDriversLicence: false,
+  minimumExperienceYears: 0,
+  minimumRequirements: "",
+  skills: [],
 };
 
 /** Fresh, signed-out-of-profile candidate so step 1 starts mostly empty. */

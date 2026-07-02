@@ -21,11 +21,49 @@ const PAGE_SIZE = 50;
 
 type StatusFilter = "open" | "all";
 
+/** The sort orders offered by the "Sort by" dropdown. Kept in sync with the
+ *  <SORT_OPTIONS> list in JobFilters. */
+const SORT_ORDERS = [
+  "newest",
+  "oldest",
+  "salary_high",
+  "salary_low",
+  "title",
+  "company",
+] as const;
+type SortOrder = (typeof SORT_ORDERS)[number];
+
 type SearchParams = {
   q?: string;
   location?: string;
   status?: string;
+  sort?: string;
 };
+
+/** Order a list of jobs in place-safe fashion (returns a new array). Salary
+ *  sorts treat a missing salary as the worst value so priced roles surface. */
+function sortJobs(jobs: JobSummaryView[], sort: SortOrder): JobSummaryView[] {
+  const byDate = (a: JobSummaryView, b: JobSummaryView) =>
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  const sorted = [...jobs];
+  switch (sort) {
+    case "oldest":
+      return sorted.sort(byDate);
+    case "salary_high":
+      return sorted.sort((a, b) => (b.salaryMax ?? -1) - (a.salaryMax ?? -1));
+    case "salary_low":
+      return sorted.sort(
+        (a, b) => (a.salaryMin ?? Infinity) - (b.salaryMin ?? Infinity),
+      );
+    case "title":
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+    case "company":
+      return sorted.sort((a, b) => a.company.localeCompare(b.company));
+    case "newest":
+    default:
+      return sorted.sort((a, b) => byDate(b, a));
+  }
+}
 
 /**
  * getJobs — fetch then FILTER (Assignment 2.3, Part 6).
@@ -50,10 +88,12 @@ async function getJobs({
   q,
   location,
   status,
+  sort,
 }: {
   q: string;
   location: string;
   status: StatusFilter;
+  sort: SortOrder;
 }): Promise<JobsResult> {
   const res = await fetch(
     `${JOBS_API_BASE}${API_V1}/jobs?page=1&pageSize=${PAGE_SIZE}`,
@@ -82,6 +122,9 @@ async function getJobs({
     jobs = jobs.filter((j) => j.status !== "Closed");
   }
 
+  // Sort last, after filtering, so the chosen order applies to the visible set.
+  jobs = sortJobs(jobs, sort);
+
   return { jobs, totalUnfiltered: all.length };
 }
 
@@ -99,13 +142,16 @@ export default async function JobsPage({
   const q = (sp.q ?? "").trim();
   const location = (sp.location ?? "").trim();
   const status: StatusFilter = sp.status === "open" ? "open" : "all";
+  const sort: SortOrder = SORT_ORDERS.includes(sp.sort as SortOrder)
+    ? (sp.sort as SortOrder)
+    : "newest";
 
   const hasFilters = Boolean(q || location || status === "open");
 
   let jobs: JobSummaryView[];
   let totalUnfiltered: number;
   try {
-    ({ jobs, totalUnfiltered } = await getJobs({ q, location, status }));
+    ({ jobs, totalUnfiltered } = await getJobs({ q, location, status, sort }));
   } catch {
     return <BoardUnavailable />;
   }

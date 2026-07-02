@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" fill="none" role="img" aria-label="CareerHub illustration">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="600" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#eef2ff"/>
+      <stop offset="1" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f8fafc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="600" fill="url(#bg)"/>
+  <g transform="translate(120 120)">
+    <rect x="0" y="0" width="420" height="120" rx="16" fill="url(#card)" stroke="#c7d2fe" stroke-width="2"/>
+    <circle cx="60" cy="60" r="30" fill="#4f46e5"/>
+    <rect x="110" y="38" width="220" height="18" rx="9" fill="#312e81"/>
+    <rect x="110" y="68" width="150" height="14" rx="7" fill="#94a3b8"/>
+  </g>
+  <g transform="translate(180 300)">
+    <rect x="0" y="0" width="420" height="120" rx="16" fill="url(#card)" stroke="#c7d2fe" stroke-width="2"/>
+    <circle cx="60" cy="60" r="30" fill="#0ea5e9"/>
+    <rect x="110" y="38" width="200" height="18" rx="9" fill="#312e81"/>
+    <rect x="110" y="68" width="170" height="14" rx="7" fill="#94a3b8"/>
+  </g>
+  <g transform="translate(720 180)">
+    <circle cx="180" cy="180" r="170" fill="#4f46e5" opacity="0.12"/>
+    <path d="M110 210 l60 60 l120 -140" stroke="#4f46e5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

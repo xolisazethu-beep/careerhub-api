@@ -1,10 +1,48 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Building2, Clock } from "lucide-react";
 import { auth } from "@/auth";
 import { EmploymentTypeBadge } from "@/components/JobStatusBadge";
-import { JOBS_API_BASE, API_V1, toDetailView } from "@/lib/jobs-api";
-import type { JobListingDetailResponse } from "@/types";
+import { getJob } from "@/lib/jobs-api";
+
+/**
+ * generateMetadata — per-job SEO/Open Graph (Assignment 3.3, Part 2, Step 2).
+ *
+ * It calls the SAME `getJob(id)` the page component calls. Because `getJob` is
+ * wrapped in React `cache()`, Next.js deduplicates: the job is fetched ONCE per
+ * request even though it is read here (for the <title>/meta) and again in the
+ * page body (for the visible HTML). See the note on `getJob` in jobs-api.ts.
+ *
+ * The `title` returned here is just the job title; the layout's title template
+ * ("%s · CareerHubX") wraps it into "Senior Frontend Engineer · CareerHubX".
+ * A missing job returns { title: "Job Not Found" } (still wrapped by the
+ * template) rather than throwing, so the tab is meaningful on a dead link.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const job = await getJob(id);
+
+  if (!job) {
+    return { title: "Job Not Found" };
+  }
+
+  const description = `Apply for ${job.title} at ${job.company} in ${job.location}.`;
+
+  return {
+    title: job.title,
+    description,
+    openGraph: {
+      title: job.title,
+      description,
+      type: "website",
+    },
+  };
+}
 
 /**
  * /jobs/[id] — the job detail page (Assignment 2.1, Part 4).
@@ -27,35 +65,23 @@ export default async function JobDetailPage({
 }) {
   const { id } = await params;
 
-  // ROLE-GATED APPLY (Assignment 2.3, Part 5): the job fetch and the session are
+  // ROLE-GATED APPLY (Assignment 2.3, Part 5): the job read and the session are
   // independent, so they run IN PARALLEL with Promise.all — the session read
   // adds no latency to the page. /jobs/[id] stays PUBLIC (employers can view the
   // detail); only the apply *form* is gated, here in the page rather than in
   // middleware, because the gate is content-level, not whole-route.
-  const [res, session] = await Promise.all([
-    // CACHE STRATEGY (Part 3 + Stretch B): cached + tagged with BOTH "jobs" and a
-    // per-job `job-${id}` tag. The close action clears "jobs" (so closing ANY job
-    // refreshes every listing/detail), and could clear `job-${id}` to refresh just
-    // this one. `force-cache` is what enables Next 15's Data Cache for this fetch.
-    fetch(`${JOBS_API_BASE}${API_V1}/jobs/${id}`, {
-      cache: "force-cache",
-      next: { tags: ["jobs", `job-${id}`] },
-    }),
-    auth(),
-  ]);
+  //
+  // `getJob` is the SAME cached fetch `generateMetadata` above already ran for
+  // this request, so this resolves from React's `cache()` with no second network
+  // call (Assignment 3.3 deduplication requirement).
+  const [job, session] = await Promise.all([getJob(id), auth()]);
 
   // A genuine "no such job" → render the not-found boundary (HTTP 404), never a
-  // half-built page. Any OTHER failure is a real error → throw to error.tsx.
-  if (res.status === 404) {
+  // half-built page. (Non-404 failures throw inside getJob → error.tsx.)
+  if (!job) {
     notFound();
   }
-  if (!res.ok) {
-    throw new Error(
-      `Failed to load job ${id} — the API responded ${res.status} ${res.statusText}`,
-    );
-  }
 
-  const job = toDetailView((await res.json()) as JobListingDetailResponse);
   const isClosed = job.status === "Closed";
   const role = session?.user?.role;
   const isEmployer = role === "employer";
@@ -111,6 +137,19 @@ export default async function JobDetailPage({
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">
               {job.description}
             </p>
+          </section>
+        )}
+
+        {job.responsibilities.length > 0 && (
+          <section className="mt-6">
+            <h2 className="font-display text-base font-bold text-ink dark:text-slate-100">
+              What you&apos;ll do
+            </h2>
+            <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+              {job.responsibilities.map((duty, i) => (
+                <li key={i}>{duty}</li>
+              ))}
+            </ul>
           </section>
         )}
 

@@ -1,0 +1,63 @@
+{
+  "headHome": {
+    "title": "CareerHubX — Find your next role in South Africa",
+    "description": "Browse curated job listings across South Africa and apply with a guided, multi-step application. Built with Next.js 15, React 19 and TypeScript.",
+    "ogTitle": "CareerHubX — Find your next role in South Africa",
+    "ogDescription": "Browse curated job listings across South Africa and apply with a guided, multi-step application.",
+    "ogType": "website",
+    "ogSiteName": "CareerHubX"
+  },
+  "headJob": {
+    "title": "Junior Business Analyst · CareerHubX",
+    "description": "Apply for Junior Business Analyst at Vodacom in East London, South Africa.",
+    "ogTitle": "Junior Business Analyst",
+    "ogDescription": "Apply for Junior Business Analyst at Vodacom in East London, South Africa.",
+    "ogType": "website",
+    "ogSiteName": "(none)"
+  },
+  "head404": {
+    "title": "CareerHubX — Find your next role in South Africa"
+  },
+  "imageResponses": [
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Vodacom&size=96&background=4f46e5&color=fff&bold="
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Capitec%20Bank&size=96&background=4f46e5&color=ff"
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Shoprite&size=96&background=4f46e5&color=fff&bold"
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Yoco&size=96&background=4f46e5&color=fff&bold=tru"
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Takealot&size=96&background=4f46e5&color=fff&bold"
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Naspers&size=96&background=4f46e5&color=fff&bold="
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Sasol&size=96&background=4f46e5&color=fff&bold=tr"
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Discovery&size=96&background=4f46e5&color=fff&bol"
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=Standard%20Bank&size=96&background=4f46e5&color=f"
+    },
+    {
+      "ct": "image/webp",
+      "url": "http://localhost:3100/_next/image?url=https://ui-avatars.com/api/?name=MTN&size=96&background=4f46e5&color=fff&bold=true"
+    }
+  ]
+}

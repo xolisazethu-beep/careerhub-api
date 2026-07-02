@@ -27,12 +27,32 @@ import {
  */
 const STATUS = ["open", "all"] as const;
 
+/** Sort orders, kept in sync with SORT_ORDERS + sortJobs() on the server. */
+const SORT_OPTIONS = [
+  "newest",
+  "oldest",
+  "salary_high",
+  "salary_low",
+  "title",
+  "company",
+] as const;
+
+const SORT_LABELS: Record<(typeof SORT_OPTIONS)[number], string> = {
+  newest: "Newest first",
+  oldest: "Oldest first",
+  salary_high: "Salary: high to low",
+  salary_low: "Salary: low to high",
+  title: "Title: A–Z",
+  company: "Company: A–Z",
+};
+
 export default function JobFilters() {
   const [filters, setFilters] = useQueryStates(
     {
       q: parseAsString.withDefault(""),
       location: parseAsString.withDefault(""),
       status: parseAsStringLiteral(STATUS).withDefault("all"),
+      sort: parseAsStringLiteral(SORT_OPTIONS).withDefault("newest"),
     },
     { shallow: false },
   );
@@ -78,11 +98,15 @@ export default function JobFilters() {
     setFilters({ status: value });
   }
 
+  function onSort(value: (typeof SORT_OPTIONS)[number]) {
+    setFilters({ sort: value });
+  }
+
   const inputClass =
     "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-white";
 
   return (
-    <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[2fr_1.5fr_auto]">
+    <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-[2fr_1.5fr_auto] lg:grid-cols-[2fr_1.5fr_auto_auto]">
       <div>
         <label htmlFor="filter-q" className="sr-only">
           Search by keyword
@@ -133,6 +157,30 @@ export default function JobFilters() {
             </button>
           );
         })}
+      </div>
+
+      {/* Sort order. A native <select> is the right control for a single choice
+          from a fixed list — accessible and keyboard-friendly out of the box.
+          Like the other filters it writes to the URL (shallow:false), so the
+          server re-runs getJobs() and returns the list already sorted. */}
+      <div>
+        <label htmlFor="filter-sort" className="sr-only">
+          Sort jobs
+        </label>
+        <select
+          id="filter-sort"
+          value={filters.sort}
+          onChange={(e) =>
+            onSort(e.target.value as (typeof SORT_OPTIONS)[number])
+          }
+          className={inputClass}
+        >
+          {SORT_OPTIONS.map((value) => (
+            <option key={value} value={value}>
+              {SORT_LABELS[value]}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );

@@ -25,6 +25,13 @@ const jakarta = localFont({
 });
 
 export const metadata: Metadata = {
+  // Assignment 3.3, Part 2 — `metadataBase` turns the relative Open Graph /
+  // Twitter image + url values into absolute URLs (required for social
+  // scrapers). Point it at the deployed origin in prod; fall back to localhost
+  // for local Lighthouse/DevTools testing. Set NEXT_PUBLIC_SITE_URL on Vercel.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
   // `template` makes per-page titles render as "{page} · CareerHubX"; pages set
   // only their own segment via their `metadata`/`generateMetadata` `title`.
   title: {

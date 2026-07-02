@@ -152,6 +152,14 @@ export default function DocumentUpload({
             >
               <Eye className="h-3.5 w-3.5" /> View
             </a>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15 dark:hover:bg-white/10"
+            >
+              <UploadCloud className="h-3.5 w-3.5" /> {busy ? "Uploading…" : "Replace"}
+            </button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button

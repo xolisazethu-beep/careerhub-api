@@ -1,9 +1,183 @@
+# CareerHub — Assignment 3.3
+
+**Performance & SEO — “Fast by default, findable by design.”**
+
+> The latest milestone. Earlier write-ups (3.2, 2.3, 2.2, 3.1) are preserved further down.
+
+This assignment makes every user-facing page **discoverable** (metadata + Open
+Graph), **shareable** (per-job titles/descriptions) and **fast** (image
+optimisation + code-splitting the heaviest client component). Everything runs
+against the **real CareerHub backend** (`NEXT_PUBLIC_API_BASE_URL`) — no mock data.
+
+---
+
+## ▶ How to run this project (VS Code terminal — PowerShell)
+
+```powershell
+# 0. From the project root: C:\Users\Xolisa\assignment-3.2
+# 1. Install dependencies (adds @next/bundle-analyzer + cross-env for 3.3)
+npm install
+
+# 2. Point the frontend at your REAL backend in .env.local
+#    NEXT_PUBLIC_API_BASE_URL=http://localhost:5080   (your ASP.NET + Postgres API)
+#    NEXT_PUBLIC_SITE_URL=http://localhost:3000        (metadataBase for OG tags)
+#    -> start the backend FIRST so job reads succeed.
+
+# 3. Run the dev server (Lighthouse "before/after" runs against this)
+npm run dev
+#    open http://localhost:3000
+
+# 4. Verify the whole 3.3 checklist
+npx tsc --noEmit          # types: must print nothing (0 errors)
+npm run test:run          # tests: all pass (this repo has 8)
+npm run build             # production build: must succeed
+npm run analyze           # opens the bundle treemaps (client/nodejs/edge .html)
+```
+
+> **Lighthouse:** open the page in Chrome → DevTools (F12) → **Lighthouse** tab →
+> Mode **Navigation**, Device **Desktop**, Categories **Performance / SEO /
+> Best Practices** → *Analyze page load*. Run it on `/` and one `/jobs/[id]`.
+
+---
+
+## What changed in 3.3 (file-by-file, the lines that matter)
+
+| Area | File (folder) | Key change |
+|---|---|---|
+| **Title template + metadataBase + OG** | `src/app/layout.tsx` | `metadata` export: added `metadataBase: new URL(...)` (L~28), already had `title.template` `"%s · CareerHubX"`, `openGraph.siteName`/`type`. |
+| **Per-job SEO** | `src/app/jobs/[id]/page.tsx` | new `generateMetadata()` (top of file) → job title + `"Apply for … at … in …"` description + `openGraph`; returns `{ title: "Job Not Found" }` on 404. |
+| **Dedup data layer** | `src/lib/jobs-api.ts` | new `getJob = cache(async (id) => …)` — one `react` `cache()`-wrapped fetch reused by BOTH `generateMetadata` and the page body. |
+| **LCP image** | `src/app/page.tsx` + `public/hero-careerhub.svg` | `<Image priority width={1200} height={600}>` hero (Candidate A). |
+| **Remote logo** | `src/components/JobLinkCard.tsx` | `<Image>` company logo from `ui-avatars.com` (Candidate B), **no** `priority`. |
+| **Remote domain + analyzer** | `next.config.ts` | `images.remotePatterns` for `ui-avatars.com`; wrapped in `withBundleAnalyzer`. |
+| **Code-split wizard** | `src/app/apply/[jobId]/page.tsx` | static import → `dynamic(() => import(...).then(mod => ({ default: mod.default })), { ssr: false, loading: <h-96 animate-pulse skeleton> })`. |
+| **Scripts** | `package.json` | `"analyze": "cross-env ANALYZE=true next build"`. |
+
+> **Note on layout vs. the brief:** this repo keeps the Next.js app at the **repo
+> root** (not in a `client/` sub-folder), and the wizard is rendered on its own
+> `/apply/[jobId]` route (the `/jobs/[id]` detail page links to it), so the
+> dynamic import lives there — that is “wherever `ApplicationWizard` is rendered”.
+
+---
+
+## Part 1 — Written Decisions
+
+### Q1 — Image audit
+
+| # | Image location | Source | Above the fold? | `next/image`? | Reasoning |
+|---|---|---|---|---|---|
+| 1 | Home hero (`src/app/page.tsx`) | local `/public/hero-careerhub.svg` | **Yes** (largest first-paint element) | **Yes + `priority`** | It is the LCP element — preloading it (not lazy-loading) is the single biggest LCP win on `/`. |
+| 2 | Company logo, listing card (`JobLinkCard`) | **remote** `ui-avatars.com` (PNG) | Only the first row or two | **Yes, no `priority`** | Logos live in a scrollable list → below the fold in aggregate → should lazy-load; optimised to WebP/AVIF and given fixed 40×40 so the row doesn’t reflow. |
+| 3 | Profile photo (`src/app/profile/page.tsx`) | **data URI** (user upload, `photoDataUrl`) | No (auth-only page) | **No** | A `data:` URI is already inlined bytes — the optimizer can’t re-fetch/resize it, and the page is behind auth (no SEO/LCP value). Left as `<img>` with the eslint-disable already in place. |
+| — | Employer profile image | — | — | **N/A** | Not implemented in this codebase. |
+| — | Nav logo / status icons | inline SVG (`lucide-react`, `brand/Logo`) | Yes | **No** | Rule: never wrap already-inline/decorative SVG icons in `next/image`. |
+
+**Highest-priority `priority` candidate:** the **home hero** (#1). It is the
+largest element painted on first load of `/`, so it *is* the LCP element;
+`priority` makes Next preload it and skip lazy-loading, moving LCP earlier.
+
+### Q2 — The ApplicationWizard loading decision
+
+**a. `ssr: false`?** Yes. The wizard is client-only: it reads `localStorage`
+drafts, the client `useSession`, and drives URL state with nuqs. With `ssr:
+true` Next would render it on the server and then hydrate it, shipping and
+executing that heavy JS on first paint for no benefit — and the `localStorage`
+read would break/mismatch during SSR (it doesn’t exist on the server).
+
+**b. Does eager loading harm the signed-out viewer?** On the `/jobs/[id]` detail
+page a signed-out user only sees job details + a “Start application” CTA — they
+never mount the wizard, so eagerly downloading its JS would waste bandwidth and
+main-thread parse time. That inflates **First Load JS / TBT** (and, on slower
+devices, **INP**). Code-splitting it means that cost is only paid on `/apply/[jobId]`.
+
+**c. Why the 3.2 tests are unaffected:** the tests `import
+JobApplicationWizard from "@/components/apply/JobApplicationWizard"` — a **direct
+static import of the source module**. `next/dynamic` is only used at the *page*
+call-site. The component file itself is unchanged, so the tests render the exact
+same component synchronously. ✅ 8/8 still pass.
+
+### Q3 — Static vs. dynamic metadata
+
+| Page | Choice | Why |
+|---|---|---|
+| `/` (home) | **static `metadata`** (via layout default) | Content is identical for everyone, not per-request, not data-driven. |
+| `/jobs` (listings) | **static `metadata`** (already exported on the board page) | The page title/description are constant; the *list* is data-driven but the metadata isn’t. |
+| `/jobs/[id]` (detail) | **`generateMetadata`** | Title/description depend on the fetched job (per-`id`), so they must be computed at request time. |
+
+**The dedup question:** `getJob(id)` is called by *both* `generateMetadata` and
+the page component. It will **not** hit the network twice, because `getJob` is
+wrapped in React’s `cache()`. `cache()` memoises by *(function reference +
+arguments)* for the duration of a single server request: the first call runs the
+fetch, the second returns the stored promise. **Condition for it to work:** both
+call sites must invoke the *same* `getJob` reference with the *identical* `id`
+string, within the same request. It would break if `generateMetadata` used a
+*separate* raw `fetch` (a different function → different cache slot), or if the
+two calls passed differently-typed ids. (Next also layers its Data Cache on the
+`force-cache` fetch, but `cache()` is what collapses the two calls in one render.)
+
+### Q4 — Lighthouse: before / after
+
+> Run in Chrome DevTools → Lighthouse (Navigation / Desktop / Perf+SEO+BP).
+> Paste your measured numbers below — the **direction** is what the changes target.
+
+**Home page `/`**
+
+| Metric | Before | After |
+|---|---|---|
+| Performance | ‹measure› | ‹measure› |
+| LCP (value + label) | ‹measure› | ‹measure — hero `priority` targets this› |
+| CLS (value + label) | ‹measure› | ‹measure — fixed image dims + skeleton target this› |
+| INP (value + label) | N/A in dev | N/A in dev |
+| SEO | ‹measure› | ‹measure — meta description now present› |
+
+**Job detail `/jobs/[id]`**
+
+| Metric | Before | After |
+|---|---|---|
+| Performance | ‹measure› | ‹measure› |
+| LCP | ‹measure› | ‹measure› |
+| CLS | ‹measure› | ‹measure› |
+| INP | N/A in dev | N/A in dev |
+| SEO | ‹measure — likely flags “Document does not have a meta description”› | ‹measure — `generateMetadata` adds title + description + OG› |
+
+**SEO flags to expect *before*:** “Document does not have a meta description” on
+`/jobs/[id]` (there was no metadata) — cleared by `generateMetadata`.
+
+**Which change drove which metric (fill after measuring):**
+- **SEO ↑** — `generateMetadata` on `/jobs/[id]` (was missing description/title entirely).
+- **LCP ↓** — `priority` on the home hero (preloaded, not lazy).
+- **CLS ≈ 0** — explicit `width`/`height` on every `next/image` + the fixed-height wizard skeleton reserve space so nothing reflows.
+
+**One metric I could not move (INP / real LCP under load):** In `npm run dev`
+**INP shows N/A** and LCP is dominated by dev-mode overhead (unminified bundles,
+on-the-fly compilation, no CDN). No *code* change fixes that — it needs
+**infrastructure**: a production build served from a **CDN edge** (Vercel), image
+optimisation cached at the edge, and the **backend cold-start** (the Dockerised
+API can take 15–30 s on first hit — see `fetchJobsApi` retry logic) removed via a
+warm/always-on database. Those are hosting/data-fetching changes, not edits to
+this repo.
+
+---
+
+## Part 4 proof — bundle split
+
+`npm run analyze` writes treemaps to `.next/analyze/` (`client.html`,
+`nodejs.html`, `edge.html`). In **client.html**, `JobApplicationWizard`’s
+dependencies (React Hook Form, Zod, nuqs, Radix AlertDialog) appear as a
+**separate chunk** loaded by `/apply/[jobId]`, not merged into the shared page
+bundle. Build output confirms `/apply/[jobId]` is its own 3-ish kB entry rather
+than dragging the wizard into First Load JS.
+
+> 📸 **Screenshot to add:** open `.next/analyze/client.html`, find the wizard
+> chunk, screenshot it into this README (`docs/` or inline).
+
+---
+
 # CareerHub — Assignment 3.2
 
 **Job Application Wizard, Document Uploads & CareerHubX Branding**
 
-> The latest milestone. Earlier assignment write-ups (2.3, 2.2, 3.1) are preserved
-> further down.
+> An earlier milestone. Assignment 3.3 is above; 2.3, 2.2, 3.1 are further down.
 
 The job-application experience is now a polished, multi-step wizard, the brand
 is **CareerHubX**, and the backend contract those features need is specified in

@@ -18,6 +18,7 @@
  * ABSOLUTE url and this project already names the real backend that way.
  */
 
+import { cache } from "react";
 import type { JobListingResponse, JobListingDetailResponse } from "@/types";
 
 /**
@@ -103,6 +104,8 @@ export interface JobSummaryView {
   employmentType: JobListingResponse["type"];
   salaryMin: number | null;
   salaryMax: number | null;
+  /** ISO 8601 posting date — used to sort the board by "newest". */
+  createdAt: string;
 }
 
 /** Adapt one lean list item (`JobListingResponse`) into the view model. */
@@ -116,6 +119,7 @@ export function toSummaryView(r: JobListingResponse): JobSummaryView {
     employmentType: r.type,
     salaryMin: r.salaryMin,
     salaryMax: r.salaryMax,
+    createdAt: r.createdAt,
   };
 }
 
@@ -143,3 +147,38 @@ export function toDetailView(r: JobListingDetailResponse): JobDetailView {
     expiresAt: r.expiresAt,
   };
 }
+
+/**
+ * getJob — the single source of truth for reading ONE job (Assignment 3.3, Part 2/3).
+ *
+ * Wrapped in React's `cache()` so that when BOTH the page component AND
+ * `generateMetadata` call `getJob(id)` during the same server render, Next.js
+ * runs the underlying fetch exactly ONCE and hands the memoised result to the
+ * second caller — no duplicate network request. The dedup key is (function
+ * reference + arguments), so the condition for it to work is:
+ *   • both call sites import THIS SAME `getJob` (not a re-implemented fetch), and
+ *   • they pass the IDENTICAL `id` string, within the same request lifecycle.
+ * (Next also layers its own Data Cache on the `force-cache` fetch below, but the
+ * `cache()` wrapper is what collapses the two calls inside one render.)
+ *
+ * Returns `null` for a genuine 404 so callers can branch (page → notFound(),
+ * generateMetadata → { title: "Job Not Found" }); throws on any other failure so
+ * the route's error boundary takes over.
+ */
+export const getJob = cache(
+  async (id: string): Promise<JobDetailView | null> => {
+    // CACHE STRATEGY: cached + tagged with BOTH "jobs" and a per-job `job-${id}`
+    // tag. Closing any job clears "jobs" (refreshing every listing/detail).
+    const res = await fetch(`${JOBS_API_BASE}${API_V1}/jobs/${id}`, {
+      cache: "force-cache",
+      next: { tags: ["jobs", `job-${id}`] },
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new Error(
+        `Failed to load job ${id} — the API responded ${res.status} ${res.statusText}`,
+      );
+    }
+    return toDetailView((await res.json()) as JobListingDetailResponse);
+  },
+);

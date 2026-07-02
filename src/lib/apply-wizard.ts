@@ -331,3 +331,62 @@ export function requiredDocuments(args: {
 
 /** Per-document PDF cap — 3 MB (matches the backend's documented limit). */
 export const MAX_DOC_BYTES = 3 * 1024 * 1024;
+
+// ---- job-derived screening questionnaire ----------------------------------
+// The backend has no per-job "questions" concept, so the wizard derives the
+// "Application requirements" + "Questionnaire" from what the listing already
+// carries: the minimum experience, the minimum-requirements text, and each
+// required skill. Every question is answered Yes/No by the applicant, and the
+// answers are folded into the submitted cover note.
+
+export interface ScreeningQuestion {
+  /** Stable key used to store the applicant's answer. */
+  id: string;
+  question: string;
+  /** "requirement" = eligibility gate; "skill" = experience with a skill. */
+  group: "requirement" | "skill";
+  /** Extra context shown under the question (e.g. the raw requirements text). */
+  context?: string;
+}
+
+/** Applicant answers, keyed by `ScreeningQuestion.id` — true = Yes, false = No. */
+export type ScreeningAnswers = Record<string, boolean>;
+
+export function buildScreeningQuestions(job: {
+  minimumExperienceYears: number;
+  minimumRequirements: string;
+  skills: string[];
+}): ScreeningQuestion[] {
+  const questions: ScreeningQuestion[] = [];
+
+  if (job.minimumExperienceYears > 0) {
+    const y = job.minimumExperienceYears;
+    questions.push({
+      id: "req-experience",
+      group: "requirement",
+      question: `Do you have at least ${y} year${y === 1 ? "" : "s"} of relevant experience?`,
+    });
+  }
+
+  const req = job.minimumRequirements?.trim();
+  if (req) {
+    questions.push({
+      id: "req-minimum",
+      group: "requirement",
+      question: "Do you meet the minimum requirements for this role?",
+      context: req,
+    });
+  }
+
+  for (const skill of job.skills) {
+    const s = skill.trim();
+    if (!s) continue;
+    questions.push({
+      id: `skill-${s.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      group: "skill",
+      question: `Do you have experience with ${s}?`,
+    });
+  }
+
+  return questions;
+}

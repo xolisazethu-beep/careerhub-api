@@ -4,6 +4,11 @@
 // account area and primary links are driven by the Auth.js SESSION
 // (passed in from the async root layout's await auth()), not the old
 // applicant context — so the nav reflects the real signed-in role.
+//
+// The top bar is intentionally minimal: brand + theme toggle + Menu.
+// EVERY navigation and account action (Jobs, My profile, Track
+// applications, the account summary and Sign out / Sign in) lives inside
+// the slide-out Menu, so the bar stays uncluttered at any width.
 // =============================================================
 "use client";
 
@@ -13,7 +18,9 @@ import type { Session } from "next-auth";
 import {
   Menu as MenuIcon,
   X,
-  Search,
+  Briefcase,
+  LayoutDashboard,
+  ClipboardList,
   Users,
   Info,
   Mail,
@@ -22,23 +29,38 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
-import NavLinks, { type NavLink } from "@/components/NavLinks";
 import { signOutAction } from "@/app/actions/auth";
 
-const menuItems = [
-  { label: "Find a Job", href: "/", icon: Search },
+type MenuEntry = {
+  label: string;
+  href: string;
+  icon: typeof Briefcase;
+};
+
+/** Role-specific primary links — these were the inline top-bar buttons, now
+ *  moved into the Menu. Employers get their Dashboard; candidates get Jobs plus
+ *  their profile + applications; signed-out visitors just get Jobs. */
+function primaryItems(role: string | undefined): MenuEntry[] {
+  if (role === "employer") {
+    return [{ label: "Dashboard", href: "/recruiter", icon: LayoutDashboard }];
+  }
+  if (role === "candidate") {
+    return [
+      { label: "Jobs", href: "/jobs", icon: Briefcase },
+      { label: "My profile", href: "/profile", icon: UserCircle },
+      { label: "Track applications", href: "/applications", icon: ClipboardList },
+    ];
+  }
+  return [{ label: "Jobs", href: "/jobs", icon: Briefcase }];
+}
+
+/** General site links shown to everyone. "Find a Job" was removed because it
+ *  duplicates the role-based "Jobs" link above. */
+const generalItems: MenuEntry[] = [
   { label: "Employers and Recruiters", href: "/recruiter", icon: Users },
   { label: "About Us", href: "/about", icon: Info },
   { label: "Contact Us", href: "/contact", icon: Mail },
 ];
-
-/** Primary links shown per role (Part 5): Dashboard for employers, Jobs for
- *  candidates, Jobs only for signed-out visitors. Never both Dashboard+Jobs. */
-function linksForRole(role: string | undefined): NavLink[] {
-  if (role === "employer") return [{ href: "/recruiter", label: "Dashboard" }];
-  if (role === "candidate") return [{ href: "/jobs", label: "Jobs" }];
-  return [{ href: "/jobs", label: "Jobs" }];
-}
 
 /** Small role pill next to the username. */
 function RoleBadge({ role }: { role: "employer" | "candidate" }) {
@@ -62,11 +84,17 @@ export default function Navbar({ session }: { session: Session | null }) {
   const role = session?.user?.role;
   const name = session?.user?.name ?? session?.user?.email ?? "Account";
   const isLoggedIn = Boolean(session);
-  const links = linksForRole(role);
+
+  const primary = primaryItems(role);
+  // Drop any general link that a primary link already covers (e.g. an employer's
+  // Dashboard and "Employers and Recruiters" both point at /recruiter).
+  const primaryHrefs = new Set(primary.map((i) => i.href));
+  const general = generalItems.filter((i) => !primaryHrefs.has(i.href));
+  const items = [...primary, ...general];
 
   return (
     <>
-      {/* Top bar */}
+      {/* Top bar — brand on the left, theme toggle + Menu on the right. */}
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-violet-500/20 bg-gradient-to-r from-[#1c0f33] via-[#140a24] to-[#1c0f33] px-4 py-3 text-white">
         {/* Brand — CareerHubX magnifying-glass + person mark and wordmark */}
         <Link href="/" className="flex items-center" aria-label="CareerHubX home">
@@ -74,57 +102,7 @@ export default function Navbar({ session }: { session: Session | null }) {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Role-based primary navigation. Active link highlighted by NavLinks. */}
-          <NavLinks links={links} />
-
-          {/* Candidates can build a profile and track their applications. */}
-          {role === "candidate" && (
-            <>
-              <Link
-                href="/profile"
-                className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
-              >
-                My profile
-              </Link>
-              <Link
-                href="/applications"
-                className="hidden rounded-full border border-white/15 px-4 py-1.5 text-sm hover:bg-white/10 sm:inline-block"
-              >
-                Track applications
-              </Link>
-            </>
-          )}
-
           <ThemeToggle />
-
-          {isLoggedIn && role ? (
-            <div className="hidden items-center gap-2.5 sm:flex">
-              <span className="flex items-center gap-2 text-sm">
-                <UserCircle className="h-5 w-5 text-white/80" />
-                <span className="max-w-[10rem] truncate font-medium">{name}</span>
-                <RoleBadge role={role} />
-              </span>
-              {/* Sign Out is a Server Action form — clears the cookie server-side
-                  and redirects to "/". */}
-              <form action={signOutAction}>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/10"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
-              </form>
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className="hidden items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold hover:bg-violet-600 sm:inline-flex"
-            >
-              <UserCircle className="h-4 w-4" />
-              Sign in
-            </Link>
-          )}
 
           <button
             onClick={() => setOpen(true)}
@@ -144,7 +122,7 @@ export default function Navbar({ session }: { session: Session | null }) {
             className="absolute inset-0 bg-black/50"
             onClick={() => setOpen(false)}
           />
-          <nav className="absolute right-0 top-0 h-full w-full max-w-md bg-white text-slate-800 shadow-xl dark:bg-slate-900 dark:text-slate-100">
+          <nav className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white text-slate-800 shadow-xl dark:bg-slate-900 dark:text-slate-100">
             <div className="flex items-center justify-between bg-[#2b3543] px-5 py-4 text-white">
               <span className="text-lg font-semibold">Menu</span>
               <button onClick={() => setOpen(false)} aria-label="Close menu">
@@ -152,7 +130,7 @@ export default function Navbar({ session }: { session: Session | null }) {
               </button>
             </div>
 
-            {/* Account summary */}
+            {/* Account summary + Sign in / Sign out */}
             <div className="border-b border-slate-100 px-5 py-4 text-sm dark:border-slate-800">
               {isLoggedIn && role ? (
                 <div className="flex items-center justify-between gap-2">
@@ -182,7 +160,7 @@ export default function Navbar({ session }: { session: Session | null }) {
             </div>
 
             <ul>
-              {menuItems.map(({ label, href, icon: Icon }) => (
+              {items.map(({ label, href, icon: Icon }) => (
                 <li
                   key={label}
                   className="border-b border-slate-100 dark:border-slate-800"
@@ -197,30 +175,6 @@ export default function Navbar({ session }: { session: Session | null }) {
                   </Link>
                 </li>
               ))}
-              {role === "candidate" && (
-                <>
-                  <li className="border-b border-slate-100 dark:border-slate-800">
-                    <Link
-                      href="/profile"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
-                    >
-                      <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-                      <span>My profile</span>
-                    </Link>
-                  </li>
-                  <li className="border-b border-slate-100 dark:border-slate-800">
-                    <Link
-                      href="/applications"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 sm:hidden"
-                    >
-                      <UserCircle className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-                      <span>Track applications</span>
-                    </Link>
-                  </li>
-                </>
-              )}
             </ul>
           </nav>
         </div>

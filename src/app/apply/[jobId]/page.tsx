@@ -11,13 +11,45 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { fetchJobById } from "@/lib/api";
-import JobApplicationWizard from "@/components/apply/JobApplicationWizard";
+
+/**
+ * Assignment 3.3, Part 4, Step 2 — the wizard is the heaviest client component
+ * in the app (React Hook Form + Zod + nuqs + AlertDialog). It is code-split out
+ * of the page bundle with a dynamic import so its JS only downloads once this
+ * apply route actually mounts it — the /jobs listing and /jobs/[id] detail never
+ * pay for it.
+ *
+ *  • ssr: false — the wizard is client-only (it reads localStorage drafts and
+ *    the client session); there is nothing meaningful to server-render, and
+ *    forcing SSR would just ship + hydrate it eagerly.
+ *  • loading — a fixed-height (h-96) animate-pulse skeleton reserves the wizard's
+ *    space so the layout does not jump when the chunk arrives (protects CLS).
+ *  • `.then(mod => ({ default: mod.default }))` — next/dynamic expects a module
+ *    whose `default` is the component. Our wizard IS a default export, so we map
+ *    `mod.default`; a NAMED export would instead be `mod.JobApplicationWizard`.
+ */
+const JobApplicationWizard = dynamic(
+  () =>
+    import("@/components/apply/JobApplicationWizard").then((mod) => ({
+      default: mod.default,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="h-96 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-white/10"
+        aria-hidden="true"
+      />
+    ),
+  },
+);
 
 interface ResolvedJob {
   id: string;
@@ -27,6 +59,10 @@ interface ResolvedJob {
   /** Backend gap (docs/BACKEND-GAPS.md §B.1): the API has no requiresDriversLicence
    *  flag yet, so we infer it from the role's skills/title as a stand-in. */
   requiresDriversLicence: boolean;
+  /** Feed the wizard's auto-generated screening questionnaire. */
+  minimumExperienceYears: number;
+  minimumRequirements: string;
+  skills: string[];
 }
 
 function inferLicence(haystack: string[]): boolean {
@@ -57,6 +93,9 @@ export default function ApplyPage() {
         ...apiJob.skills,
         ...apiJob.responsibilities,
       ]),
+      minimumExperienceYears: apiJob.minimumExperienceYears,
+      minimumRequirements: apiJob.minimumQualification,
+      skills: apiJob.skills,
     };
   }, [apiJob]);
 
@@ -126,6 +165,9 @@ export default function ApplyPage() {
               title: job.title,
               company: job.company,
               requiresDriversLicence: job.requiresDriversLicence,
+              minimumExperienceYears: job.minimumExperienceYears,
+              minimumRequirements: job.minimumRequirements,
+              skills: job.skills,
             }}
             user={{
               name: session.user.name || session.user.email || "",

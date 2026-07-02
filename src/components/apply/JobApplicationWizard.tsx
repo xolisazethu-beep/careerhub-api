@@ -51,8 +51,10 @@ import {
   NOTICE_PERIODS,
   isTertiary,
   requiredDocuments,
+  buildScreeningQuestions,
   type WizardValues,
   type DocumentType,
+  type ScreeningAnswers,
 } from "@/lib/apply-wizard";
 import { getWizardDraft, saveWizardDraft, clearWizardDraft } from "@/lib/apply-draft";
 import { getProfile, type UploadedDoc } from "@/lib/profile-store";
@@ -60,6 +62,8 @@ import { applyToJob } from "@/lib/applicant-api";
 import { cn } from "@/lib/utils";
 
 const LAST_STEP = STEP_LABELS.length - 1;
+/** Index of the "Job-specific questions" step that hosts the screening questionnaire. */
+const JOB_SPECIFIC_STEP = 3;
 
 const inputClass =
   "mt-1.5 w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-brand-500/30 dark:bg-[#0f0a1e] dark:text-white dark:placeholder:text-slate-500";
@@ -73,6 +77,10 @@ interface WizardJob {
   title: string;
   company: string;
   requiresDriversLicence: boolean;
+  /** Used to auto-generate the role's screening questionnaire. */
+  minimumExperienceYears: number;
+  minimumRequirements: string;
+  skills: string[];
 }
 
 interface Props {
@@ -98,9 +106,21 @@ async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
  * (experience, notice period, availability, links) follow as a short summary the
  * recruiter can read at a glance.
  */
-function buildCoverNote(v: WizardValues, jobTitle: string): string {
+function buildCoverNote(
+  v: WizardValues,
+  jobTitle: string,
+  screening: { question: string; answer: string }[] = [],
+): string {
   const lines: string[] = [];
   if (v.motivationText?.trim()) lines.push(v.motivationText.trim());
+
+  if (screening.length > 0) {
+    lines.push(
+      `\nScreening answers:\n- ${screening
+        .map((s) => `${s.question} ${s.answer}`)
+        .join("\n- ")}`,
+    );
+  }
 
   const facts: string[] = [];
   if (v.yearsOfExperience) facts.push(`Experience: ${v.yearsOfExperience} year(s)`);
@@ -145,6 +165,23 @@ export default function JobApplicationWizard({ job, user, token }: Props) {
   const [maxReached, setMaxReached] = useState(current);
   const [docs, setDocs] = useState<Partial<Record<DocumentType, UploadedDoc>>>({});
   const [docError, setDocError] = useState<string | null>(null);
+  // Auto-generated, per-job screening questionnaire (answered Yes/No). Kept in
+  // component state rather than RHF because the questions are derived from the
+  // job at runtime, not part of the static Zod schema.
+  const screeningQuestions = useMemo(
+    () =>
+      buildScreeningQuestions({
+        minimumExperienceYears: job.minimumExperienceYears,
+        minimumRequirements: job.minimumRequirements,
+        skills: job.skills,
+      }),
+    [job.minimumExperienceYears, job.minimumRequirements, job.skills],
+  );
+  const [screening, setScreening] = useState<ScreeningAnswers>({});
+  const [screeningError, setScreeningError] = useState<string | null>(null);
+  const screeningComplete = screeningQuestions.every(
+    (q) => screening[q.id] !== undefined,
+  );
   const [restored, setRestored] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const loadedRef = useRef(false);
@@ -242,6 +279,10 @@ export default function JobApplicationWizard({ job, user, token }: Props) {
   async function next() {
     const valid = await trigger(STEP_FIELDS[current], { shouldFocus: true });
     if (!valid) return;
+    if (current === JOB_SPECIFIC_STEP && !screeningComplete) {
+      setScreeningError("Please answer every question in this section.");
+      return;
+    }
     persistDraft(current + 1);
     goto(current + 1);
   }
@@ -268,6 +309,11 @@ export default function JobApplicationWizard({ job, user, token }: Props) {
       toast.error("Please fix the highlighted fields before submitting.");
       return;
     }
+    if (!screeningComplete) {
+      setScreeningError("Please answer every question in the job-specific section.");
+      goto(JOB_SPECIFIC_STEP);
+      return;
+    }
     if (!allDocsUploaded) {
       setDocError("Please upload every required document before submitting.");
       goto(LAST_STEP);
@@ -286,7 +332,11 @@ export default function JobApplicationWizard({ job, user, token }: Props) {
     // skills). Fold the wizard's rich, role-specific answers into a structured
     // cover note so the recruiter still sees them — the extra fields that have no
     // column yet (documents beyond the CV, EE data) are a known backend gap.
-    const coverNote = buildCoverNote(v, job.title);
+    const screeningPairs = screeningQuestions.map((q) => ({
+      question: q.question,
+      answer: screening[q.id] ? "Yes" : "No",
+    }));
+    const coverNote = buildCoverNote(v, job.title, screeningPairs);
 
     try {
       // Attach the CV PDF (always a required document). Convert the stored data
@@ -573,6 +623,45 @@ export default function JobApplicationWizard({ job, user, token }: Props) {
           title="Job-specific questions"
           subtitle={`A few questions specific to ${job.title}.`}
         />
+
+        {screeningQuestions.length > 0 && (
+          <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+            <div>
+              <h4 className="font-display text-sm font-bold text-ink dark:text-slate-100">
+                Application requirements &amp; questionnaire
+              </h4>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                These are drawn from this role&apos;s minimum requirements and
+                required skills. Answer each one honestly.
+              </p>
+            </div>
+            {screeningQuestions.map((q) => (
+              <fieldset key={q.id}>
+                <legend className={labelClass}>{q.question}</legend>
+                {q.context && (
+                  <p className="mt-1 whitespace-pre-line rounded-md bg-white px-2.5 py-1.5 text-xs text-slate-500 dark:bg-[#0f0a1e] dark:text-slate-400">
+                    {q.context}
+                  </p>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <YesNo
+                    value={screening[q.id] ?? undefined}
+                    onPick={(v) => {
+                      setScreeningError(null);
+                      setScreening((prev) => ({ ...prev, [q.id]: v }));
+                    }}
+                  />
+                </div>
+              </fieldset>
+            ))}
+            {screeningError && (
+              <p role="alert" className={errText}>
+                {screeningError}
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
           <label htmlFor="motivationText" className={labelClass}>
             Why are you a good fit for this role?
@@ -804,7 +893,13 @@ function StepHeading({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
-function YesNo({ value, onPick }: { value: boolean; onPick: (v: boolean) => void }) {
+function YesNo({
+  value,
+  onPick,
+}: {
+  value: boolean | undefined;
+  onPick: (v: boolean) => void;
+}) {
   return (
     <>
       {([["Yes", true], ["No", false]] as const).map(([label, v]) => {

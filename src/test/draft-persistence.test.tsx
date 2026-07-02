@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { renderWithProviders, screen, userEvent } from "./utils";
 import JobApplicationWizard from "@/components/apply/JobApplicationWizard";
 
-const JOB = { id: "job-1", title: "Senior Frontend Engineer", company: "Acme", requiresDriversLicence: false };
+const JOB = { id: "job-1", title: "Senior Frontend Engineer", company: "Acme", requiresDriversLicence: false, minimumExperienceYears: 0, minimumRequirements: "", skills: [] };
 const DRAFT_KEY = "careerhub_wizard_drafts";
 const EMAIL = "alice@example.com";
 
