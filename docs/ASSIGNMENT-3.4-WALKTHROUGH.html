@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CareerHubX — Assignment 3.4 Walkthrough</title>
+<style>
+  :root{--brand:#4f46e5;--brand-dark:#3730a3;--ink:#0f172a;--muted:#475569;--line:#e2e8f0;--code-bg:#0f172a;--code-fg:#e2e8f0;--ok:#059669;--warn:#d97706;--chip:#eef2ff;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:var(--ink);font-size:12px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{padding:38px 44px;}
+  .cover{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 55%,#a21caf 100%);color:#fff;padding:80px 44px 60px;min-height:100vh;display:flex;flex-direction:column;justify-content:center;page-break-after:always;}
+  .cover .eyebrow{text-transform:uppercase;letter-spacing:3px;font-size:11px;font-weight:700;opacity:.85;}
+  .cover h1{font-size:40px;line-height:1.1;margin:12px 0 8px;font-weight:800;}
+  .cover .sub{font-size:15px;opacity:.92;max-width:32em;font-style:italic;}
+  .cover .pills{margin-top:34px;display:flex;gap:8px;flex-wrap:wrap;}
+  .cover .pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;}
+  .cover .foot{margin-top:44px;font-size:12px;opacity:.8;}
+  h2{font-size:20px;margin:30px 0 6px;color:var(--brand-dark);border-bottom:2px solid var(--line);padding-bottom:6px;page-break-after:avoid;}
+  h2:first-child{margin-top:0;}
+  h3{font-size:14px;margin:18px 0 5px;color:var(--ink);page-break-after:avoid;}
+  p{margin:7px 0;color:var(--muted);}
+  strong{color:var(--ink);}
+  ul,ol{margin:7px 0;padding-left:20px;color:var(--muted);}
+  li{margin:3px 0;}
+  code{font-family:"Cascadia Code",Consolas,monospace;background:#f1f5f9;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11px;color:var(--brand-dark);}
+  pre{background:var(--code-bg);color:var(--code-fg);border-radius:9px;padding:12px 14px;font-family:"Cascadia Code",Consolas,monospace;font-size:10.5px;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word;}
+  pre .cmt{color:#94a3b8;}
+  pre .k{color:#c4b5fd;}
+  pre .s{color:#86efac;}
+  table{width:100%;border-collapse:collapse;margin:9px 0;font-size:11px;}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top;}
+  th{background:#f8fafc;color:var(--ink);font-weight:700;}
+  .note{border-left:4px solid var(--brand);background:#f5f3ff;padding:9px 13px;border-radius:0 8px 8px 0;margin:11px 0;color:var(--muted);font-size:11px;}
+  .warn{border-left:4px solid var(--warn);background:#fffbeb;padding:9px 13px;border-radius:0 8px 8px 0;margin:11px 0;color:#7c2d12;font-size:11px;}
+  .ok{border-left:4px solid var(--ok);background:#ecfdf5;padding:9px 13px;border-radius:0 8px 8px 0;margin:11px 0;color:#065f46;font-size:11px;}
+  .note strong,.warn strong,.ok strong{color:inherit;}
+  .section{page-break-inside:avoid;}
+  .tag{display:inline-block;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;}
+  .tag.done{background:#dcfce7;color:#166534;}
+  .tag.todo{background:#fef3c7;color:#92400e;}
+  .part{background:var(--brand-dark);color:#fff;padding:8px 14px;border-radius:8px;font-size:15px;font-weight:700;margin:26px 0 10px;}
+  .files{font-size:10.5px;}
+  .files td:first-child{font-family:"Cascadia Code",Consolas,monospace;white-space:nowrap;}
+  footer.pf{margin-top:26px;border-top:1px solid var(--line);padding-top:9px;font-size:10px;color:#94a3b8;}
+  .legend{display:flex;gap:16px;margin:6px 0 0;font-size:11px;}
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="eyebrow">Assignment 3.4 · Final Delivery</div>
+  <h1>CareerHubX<br/>Full-Stack Integration<br/>&amp; Error Handling</h1>
+  <p class="sub">"The product is the backend and the frontend together." — closing the gap between "works when everything goes right" and "works when anything goes wrong."</p>
+  <div class="pills">
+    <span class="pill">Typed API errors</span>
+    <span class="pill">Route error boundaries</span>
+    <span class="pill">422 → form mapping</span>
+    <span class="pill">Generated types</span>
+    <span class="pill">Sentry + CI</span>
+  </div>
+  <div class="foot">A walkthrough of what was built, why, and what remains for deployment · 2 July 2026</div>
+</section>
+
+<div class="page">
+
+  <h2>What this document is</h2>
+  <p>A guided walkthrough of Assignment 3.4 as implemented in <strong>this</strong> repository. It records the written decisions, every change made to the code, how each was verified, and a precise checklist of the remaining steps that require your own accounts (Vercel, Sentry, GitHub, a deployed API).</p>
+
+  <div class="legend">
+    <span><span class="tag done">DONE</span> implemented &amp; verified in the repo</span>
+    <span><span class="tag todo">YOU</span> needs your infrastructure/accounts</span>
+  </div>
+
+  <div class="note"><strong>Repo-layout adaptation.</strong> The brief assumes a <code>client/</code> sub-folder and routes <code>/register</code>, <code>/dashboard</code>, <code>/dashboard/listings/[id]/applicants</code>. This project keeps the app at the <strong>repo root</strong> with real routes <code>/signup</code>, <code>/recruiter</code>, <code>/recruiter/jobs/[jobId]</code>. All paths here are the real ones.</p></div>
+
+  <h2>Status at a glance</h2>
+  <table>
+    <tr><th>Part</th><th>Item</th><th>Status</th></tr>
+    <tr><td>2</td><td>Typed error foundation, client wiring, error boundaries, 422 mapping, Test 12</td><td><span class="tag done">DONE</span></td></tr>
+    <tr><td>3</td><td>Generated types, DTO re-exports, 10 tsc breaks fixed, findings documented</td><td><span class="tag done">DONE</span></td></tr>
+    <tr><td>5</td><td><code>instrumentation.ts</code> (Sentry), CI workflow, <code>.env.example</code></td><td><span class="tag done">DONE</span> (scaffold)</td></tr>
+    <tr><td>4</td><td>End-to-end demo on the deployed app + 12 screenshots</td><td><span class="tag todo">YOU</span></td></tr>
+    <tr><td>5</td><td>Deploy (Vercel + API), set <code>SENTRY_DSN</code>, green CI, CORS</td><td><span class="tag todo">YOU</span></td></tr>
+  </table>
+
+  <div class="ok"><strong>Verified locally:</strong> <code>npx tsc --noEmit</code> → 0 errors · <code>npm run test:run</code> → 9 passed (8 prior + new Test 12), runner exits cleanly (no watch, no hang).</div>
+  <div class="note"><strong>Test-suite hardening.</strong> <code>apply-gate.test.tsx</code> renders the apply page, which code-splits the wizard via <code>next/dynamic({ ssr:false })</code>. Under full-suite load the on-demand transform of that heavy module could outrun even the 15s <code>findBy</code> window, so the test intermittently saw only the loading skeleton. Fixed deterministically by eagerly importing the wizard module in the test — it lands in the transform/module cache before any test runs, so the page's dynamic import resolves from cache on the next tick. No production code touched.</div>
+
+  <!-- ===================== PART 1 ===================== -->
+  <div class="part">Part 1 — Written decisions</div>
+  <p>Full answers live in <code>README.md</code>. The headlines:</p>
+
+  <h3>Q1 · Most damaging error state</h3>
+  <p>The <strong>expired-session 401 during <code>/apply/[jobId]</code></strong>. Five steps of effort are on the line; a blank screen there reads as data loss and causes abandonment. It is handled with a "Session Expired → Sign in" boundary — never a dead-end retry.</p>
+
+  <h3>Q2 · Business rules — server vs client, and the duplicate</h3>
+  <p>Rules 1–3 are enforced <strong>both</strong> sides; rules 4–5 are server-authoritative. Hiding the Apply button is <strong>not</strong> enough — the API also rejects a duplicate with <strong>409</strong>, surfaced as a toast carrying the API's own message (a whole-submission conflict, not a single bad field).</p>
+
+  <h3>Q3 · Highest type-drift risk</h3>
+  <p><code>JobListingResponse</code> — its numeric fields and the <code>type</code> enum. Confirmed by the generator (Part 3).</p>
+
+  <!-- ===================== PART 2 ===================== -->
+  <div class="part">Part 2 — API error handling</div>
+
+  <h3>Step 1 · The typed error foundation — <span class="tag done">DONE</span></h3>
+  <p><code>src/lib/api-error.ts</code> defines <code>ApiError extends Error</code> with <code>status</code>, <code>code</code>, <code>fields</code>, the getters <code>isUnauthorized/isForbidden/isValidation</code>, and <code>parseApiError(res)</code> which reads the RFC 7807 body (wrapped in try/catch — some errors have no body) and maps status → code.</p>
+  <pre><span class="k">const</span> code =
+  res.status === <span class="s">422</span> || (res.status === <span class="s">400</span> && hasFieldErrors)
+    ? <span class="s">"VALIDATION"</span>            <span class="cmt">// lift problem.errors → fields</span>
+    : statusToCode(res.status); <span class="cmt">// 401→UNAUTHORIZED, 403→FORBIDDEN,</span>
+                                <span class="cmt">// 404→NOT_FOUND, 409→CONFLICT, 5xx→SERVER_ERROR</span></pre>
+  <div class="note"><strong>Deviation, documented:</strong> the table maps only 422→VALIDATION, but ASP.NET model validation returns <strong>400 with an <code>errors</code> map</strong>. So a 400 carrying field errors is also treated as VALIDATION — otherwise those messages would be lost.</div>
+
+  <h3>Step 2 · API client uses parseApiError — <span class="tag done">DONE</span></h3>
+  <p>Every authenticated function now does <code>throw await parseApiError(res)</code> instead of <code>throw new Error(...)</code>. Public reads (<code>fetchJobs</code>, <code>fetchJob</code>) keep the generic Error — they surface at the route error boundary, not a form.</p>
+  <table class="files">
+    <tr><th>File</th><th>Functions converted</th></tr>
+    <tr><td>src/lib/applicant-api.ts</td><td>applyToJob, fetchMyApplications, applicantLogin/Register</td></tr>
+    <tr><td>src/lib/employer-api.ts</td><td>createJobListing, updateApplicationStatus, fetchJobApplications, fetchCompanies/CompanyJobs, openApplicantCv, employerLogin/Register</td></tr>
+  </table>
+  <p><strong>Proof:</strong> a duplicate application now shows the API's specific 409 message, not "Request failed: 409 Conflict".</p>
+
+  <h3>Step 3 · Global error boundary — <span class="tag done">DONE</span></h3>
+  <p><code>src/app/error.tsx</code> — <code>"use client"</code>, props <code>{error, reset}</code>, renders a heading + <code>error.message</code> + "Try again" (<code>reset()</code>) + "Go home". <code>useEffect(() =&gt; console.error(error))</code> is the Sentry hook.</p>
+
+  <h3>Step 4 · Route-specific boundaries — <span class="tag done">DONE</span></h3>
+  <p>Four route boundaries, each declaring its persona and delegating to a shared <code>RouteErrorScreen</code> that branches on <code>error.code</code>:</p>
+  <table class="files">
+    <tr><th>File</th><th>Persona / 403 heading</th></tr>
+    <tr><td>src/app/apply/[jobId]/error.tsx</td><td>Job Seeker Access Required</td></tr>
+    <tr><td>src/app/applications/error.tsx</td><td>Job Seeker Access Required</td></tr>
+    <tr><td>src/app/recruiter/error.tsx</td><td>Employer Access Required (= /dashboard)</td></tr>
+    <tr><td>src/app/recruiter/jobs/[jobId]/error.tsx</td><td>Employer Access Required (applicants)</td></tr>
+  </table>
+  <div class="warn"><strong>The rule, enforced:</strong> UNAUTHORIZED and FORBIDDEN never render a retry button — re-rendering reproduces the identical error. They offer <em>Sign in</em> / <em>go back</em> instead. NOT_FOUND links back to the list; only the fallback (validation/server/unknown) shows "Try again".</div>
+
+  <h3>Step 5 · 422 field errors → the wizard — <span class="tag done">DONE</span></h3>
+  <p><code>JobApplicationWizard</code>'s submit catch now detects <code>err instanceof ApiError &amp;&amp; err.isValidation</code>, iterates <code>err.fields</code>, calls <code>form.setError()</code>, and jumps to the step owning the first invalid field via <code>STEP_FIELDS</code> — then a toast: "Please review your application — some fields need attention." A server field name is mapped to the wizard field the user edits (<code>coverNote/coverLetter → motivationText</code>).</p>
+  <div class="ok"><strong>Test 12</strong> (<code>src/test/ApplicationWizard.test.tsx</code>) drives the whole wizard, mocks a 422 on submit, and asserts: it lands on the <em>Job-specific questions</em> step, shows the server message inline, and shows the review toast. <strong>Passing.</strong></div>
+
+  <!-- ===================== PART 3 ===================== -->
+  <div class="part">Part 3 — Type safety: regenerate against the backend</div>
+
+  <h3>Steps 1–3 · Generate — <span class="tag done">DONE</span></h3>
+  <pre><span class="cmt"># package.json</span>
+<span class="s">"generate:types"</span>: <span class="s">"openapi-typescript http://localhost:5080/openapi/v1.json -o src/types/api.generated.ts"</span>
+<span class="cmt"># run it</span>
+npm run generate:types  <span class="cmt">→ src/types/api.generated.ts (committed)</span></pre>
+  <div class="warn"><strong>Before final submission:</strong> swap the localhost URL for your <strong>deployed</strong> API URL so the types reflect what production actually returns, then re-run and commit the diff.</div>
+
+  <h3>Steps 4–5 · Re-export + fix breaks — <span class="tag done">DONE</span></h3>
+  <p><code>src/types/index.ts</code> now re-exports the two DTO mirrors from the generated file; the swap surfaced <strong>10 <code>tsc</code> breaks</strong>, all fixed by coercing at the wire→view boundary (no <code>as</code> suppression):</p>
+  <table>
+    <tr><th>Field</th><th>Assumed</th><th>Generated</th><th>Fix</th></tr>
+    <tr><td><code>type</code></td><td><code>EmploymentType</code></td><td><code>string</code></td><td><code>toEmploymentType()</code></td></tr>
+    <tr><td><code>salaryMin/Max</code></td><td><code>number|null</code></td><td><code>number|string|null</code></td><td><code>Number(x)</code> + null-guard</td></tr>
+    <tr><td><code>minimumExperienceYears</code></td><td><code>number</code></td><td><code>number|string</code></td><td><code>Number(x)</code></td></tr>
+    <tr><td><code>applicantCount</code></td><td><code>number</code></td><td><code>number|string</code></td><td><code>Number(x)</code></td></tr>
+  </table>
+  <p><strong>What it revealed:</strong> the hand-written types were <em>stricter than the contract</em>. The API's OpenAPI types numbers as <code>number|string</code> and the job <code>type</code> as a bare <code>string</code>. Coercing once at the boundary keeps the app's strict view-model honest.</p>
+
+  <!-- ===================== PART 5 scaffold ===================== -->
+  <div class="part">Part 5 — Delivery scaffolding (built for you)</div>
+
+  <h3>Sentry — <span class="tag done">DONE</span> (scaffold)</h3>
+  <p><code>src/instrumentation.ts</code> calls <code>Sentry.init()</code> for BOTH the <code>nodejs</code> and <code>edge</code> runtimes, DSN from <code>process.env.SENTRY_DSN</code>, <code>enabled</code> only when a DSN is present (a clean no-op otherwise), and exports <code>onRequestError</code>. <code>@sentry/nextjs</code> is a dependency.</p>
+
+  <h3>CI — <span class="tag done">DONE</span> (scaffold)</h3>
+  <p><code>.github/workflows/ci.yml</code> runs on push/PR: <code>npm ci</code> → <code>npx tsc --noEmit</code> → <code>npm run test:run</code>, in that order.</p>
+
+  <h3><code>.env.example</code> — <span class="tag done">DONE</span></h3>
+  <p>Documents every variable (redacted): <code>NEXT_PUBLIC_API_BASE_URL</code>, <code>AUTH_SECRET</code>, <code>NEXT_PUBLIC_SITE_URL</code>, <code>SENTRY_DSN</code>, <code>NEXT_PUBLIC_SENTRY_DSN</code>.</p>
+
+  <!-- ===================== YOUR TO-DO ===================== -->
+  <div class="part">What you must finish (needs your accounts)</div>
+
+  <h3>1 · Deploy — <span class="tag todo">YOU</span></h3>
+  <ul>
+    <li>Deploy the <strong>API</strong> to a public HTTPS URL (Railway/Render/Azure).</li>
+    <li>Deploy the <strong>frontend</strong> to Vercel.</li>
+    <li>On Vercel set <code>NEXT_PUBLIC_API_BASE_URL</code> to the deployed API (not localhost) and <code>AUTH_SECRET</code> (fresh <code>npx auth secret</code>).</li>
+    <li>Configure the API's <strong>CORS</strong> to allow your exact Vercel origin (verify in DevTools → Network → <code>Access-Control-Allow-Origin</code>).</li>
+  </ul>
+
+  <h3>2 · Sentry — <span class="tag todo">YOU</span></h3>
+  <ul>
+    <li>Create a Sentry project; copy its DSN.</li>
+    <li>Set <code>SENTRY_DSN</code> (and <code>NEXT_PUBLIC_SENTRY_DSN</code>) as env vars on Vercel.</li>
+    <li>Trigger a test error on the deployed app; confirm it appears in the Sentry dashboard within 60s.</li>
+  </ul>
+
+  <h3>3 · CI green — <span class="tag todo">YOU</span></h3>
+  <ul>
+    <li>Push to GitHub; open the Actions tab; confirm the <strong>CI</strong> workflow is green on <code>main</code>.</li>
+  </ul>
+
+  <h3>4 · Type-gen against production — <span class="tag todo">YOU</span></h3>
+  <ul>
+    <li>Point <code>generate:types</code> at the deployed <code>/openapi/v1.json</code>; re-run; commit the diff.</li>
+  </ul>
+
+  <h3>5 · End-to-end demo + 12 screenshots — <span class="tag todo">YOU</span></h3>
+  <p>Run both journeys (Employer + JobSeeker) on the deployed app in two sessions; screenshot each of the 12 milestones and paste them into the README. Milestones and pass criteria are listed in the README "End-to-end demo" section.</p>
+
+  <h2>Command reference</h2>
+  <pre>npm run generate:types   <span class="cmt"># regenerate api.generated.ts (swap URL for prod)</span>
+npx tsc --noEmit         <span class="cmt"># 0 errors</span>
+npm run test:run         <span class="cmt"># 9 passing, exits (no watch)</span>
+npm run build            <span class="cmt"># production build</span>
+npx auth secret          <span class="cmt"># generate AUTH_SECRET</span></pre>
+
+  <footer class="pf">CareerHubX — Assignment 3.4 walkthrough · Part 2 &amp; 3 implemented, Part 5 scaffolded, Part 4 + deploy pending · generated 2 July 2026</footer>
+</div>
+
+</body>
+</html>

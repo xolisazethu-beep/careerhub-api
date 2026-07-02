@@ -4,6 +4,7 @@ import type {
   JobListingDetailResponse,
   PagedResponse,
 } from "@/types";
+import { toEmploymentType } from "@/lib/employmentType";
 
 /**
  * Pure client-side network layer for reading jobs from the REAL CareerHub API.
@@ -22,21 +23,24 @@ const JOBS_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:
  * and hydrated by `fetchJobById`.
  */
 function toJobListing(r: JobListingResponse): JobListing {
+  // Part 3 coercion boundary: the generated DTO types numbers as `number |
+  // string` and `type` as a plain `string`, so normalise both here — this is the
+  // one place wire data becomes the strict view-model.
   return {
     id: r.id,
     title: r.title,
     company: r.companyName,
     location: r.location,
-    employmentType: r.type,
-    salaryMin: r.salaryMin ?? 0,
-    salaryMax: r.salaryMax ?? 0,
+    employmentType: toEmploymentType(r.type),
+    salaryMin: r.salaryMin == null ? 0 : Number(r.salaryMin),
+    salaryMax: r.salaryMax == null ? 0 : Number(r.salaryMax),
     postedAt: r.createdAt,
     isActive: r.status === "Active",
     closingDate: r.expiresAt,
-    applicantCount: r.applicantCount ?? 0,
+    applicantCount: Number(r.applicantCount ?? 0),
     responsibilities: r.responsibilities ?? [],
     skills: r.skills ?? [],
-    minimumExperienceYears: r.minimumExperienceYears ?? 0,
+    minimumExperienceYears: Number(r.minimumExperienceYears ?? 0),
     description: "",
     minimumQualification: "",
   };

@@ -1,0 +1,39 @@
+# Assignment 3.4, Part 5 Step 5 — Continuous Integration.
+#
+# Runs on every push and pull request. The job mirrors the exact local gate the
+# assignment specifies, IN ORDER: install → type-check → tests. A red step fails
+# the run, so a type error or a failing test can never reach the main branch.
+name: CI
+
+on:
+  push:
+    branches: ["main", "CareerHub-3.1"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    name: Type-check & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # Clean, reproducible install from the lockfile (never mutates it).
+      - name: Install dependencies
+        run: npm ci
+
+      # 1) Types must be sound.
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # 2) The suite must pass and EXIT (vitest run, not watch).
+      - name: Test
+        run: npm run test:run

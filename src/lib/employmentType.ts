@@ -19,3 +19,17 @@ export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   Internship: "Internship",
   Learnership: "Learnership",
 };
+
+/**
+ * Assignment 3.4, Part 3 — coerce the API's loosely-typed `type` field (the
+ * generated DTO types it as a plain `string`) into the strict `EmploymentType`
+ * union the UI relies on. This is a runtime-VALIDATED narrowing (a type guard),
+ * not a blind `as` cast: an unrecognised value falls back to "FullTime" rather
+ * than smuggling an off-contract string into the view-model.
+ */
+export function toEmploymentType(value: string): EmploymentType {
+  for (const known of Object.keys(EMPLOYMENT_TYPE_LABELS) as EmploymentType[]) {
+    if (known === value) return known;
+  }
+  return "FullTime";
+}

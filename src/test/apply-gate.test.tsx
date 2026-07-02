@@ -13,6 +13,13 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderWithProviders, screen } from "./utils";
 import ApplyPage from "@/app/apply/[jobId]/page";
+// The apply page code-splits the wizard via `next/dynamic({ ssr: false })`, so
+// its module is imported on-demand. In the FULL suite (one worker, box already
+// loaded) that on-demand transform can outrun even a 15s findBy timeout and the
+// test sees only the loading skeleton. Eagerly importing the module here forces
+// it into the transform/module cache before any test runs, so the page's
+// dynamic import resolves from cache on the next tick — deterministically.
+import "@/components/apply/JobApplicationWizard";
 
 beforeEach(() => {
   window.localStorage.clear();

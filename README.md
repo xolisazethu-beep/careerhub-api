@@ -1,8 +1,183 @@
+# CareerHub — Assignment 3.4
+
+**Full-Stack Integration & Final Delivery — “The product is the backend and the frontend together.”**
+
+> The latest milestone. Earlier write-ups (3.3, 3.2, 2.3, 2.2, 3.1) are preserved further down.
+
+This milestone closes the gap between *"it works when everything goes right"*
+and *"it works correctly when anything goes wrong."* It adds a typed API-error
+foundation, route-aware error boundaries, 422 field-mapping back into the
+application wizard, and regenerates the TypeScript client from the backend's
+OpenAPI document so the type contract is verified at the boundary.
+
+> **Repo-layout note.** The assignment brief assumes a `client/` sub-directory
+> and routes named `/register`, `/dashboard`, `/dashboard/listings/[id]/applicants`.
+> This project keeps the Next.js app at the **repo root** and its real routes are
+> `/signup`, `/recruiter`, `/recruiter/jobs/[jobId]`. Every path below is the
+> real one; the mapping is called out where it matters.
+
+---
+
+## Part 1 — Written decisions
+
+### Q1 — Error-state mapping
+
+| Route | Realistic error | Cause | UI response | Why |
+|---|---|---|---|---|
+| `/` | Landing data fails | 5xx/network | Global `error.tsx` (Try again + Home) | Public page; a retry is the honest option |
+| `/jobs` | Board fetch fails | 5xx/network | `jobs/(board)` friendly "warming up" + Refresh | Cold-start is common; a reload re-runs the server fetch |
+| `/jobs/[id]` | No such job | 404 | `notFound()` → not-found UI | A 404 is a distinct, expected state, not an error |
+| `/jobs/[id]` | Detail fetch fails | 5xx | `jobs/[id]/error.tsx` (Try again) | Transient; re-render can recover |
+| `/login` | Bad credentials | 401 (Auth.js) | Inline form message | The user must fix the field in place |
+| `/signup` (`/register`) | Email taken | 409 CONFLICT | Inline form message | Field-level, actionable |
+| `/apply/[jobId]` | Session expired | 401 | `apply/.../error.tsx` → **Sign in** link (no retry) | Re-render can't refresh a dead session |
+| `/apply/[jobId]` | Cover letter invalid | 422 VALIDATION | Map to field, jump to step, inline message + toast | The user must see *which* field and fix it |
+| `/apply/[jobId]` | Duplicate application | 409 CONFLICT | Toast with the API's specific message | Not a field error; a whole-submission conflict |
+| `/applications` | Session expired | 401 | route `error.tsx` → Sign in | Same as above |
+| `/recruiter` (`/dashboard`) | Wrong role | 403 FORBIDDEN | route `error.tsx` "Employer Access Required" (no retry) | Re-render yields the same 403 |
+| `/recruiter/jobs/[jobId]` (applicants) | Not the owner | 403 FORBIDDEN | route `error.tsx` (no retry) + back link | Ownership won't change on retry |
+
+**Most damaging if handled badly:** the **JobSeeker's expired-session 401 mid-application** (`/apply/[jobId]`). The user has invested five steps of effort; a blank white screen or a silent failure there loses all that work and reads as data loss. Handling it with a clear "Session Expired → Sign in" boundary (never a dead-end retry) is what keeps them from abandoning the product.
+
+### Q2 — Business rules: server vs. client
+
+| # | Rule | Enforced | If the UI is bypassed |
+|---|---|---|---|
+| 1 | Hide Apply for employers / already-applied | **Both** | API rejects: employer 403, duplicate 409 |
+| 2 | Closed/Draft show banner, hide Apply | **Both** | Applying to a closed listing is rejected server-side |
+| 3 | Only owner sees Edit/Close | **Both** | Non-owner write → 403 |
+| 4 | Status updates restricted to owning employer | **Server** (authoritative) | 403 from the backend |
+| 5 | Expired listings auto-close | **Server** | Frontend reads the new status and renders the banner |
+
+Hiding the Apply button is **not** sufficient — the API must also reject the duplicate. The backend returns **409 Conflict**; the frontend surfaces it as a **toast** carrying the API's specific `detail` message (not inline — it's a whole-submission conflict, not one bad field).
+
+### Q3 — Type-risk audit
+
+Every DTO mirror in `src/types/` was hand-written against `Dtos.cs` by inference. Highest drift risk (and the one verified first in Part 3): **`JobListingResponse`** — its numeric fields and the `type` enum. The generator confirmed the drift (see *Type generation findings*).
+
+### Q4 — Five-minute clone test
+
+See **Five-minute setup guide** below — the exact command sequence, every env var, and the expected final output.
+
+---
+
+## Five-minute setup guide
+
+```bash
+# 1. Clone both repositories
+git clone <api-repo-url> careerhub-api
+git clone <frontend-repo-url> careerhub-frontend
+
+# 2. Start the backend (see the API repo README):
+cd careerhub-api
+docker compose up -d                       # Postgres on :5544
+dotnet run --urls "http://localhost:5080"  # API on :5080 (auto-migrates + seeds)
+
+# 3. Frontend deps
+cd ../careerhub-frontend
+npm install
+
+# 4. Environment
+cp .env.example .env.local
+#   REQUIRED in .env.local:
+#     NEXT_PUBLIC_API_BASE_URL=http://localhost:5080   (or your deployed API)
+#     AUTH_SECRET=<run: npx auth secret>
+#   OPTIONAL: NEXT_PUBLIC_SITE_URL, SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN
+
+# 5. Run
+npm run dev
+```
+
+**Expected final output:** the terminal prints `✓ Ready` and serves
+`http://localhost:3000`; opening it shows the landing page, and `/jobs` lists the
+~20 seeded roles. You can register/log in and apply.
+
+Dependencies **not** covered by `npm install` / `dotnet restore`: the running
+backend + Postgres (Docker), `AUTH_SECRET` (generate with `npx auth secret`),
+and — only if enabling monitoring — a Sentry DSN. All are documented in
+`.env.example`.
+
+---
+
+## Error-state documentation (three non-obvious decisions)
+
+1. **UNAUTHORIZED never gets a retry button.** In every route `error.tsx`, a 401
+   renders "Session Expired → Sign in", not "Try again". Re-rendering re-runs the
+   same request with the same dead cookie and fails identically — a retry button
+   is a trap that makes the user feel the app is broken. The only real fix is a
+   fresh sign-in, so that's the only action offered.
+
+2. **422 drives the user back to the exact step, not a generic toast.** When the
+   API rejects a submission with field errors, `parseApiError` lifts them onto
+   `ApiError.fields`; the wizard maps each server field name to the form field the
+   user edits (`coverNote`/`coverLetter` → `motivationText`), jumps to the step
+   that owns the *first* invalid field via `STEP_FIELDS`, and shows the message
+   **inline** on that input. A toast alone would tell them *something* is wrong but
+   not *what* or *where*.
+
+3. **409 duplicate reads the API's own words.** Because every authenticated call
+   now throws a typed `ApiError` built from RFC 7807 Problem Details, a duplicate
+   application surfaces the backend's specific `detail` ("You have already applied
+   to this listing") instead of the generic "Request failed: 409 Conflict". The
+   status code is an implementation detail the user should never see.
+
+---
+
+## Type generation findings
+
+`npm run generate:types` produced `src/types/api.generated.ts` from the backend's
+OpenAPI doc. Re-exporting `JobListingResponse` and `JobListingDetailResponse` from
+it (replacing the hand-written mirrors) surfaced **10 `tsc` breaks** — all the same
+two real gaps between assumption and contract:
+
+| Break | Assumed | Actual (generated) | Fix |
+|---|---|---|---|
+| `type` (both DTOs) | `EmploymentType` union | plain `string` | `toEmploymentType()` — runtime-validated narrowing |
+| `salaryMin`/`salaryMax` | `number \| null` | `number \| string \| null` | `x == null ? … : Number(x)` at the adapter |
+| `minimumExperienceYears` | `number` | `number \| string` | `Number(x)` |
+| `applicantCount` | `number` | `number \| string` | `Number(x)` |
+
+**What it revealed:** the backend's OpenAPI describes numbers with a `number |
+string` union (int64/serialisation safety) and exposes the job `type` enum as a
+bare `string`, not a constrained set. My hand-written types were *stricter than the
+contract* — which feels safe but silently assumes the API can never send a string
+"35000" or an unknown employment type. The fix is not to suppress with `as`, but to
+**coerce once at the wire→view boundary** (`lib/api.ts`, `lib/jobs-api.ts`), so the
+rest of the app keeps its strict view-model honestly. All 10 breaks are fixed;
+`npx tsc --noEmit` is clean.
+
+---
+
+## End-to-end demo (both personas)
+
+> Run on the deployed Vercel frontend against the deployed API, in two separate
+> browser sessions (one incognito). Capture a screenshot at each of the 12
+> milestones and paste them below.
+
+**Employer journey** — register → `/recruiter` dashboard → create a listing
+(status *Active*) → open `/jobs/[id]` and confirm **Edit/Close** show while
+**Apply** does not → Close the listing (banner appears, Apply gone) → after the
+seeker applies, view applicants → move status *Pending → Reviewing*.
+
+**JobSeeker journey** — register → browse/filter `/jobs` (filters persist in the
+URL on refresh) → open an Active listing (Apply visible, no Edit/Close) → complete
+the wizard and submit (success toast, `/applications` shows *Pending*) → revisit
+the listing (Apply hidden; a direct POST returns **409** with the API's message) →
+open the Employer's closed listing (loads with a "closed" banner, no blank screen).
+
+**Pass criteria:** no blank white screens, no raw `Error`/stack traces in the UI,
+no unhandled promise rejections, Apply never shows when it should be hidden, and
+role-restricted routes render an actionable error page rather than a blank one.
+
+*(Screenshots: `_______` — capture on the deployed app before submission.)*
+
+---
+
 # CareerHub — Assignment 3.3
 
 **Performance & SEO — “Fast by default, findable by design.”**
 
-> The latest milestone. Earlier write-ups (3.2, 2.3, 2.2, 3.1) are preserved further down.
+> Earlier write-up. See Assignment 3.4 above for the latest milestone.
 
 This assignment makes every user-facing page **discoverable** (metadata + Open
 Graph), **shareable** (per-job titles/descriptions) and **fast** (image

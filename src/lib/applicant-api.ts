@@ -7,15 +7,9 @@
  */
 
 import { fetchWithRetry } from "@/lib/http";
+import { parseApiError } from "@/lib/api-error";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
-
-interface ProblemDetails {
-  title?: string;
-  detail?: string;
-  status?: number;
-  errors?: Record<string, string[]>;
-}
 
 /** Token + claims the backend returns from applicant login/register. */
 export interface ApplicantAuth {
@@ -46,15 +40,6 @@ export interface ApplyInput {
   cv: File | null;
 }
 
-async function readError(res: Response): Promise<string> {
-  const p = (await res.json().catch(() => ({}))) as ProblemDetails;
-  if (p.errors) {
-    const first = Object.values(p.errors).flat()[0];
-    if (first) return first;
-  }
-  return p.detail ?? p.title ?? `Request failed with ${res.status}`;
-}
-
 /** Verify applicant credentials; returns the JWT + claims. */
 export async function applicantLogin(
   email: string,
@@ -65,7 +50,7 @@ export async function applicantLogin(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   return (await res.json()) as ApplicantAuth;
 }
 
@@ -80,7 +65,7 @@ export async function applicantRegister(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   return (await res.json()) as ApplicantAuth;
 }
 
@@ -104,7 +89,10 @@ export async function applyToJob(
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
   });
-  if (!res.ok) throw new Error(await readError(res));
+  // Throws a typed ApiError: 409 (already applied) → CONFLICT with the API's
+  // specific message; 422/400 with field errors → VALIDATION carrying `fields`,
+  // which the ApplicationWizard maps back onto the form (Part 2 Step 5).
+  if (!res.ok) throw await parseApiError(res);
 }
 
 /** The signed-in applicant's application history (Track Applications). */
@@ -115,6 +103,6 @@ export async function fetchMyApplications(
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   return (await res.json()) as MyApplication[];
 }

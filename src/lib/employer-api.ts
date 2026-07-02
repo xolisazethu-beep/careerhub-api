@@ -18,15 +18,9 @@
 
 import type { EmploymentType } from "@/types";
 import { fetchWithRetry } from "@/lib/http";
+import { parseApiError } from "@/lib/api-error";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
-
-interface ProblemDetails {
-  title?: string;
-  detail?: string;
-  status?: number;
-  errors?: Record<string, string[]>;
-}
 
 /** The token + claims the backend returns from login/register. */
 export interface EmployerAuth {
@@ -60,16 +54,6 @@ export interface NewJobListing {
   skills: string[];
 }
 
-/** Pull the most useful message out of a Problem Details / validation body. */
-async function readError(res: Response): Promise<string> {
-  const p = (await res.json().catch(() => ({}))) as ProblemDetails;
-  if (p.errors) {
-    const first = Object.values(p.errors).flat()[0];
-    if (first) return first;
-  }
-  return p.detail ?? p.title ?? `Request failed with ${res.status}`;
-}
-
 /** Verify employer credentials against the backend; returns the JWT + claims. */
 export async function employerLogin(
   email: string,
@@ -80,7 +64,7 @@ export async function employerLogin(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   return (await res.json()) as EmployerAuth;
 }
 
@@ -96,14 +80,14 @@ export async function employerRegister(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   return (await res.json()) as EmployerAuth;
 }
 
 /** Every company, for the registration company picker. */
 export async function fetchCompanies(): Promise<CompanyOption[]> {
   const res = await fetchWithRetry(`${API_BASE}/api/v1/companies`, { cache: "no-store" });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   const data = (await res.json()) as Array<{
     id: string;
     name: string;
@@ -135,7 +119,7 @@ export async function fetchCompanyJobs(
     `${API_BASE}/api/v1/jobs/company/${companyId}?page=1&pageSize=100`,
     { cache: "no-store" },
   );
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   const payload = (await res.json()) as {
     data: Array<{
       id: string;
@@ -188,7 +172,7 @@ export async function fetchJobApplications(
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   return (await res.json()) as JobApplication[];
 }
 
@@ -210,7 +194,7 @@ export async function updateApplicationStatus(
       body: JSON.stringify({ status }),
     },
   );
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
 }
 
 /**
@@ -226,7 +210,7 @@ export async function openApplicantCv(
     `${API_BASE}/api/v1/jobs/${jobId}/applications/${applicantId}/cv`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank", "noopener");
@@ -247,6 +231,6 @@ export async function createJobListing(
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) throw await parseApiError(res);
   return (await res.json()) as { id: string };
 }

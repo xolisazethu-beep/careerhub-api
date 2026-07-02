@@ -19,7 +19,12 @@
  */
 
 import { cache } from "react";
-import type { JobListingResponse, JobListingDetailResponse } from "@/types";
+import type {
+  JobListingResponse,
+  JobListingDetailResponse,
+  EmploymentType,
+} from "@/types";
+import { toEmploymentType } from "@/lib/employmentType";
 
 /**
  * Absolute base of the REAL CareerHub backend (ASP.NET + Postgres). Server
@@ -101,7 +106,7 @@ export interface JobSummaryView {
   location: string;
   /** Lifecycle status name: "Active" | "Closed" | "Draft". */
   status: string;
-  employmentType: JobListingResponse["type"];
+  employmentType: EmploymentType;
   salaryMin: number | null;
   salaryMax: number | null;
   /** ISO 8601 posting date — used to sort the board by "newest". */
@@ -110,15 +115,16 @@ export interface JobSummaryView {
 
 /** Adapt one lean list item (`JobListingResponse`) into the view model. */
 export function toSummaryView(r: JobListingResponse): JobSummaryView {
+  // Part 3 coercion boundary — see the note in lib/api.ts::toJobListing.
   return {
     id: r.id,
     title: r.title,
     company: r.companyName,
     location: r.location,
     status: r.status,
-    employmentType: r.type,
-    salaryMin: r.salaryMin,
-    salaryMax: r.salaryMax,
+    employmentType: toEmploymentType(r.type),
+    salaryMin: r.salaryMin == null ? null : Number(r.salaryMin),
+    salaryMax: r.salaryMax == null ? null : Number(r.salaryMax),
     createdAt: r.createdAt,
   };
 }
@@ -142,7 +148,7 @@ export function toDetailView(r: JobListingDetailResponse): JobDetailView {
     minimumRequirements: r.minimumRequirements,
     responsibilities: r.responsibilities,
     skills: r.skills,
-    minimumExperienceYears: r.minimumExperienceYears,
+    minimumExperienceYears: Number(r.minimumExperienceYears),
     createdAt: r.createdAt,
     expiresAt: r.expiresAt,
   };

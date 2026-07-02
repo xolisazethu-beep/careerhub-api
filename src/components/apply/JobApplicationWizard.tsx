@@ -59,11 +59,27 @@ import {
 import { getWizardDraft, saveWizardDraft, clearWizardDraft } from "@/lib/apply-draft";
 import { getProfile, type UploadedDoc } from "@/lib/profile-store";
 import { applyToJob } from "@/lib/applicant-api";
+import { ApiError } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 
 const LAST_STEP = STEP_LABELS.length - 1;
 /** Index of the "Job-specific questions" step that hosts the screening questionnaire. */
 const JOB_SPECIFIC_STEP = 3;
+
+/**
+ * Assignment 3.4, Part 2 Step 5 — map a BACKEND validation field name onto the
+ * wizard form field the user actually edits, so a 422 can steer them to the
+ * right input. The backend's apply contract is lean (a single cover note), so
+ * its cover-note/cover-letter field maps to the wizard's `motivationText`. Keys
+ * are lowercased for case-insensitive matching against PascalCase server names.
+ */
+const SERVER_FIELD_TO_WIZARD: Record<string, keyof WizardValues> = {
+  covernote: "motivationText",
+  coverletter: "motivationText",
+  motivationtext: "motivationText",
+  email: "email",
+  phone: "phone",
+};
 
 const inputClass =
   "mt-1.5 w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-brand-500/30 dark:bg-[#0f0a1e] dark:text-white dark:placeholder:text-slate-500";
@@ -94,10 +110,21 @@ interface Props {
   token?: string;
 }
 
-/** Turn a stored base64 data-URL document back into a File for multipart upload. */
+/**
+ * Turn a stored base64 data-URL document back into a File for multipart upload.
+ * Decodes the base64 payload directly (via atob) rather than round-tripping
+ * through `fetch(dataUrl)` — that avoids a needless network hop and works
+ * identically in the browser and under jsdom in tests.
+ */
 async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
-  const blob = await (await fetch(dataUrl)).blob();
-  return new File([blob], fileName, { type: blob.type || "application/pdf" });
+  const comma = dataUrl.indexOf(",");
+  const meta = dataUrl.slice(0, comma);
+  const base64 = dataUrl.slice(comma + 1);
+  const mime = /data:([^;]+)/.exec(meta)?.[1] || "application/pdf";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], fileName, { type: mime });
 }
 
 /**
@@ -355,9 +382,31 @@ export default function JobApplicationWizard({ job, user, token }: Props) {
       // Real track page — reads the applicant's history from the backend.
       router.push("/applications");
     } catch (err) {
+      // Assignment 3.4, Part 2 Step 5 — a 422/400 validation failure carries
+      // per-field messages. Map each one back onto the form, jump to the step
+      // that owns the FIRST invalid field, and let the inline field errors (not
+      // a vague toast) tell the user exactly what to fix.
+      if (err instanceof ApiError && err.isValidation && err.fields) {
+        let firstStep = -1;
+        for (const [serverField, messages] of Object.entries(err.fields)) {
+          const wizardField = SERVER_FIELD_TO_WIZARD[serverField.toLowerCase()];
+          if (!wizardField || !messages?.length) continue;
+          form.setError(wizardField, { type: "server", message: messages[0] });
+          const step = STEP_FIELDS.findIndex((fields) =>
+            fields.includes(wizardField),
+          );
+          if (step >= 0 && (firstStep === -1 || step < firstStep)) firstStep = step;
+        }
+        if (firstStep >= 0) goto(firstStep);
+        toast.error("Please review your application — some fields need attention.");
+        setSubmitting(false);
+        return;
+      }
+
       const message =
         err instanceof Error ? err.message : "Could not submit your application.";
-      // The backend returns a 409 (already applied) as a friendly message.
+      // Any other failure (e.g. 409 already applied) surfaces the API's specific
+      // message from the typed ApiError rather than a generic "Request failed".
       toast.error("Application not submitted", { description: message });
       setSubmitting(false);
     }
